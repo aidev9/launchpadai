@@ -1,0 +1,73 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Rules for Creating a Full-Stack App from Scratch (Green Field Project)
+
+Create a full-stack app based on the following stack. Use the lastest versions of each tool or the one speficied below:
+- NextJS - 15.3.0
+	- Install with support for
+		- TailwindCSS
+		- Eslint
+		- Typescript
+		- App router
+		- No src folder
+		- Use pnpm
+- pnpm as a package manager - 10.8.0
+- shadcn - 2.4.0
+- Vercel AI SDK - 1.2.10
+- Jotai - 2.12.0
+- Firebase admin SDK - 13.2.0
+- Firebase client SDK - 11.6.0
+
+## Project Structure for Next.js with shadcn, Tailwind CSS, and Firebase
+Here's how you should structure the project using these technologies:
+
+/project-root
+├── .env.local           # Environment variables (gitignored)
+├── .env.example         # Example environment variables for the team
+├── public/              # Static assets
+├── src/                 # All source code lives here
+│   ├── app/             # Next.js App Router
+│   │   ├── (auth)/      # Auth-related route group
+│   │   │   ├── login/
+│   │   │   ├── signup/
+│   │   │   └── ...
+│   │   ├── (dashboard)/ # Dashboard route group
+│   │   ├── api/         # API routes
+│   │   └── layout.tsx   # Root layout
+│   ├── components/      # React components
+│   │   ├── ui/          # shadcn UI components
+│   │   ├── forms/       # Form-related components
+│   │   ├── layout/      # Layout components (headers, footers)
+│   │   └── [feature]/   # Feature-specific components
+│   ├── lib/             # Utility functions and shared logic
+│   │   ├── firebase/    # Firebase configuration
+│   │   │   ├── admin.ts # Firebase Admin SDK setup
+│   │   │   └── client.ts # Firebase client SDK setup
+│   │   ├── utils/       # Helper functions
+│   │   └── hooks/       # Custom React hooks
+│   ├── types/           # TypeScript type definitions
+│   └── styles/          # Global styles and Tailwind customizations
+├── tailwind.config.js   # Tailwind configuration
+├── components.json      # shadcn configuration
+└── next.config.js       # Next.js configuration
+
+## Key Organization Principles
+
+1. Route Groups: Use Next.js route groups (parentheses) to organize related pages
+
+2. Component Organization:
+- ui/: shadcn components (automatically added when installing components)
+- Feature-specific folders for domain components
+
+3. Firebase Separation:
+- Keep Admin SDK and client SDK in separate files
+- Use environment variables for all Firebase config
+
+4. Type Safety:
+- Define Firebase document types in /types directory
+- Use TypeScript throughout the application
+
+This structure is designed for a clean separation of concerns while keeping related code close together. It also follows the conventions of shadcn/ui and Next.js App Router best practices.
