@@ -4,9 +4,7 @@ import { getAuth } from "firebase-admin/auth";
 
 // Initialize Firebase Admin SDK for server-side components
 function getFirebaseAdminApp() {
-  console.log("-----------------getFirebaseAdminApp-----------------");
   const apps = getApps();
-  console.log("apps", apps);
   if (apps.length > 0) {
     return apps[0];
   }

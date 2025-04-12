@@ -1,0 +1,38 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project Setup History
+
+## 2025-04-10
+
+### Initial Setup
+- Created a new Next.js app called "web" using pnpm create next-app@latest
+- Installed the following dependencies with specified versions:
+  - NextJS 15.3.0 (included in create-next-app)
+  - React 19.1.0 (included in create-next-app)
+  - Jotai 2.12.2
+  - pnpm 10.8.0 (as package manager)
+  - ai (Vercel AI SDK) - latest version 4.3.4 instead of 1.2.10 as the requested version was not available
+  - Firebase admin SDK 13.2.0
+  - Firebase client SDK 11.6.0
+  - shadcn 2.4.0
+
+## 2025-04-12
+
+### Landing Page and Waitlist Updates
+- Enhanced the environment configuration:
+  - Added email-related environment variables to `.env.local.example`:
+    - `RESEND_API_KEY` for the Resend email service
+    - `EMAIL_FROM` for the sender email address
+  
+- Redesigned the main landing page:
+  - Replaced the placeholder content with a waitlist-focused landing page
+  - Added a hero section with "Join The Waitlist" title and promotional subtitle
+  - Added a prominent call-to-action button redirecting to the waitlist page
+  - Replaced the Next.js logo with the LaunchpadAI lightning bolt logo for brand consistency
+  - Implemented a clean, modern layout with responsive design
+  - Applied the fade-in animation to the hero section
+  - Added placeholder sections for Features and About content
+  - Updated the footer with copyright information 
