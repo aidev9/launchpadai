@@ -2,13 +2,6 @@
 
 import { ReactNode } from "react";
 import useInView from "@/hooks/useInView";
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-// Utility function in case utils.ts is not imported properly
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 interface AnimatedElementProps {
   children: ReactNode;
