@@ -1,0 +1,258 @@
+---
+description: Use this when creating Vercel AI SDK chatbots and agents
+globs: 
+alwaysApply: false
+---
+# Vercel AI SDK Coding Standards
+
+## Introduction
+
+The Vercel AI SDK is a TypeScript library for building AI applications. It provides abstractions for LLM providers, UI helpers, and RSC support.
+
+•⁠  ⁠*Core Goal:* Simplify AI feature integration (chat, completions, tool use, generative UI).
+•⁠  ⁠*Key Abstractions:* ⁠ ai/core ⁠, ⁠ ai/react ⁠ (or other framework), ⁠ ai/rsc ⁠.
+•⁠  ⁠[AI SDK Docs](mdc:https:/sdk.vercel.ai/docs)
+
+## Core Concepts & Usage
+
+### 1. Model Providers
+
+Use provider packages (e.g., ⁠ @ai-sdk/openai ⁠, ⁠ @ai-sdk/google ⁠) for model access.
+
+⁠ typescript
+// ✅ Correct: Using provider package
+import { openai } from '@ai-sdk/openai';
+import { streamText } from 'ai';
+
+async function main() {
+  const result = await streamText({
+    model: openai('gpt-4o'), // Pass the model instance
+    prompt: 'Why is the sky blue?',
+  });
+  // ... process stream ...
+}
+ ⁠
+
+### 2. Streaming Text (⁠ streamText ⁠)
+
+Prefer ⁠ streamText ⁠ for text generation to provide a responsive UX. Combine with ⁠ StreamingTextResponse ⁠ in route handlers.
+
+⁠ typescript
+// api/chat/route.ts
+// ✅ Correct: Streaming response
+import { openai } from '@ai-sdk/openai';
+import { CoreMessage, streamText } from 'ai';
+import { StreamingTextResponse } from 'ai';
+
+export const dynamic = 'force-dynamic'; // Ensure dynamic execution
+
+export async function POST(req: Request) {
+  const { messages }: { messages: CoreMessage[] } = await req.json();
+
+  const result = await streamText({
+    model: openai('gpt-4o'),
+    messages,
+  });
+
+  // Respond with the stream
+  return result.toAIStreamResponse();
+}
+ ⁠
+
+### 3. Generating Objects (⁠ streamObject ⁠ / ⁠ generateObject ⁠)
+
+Use ⁠ streamObject ⁠ (streaming) or ⁠ generateObject ⁠ (non-streaming) when you need structured data according to a Zod schema.
+
+⁠ typescript
+// ✅ Correct: Generating a structured object
+import { openai } from '@ai-sdk/openai';
+import { generateObject } from 'ai';
+import { z } from 'zod';
+
+async function main() {
+  const { object } = await generateObject({
+    model: openai('gpt-4o'),
+    schema: z.object({
+      recipeName: z.string(),
+      ingredients: z.array(z.object({ name: z.string(), amount: z.string() })),
+    }),
+    prompt: 'Generate a simple pasta recipe.',
+  });
+
+  console.log(object.recipeName);
+  // Output: e.g., "Simple Tomato Pasta"
+}
+ ⁠
+
+### 4. Tool Usage (⁠ tool ⁠)
+
+Define tools using the ⁠ tool ⁠ helper within ⁠ streamText ⁠, ⁠ generateText ⁠, ⁠ streamObject ⁠, or ⁠ generateObject ⁠. Provide a Zod schema for parameters and an ⁠ execute ⁠ function.
+
+⁠ typescript
+// ✅ Correct: Defining and using a tool
+import { openai } from '@ai-sdk/openai';
+import { CoreMessage, streamText, tool } from 'ai';
+import { z } from 'zod';
+import { AIStreamResponse } from 'ai';
+
+// Example: A tool to get weather information
+const weatherTool = tool({
+  description: 'Get the weather for a location',
+  parameters: z.object({ city: z.string().describe('The city to get weather for') }),
+  execute: async ({ city }) => {
+    console.log(`TOOL CALL: Fetching weather for ${city}`);
+    // Replace with actual weather fetching logic
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return { temperature: Math.floor(Math.random() * 30), unit: 'C' };
+  }
+});
+
+export async function POST(req: Request) {
+  const { messages }: { messages: CoreMessage[] } = await req.json();
+
+  const result = await streamText({
+    model: openai('gpt-4o'),
+    messages,
+    tools: {
+      getWeather: weatherTool // Register the tool
+    },
+  });
+
+  return result.toAIStreamResponse(); // Handles text, tool calls, and results
+}
+ ⁠
+
+### 5. UI Hooks (⁠ useChat ⁠, ⁠ useCompletion ⁠)
+
+Use framework-specific hooks (e.g., ⁠ useChat ⁠ from ⁠ ai/react ⁠) to build interactive elements quickly.
+
+⁠ typescript
+// components/Chat.tsx
+// ✅ Correct: Using useChat hook
+'use client';
+
+import { useChat } from 'ai/react';
+
+export function Chat() {
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: '/api/chat' // Your route handler endpoint
+  });
+
+  return (
+    <div>
+      <div>
+        {messages.map(m => (
+          <div key={m.id}>
+            <strong>{m.role === 'user' ? 'User: ' : 'AI: '}</strong>
+            {m.content}
+            {/* Basic display of tool calls/results if present */}
+            {m.toolInvocations?.map(toolInvocation => (
+              <div key={toolInvocation.toolCallId}>
+                Tool call: {toolInvocation.toolName}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        <input
+          value={input}
+          onChange={handleInputChange}
+          placeholder="Ask something..."
+          disabled={isLoading}
+        />
+        <button type="submit" disabled={isLoading}>Send</button>
+      </form>
+    </div>
+  );
+}
+ ⁠
+
+### 6. React Server Components (⁠ ai/rsc ⁠)
+
+Use ⁠ createStreamableUI ⁠ and ⁠ createStreamableValue ⁠ for streaming generative UI directly from Server Components or Server Actions. This is more advanced.
+
+⁠ typescript
+// app/actions.tsx
+// ✅ Correct: Basic RSC streaming UI action
+'use server';
+
+import { openai } from '@ai-sdk/openai';
+import { CoreMessage, streamText } from 'ai';
+import { createStreamableUI, createStreamableValue } from 'ai/rsc';
+import { ReactNode } from 'react';
+
+// Simplified example component to stream
+function LoadingComponent() { return <div>Loading...</div>; }
+function WeatherComponent({ data }: { data: any }) {
+  return <div>Weather: {data.temperature}°{data.unit}</div>;
+}
+
+export async function generateUiAction(messages: CoreMessage[]) {
+  const streamableUi = createStreamableUI(<LoadingComponent />);
+
+  // Run the generation and update the UI stream
+  (async () => {
+    const result = await streamText({
+        model: openai('gpt-4o'),
+        messages,
+        // Hypothetical tools or logic to decide UI components
+    });
+
+    // Simulate generating a UI component based on the result
+    // In a real scenario, you might use streamObject or tool calls
+    // to get data for the component.
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate work
+    const weatherData = { temperature: 22, unit: 'C' }; // Example data
+
+    streamableUi.done(<WeatherComponent data={weatherData} />);
+  })();
+
+  return { ui: streamableUi.value };
+}
+
+// Usage in a Server Component
+// import { generateUiAction } from './actions';
+//
+// export default function Page() {
+//   const [data, setData] = useState<{ ui: ReactNode } | null>(null);
+//
+//   return (
+//     <div>
+//       <button onClick={async () => {
+//         const result = await generateUiAction([{ role: 'user', content: 'Show weather UI' }]);
+//         setData(result);
+//       }}>Generate UI</button>
+//       <div>{data?.ui}</div>
+//     </div>
+//   );
+// }
+// NOTE: Client-side triggering requires a client component wrapper around the button/state.
+ ⁠
+
+### 7. Error Handling
+
+Wrap SDK calls in ⁠ try...catch ⁠ and check for ⁠ AI_SDK_Error ⁠.
+
+⁠ typescript
+// ✅ Correct: Basic error handling
+import { generateText, AI_SDK_Error } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+async function safeGenerate() {
+  try {
+    const { text } = await generateText({
+      model: openai('gpt-4o'),
+      prompt: 'Tell me a joke',
+    });
+    console.log(text);
+  } catch (error) {
+    if (error instanceof AI_SDK_Error) {
+      console.error(`AI SDK Error (${error.name}): ${error.message}`);
+      // Handle specific errors (e.g., rate limits, auth)
+    } else {
+      console.error('Unexpected error:', error);
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import ChatWidget from "@/components/ui/chat-widget";
 
 export default function Home() {
   return (
@@ -34,7 +35,7 @@ export default function Home() {
             href="/ai-naming-assistant"
             className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium"
           >
-            Try AI Naming Assistant
+            AI Naming Assistant
           </Link>
         </nav>
       </header>
@@ -51,11 +52,21 @@ export default function Home() {
             to market, and ensures your AI infrastructure scales with your
             business.
           </p>
-          <Link href="/waitlist">
-            <Button size="lg" className="text-lg px-8 py-6">
-              Join Waitlist
-            </Button>
-          </Link>
+          <div className="flex gap-4">
+            <Link href="/waitlist">
+              <Button size="lg" className="text-lg px-8 py-6">
+                Join Waitlist
+              </Button>
+            </Link>
+            <Link href="/ai-naming-assistant">
+              <Button
+                size="lg"
+                className="text-lg px-8 py-6 bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+              >
+                Try Naming Assistant
+              </Button>
+            </Link>
+          </div>
         </section>
 
         {/* Additional sections can be added below */}
@@ -71,6 +82,9 @@ export default function Home() {
       <footer className="w-full py-8 px-8 text-center text-sm text-muted-foreground border-t">
         <p>© 2025 LaunchpadAI. All rights reserved.</p>
       </footer>
+
+      {/* Add chat widget */}
+      <ChatWidget />
     </div>
   );
 }
