@@ -4,7 +4,7 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 // IMPORTANT! Set the runtime to edge
-export const runtime = "edge";
+// export const runtime = "edge";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
