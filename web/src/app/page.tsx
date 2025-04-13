@@ -23,15 +23,18 @@ export default function Home() {
             LaunchpadAI
           </span>
         </div>
-        <nav className="hidden md:flex space-x-6">
-          {/* <Link href="#features" className="text-gray-600 hover:text-gray-900">
-            Features
+        <nav className="fixed top-0 right-0 p-4 flex space-x-4">
+          <Link
+            href="/waitlist"
+            className="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium"
+          >
+            Join the Waitlist
           </Link>
-          <Link href="#about" className="text-gray-600 hover:text-gray-900">
-            About
-          </Link> */}
-          <Link href="/waitlist" className="text-gray-600 hover:text-gray-900">
-            Join Waitlist
+          <Link
+            href="/ai-naming-assistant"
+            className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium"
+          >
+            Try AI Naming Assistant
           </Link>
         </nav>
       </header>
