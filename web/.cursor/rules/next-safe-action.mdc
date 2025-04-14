@@ -1,0 +1,299 @@
+---
+description: Rules to follow when using next-safe-action
+globs: 
+alwaysApply: false
+---
+# Next Safe Action Guide
+
+## Overview
+
+Next Safe Action is a type-safe server action wrapper for Next.js applications. It enables secure, typesafe communication between client and server, with built-in validation using Zod schemas and middleware support.
+
+## Setup in Project
+
+This project has two action clients configured in `lib/action.ts`:
+
+```ts
+// Regular action client for non-authenticated actions
+export const actionClient = createSafeActionClient()
+
+// Protected action client that requires authentication
+export const userActionClient = createSafeActionClient().use(
+  async ({ next, ctx }) => {
+    const user = await getUser()
+    if (!user) redirect('/auth/sign-in')
+    return next({ ctx: { user } })
+  }
+)
+```
+
+## Creating Server Actions
+
+### Basic Structure
+
+Server actions should be created in appropriate locations:
+- Feature-specific actions in `/app/[feature]/action.ts` 
+- Shared actions in `/lib` directories
+
+All server action files must use the `'use server'` directive at the top of the file.
+
+### Defining an Action
+
+1. **Import the appropriate action client**:
+```ts
+import { actionClient } from '@/lib/action' // For public actions
+import { userActionClient } from '@/lib/action' // For protected actions
+```
+
+2. **Define a Zod schema for validation**:
+```ts
+import { z } from 'zod'
+
+const mySchema = z.object({
+  field1: z.string().min(3),
+  field2: z.number().optional(),
+})
+```
+
+3. **Create the action using the action client**:
+```ts
+export const myAction = actionClient
+  .schema(mySchema)
+  .action(async ({ parsedInput }) => {
+    // Action implementation
+    return { success: true, data: 'Result' }
+  })
+```
+
+### Authentication-Protected Actions
+
+For actions that require authentication, use `userActionClient` instead:
+
+```ts
+export const protectedAction = userActionClient
+  .schema(mySchema)
+  .action(async ({ parsedInput, ctx }) => {
+    // User is available in ctx
+    const { user } = ctx
+    
+    // Implementation
+    return { success: true, userId: user.id }
+  })
+```
+
+### Handling Validation Errors
+
+Use `returnValidationErrors` to return validation errors to the client:
+
+```ts
+import { returnValidationErrors } from 'next-safe-action'
+
+export const signInAction = actionClient
+  .schema(signInSchema)
+  .action(async ({ parsedInput }) => {
+    // Validation check
+    if (someCondition) {
+      return returnValidationErrors(signInSchema, {
+        field: { _errors: ['Error message'] },
+      })
+    }
+    
+    // Rest of implementation
+  })
+```
+
+## Using Actions on the Client
+
+### Importing and Using the useAction Hook
+
+1. **Import the hook and action**:
+```tsx
+'use client'
+import { useAction } from 'next-safe-action/hooks'
+import { myAction } from './action'
+```
+
+2. **Use the hook in your component**:
+```tsx
+const { execute, status, result, reset } = useAction(myAction, {
+  onSuccess: (data) => {
+    // Handle success
+    console.log(data)
+  },
+  onError: (error) => {
+    // Handle error
+    console.error(error)
+  },
+  onExecute: () => {
+    // Called when the action starts executing
+  },
+  onSettled: () => {
+    // Called when the action completes (success or error)
+  }
+})
+```
+
+3. **Call the action with data**:
+```tsx
+const handleSubmit = (e) => {
+  e.preventDefault()
+  execute({
+    field1: 'value1',
+    field2: 42
+  })
+}
+```
+
+### Status Handling
+
+The `status` returned by `useAction` can be used to show loading states:
+
+```tsx
+const { execute, status } = useAction(myAction)
+
+return (
+  <button 
+    onClick={() => execute(data)} 
+    disabled={status === 'executing'}
+  >
+    {status === 'executing' ? 'Loading...' : 'Submit'}
+  </button>
+)
+```
+
+Status values:
+- `idle`: Initial state
+- `executing`: Action is running
+- `hasSucceeded`: Action completed successfully
+- `hasErrored`: Action failed
+
+### Handling Form Submissions
+
+Integrate with form libraries like React Hook Form:
+
+```tsx
+const form = useForm({
+  resolver: zodResolver(mySchema)
+})
+
+const { execute } = useAction(myAction, {
+  onSuccess: () => form.reset()
+})
+
+const onSubmit = form.handleSubmit((data) => {
+  execute(data)
+})
+
+return (
+  <form onSubmit={onSubmit}>
+    {/* Form fields */}
+    <button type="submit">Submit</button>
+  </form>
+)
+```
+
+## Best Practices
+
+1. **Always use Zod for validation**:
+   - Define schemas for all actions
+   - Keep schemas close to your actions
+   - Consider sharing schemas between client and server validation
+
+2. **Error handling**:
+   - Use `returnValidationErrors` for validation errors
+   - Use try/catch for other errors
+   - Return structured error responses
+
+3. **Type safety**:
+   - Let TypeScript infer types from your Zod schemas
+   - Use the inferred types for your client-side code
+
+4. **Security considerations**:
+   - Use `userActionClient` for authenticated actions
+   - Don't trust client input, always validate on the server
+   - Use appropriate middleware for authorization checks
+
+5. **Performance**:
+   - Keep actions focused and small
+   - Use appropriate caching strategies
+   - Consider using React Query alongside next-safe-action for complex data fetching needs
+
+## Examples from the Project
+
+### Simple Action (AI Prompt Enhancement)
+
+```ts
+// lib/ai.ts
+export const enhancePrompt = userActionClient
+  .schema(z.string())
+  .action(async ({ parsedInput: prompt }) => {
+    const result = await generateText({
+      model: openai('gpt-4o-mini'),
+      system: '...',
+      prompt,
+    })
+
+    return result.text
+  })
+```
+
+### Authentication Action
+
+```ts
+// app/auth/sign-in/action.ts
+export const signInAction = actionClient
+  .schema(signInSchema)
+  .action(async ({ parsedInput }) => {
+    const { email, password } = parsedInput
+
+    const [user] = await db.select().from(users).where(eq(users.email, email))
+
+    if (!user)
+      return returnValidationErrors(signInSchema, {
+        email: { _errors: ['User not found'] },
+      })
+
+    const isPasswordValid = await compare(password, user.password!)
+
+    if (!isPasswordValid)
+      return returnValidationErrors(signInSchema, {
+        password: { _errors: ['Invalid password'] },
+      })
+
+    await createSession(user.id)
+
+    redirect('/chat')
+  })
+```
+
+### Client-side Usage
+
+```tsx
+// From components/chat/chat-input.tsx
+const { execute: executeEnhancePrompt, status: enhancePromptStatus } =
+  useAction(enhancePrompt, {
+    onSuccess: (data) => {
+      handleInputChange({
+        target: {
+          value: data.data || '',
+        },
+      } as React.ChangeEvent<HTMLTextAreaElement>)
+    },
+  })
+
+// Usage in component
+<Button
+  variant="outline"
+  size="icon"
+  type="button"
+  onClick={() => executeEnhancePrompt(input)}
+  disabled={enhancePromptStatus === 'executing'}
+>
+  <Wand2Icon
+    className={cn(
+      'size-4',
+      enhancePromptStatus === 'executing' && 'animate-pulse'
+    )}
+  />
+</Button>
+```

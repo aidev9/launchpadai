@@ -1,0 +1,554 @@
+---
+description: Rules to follow when using next.js
+globs: 
+alwaysApply: false
+---
+# Next.js Coding Standards
+
+## Client Components
+
+Use the 'use client' directive for any component that uses client-side hooks or interactivity
+
+```tsx
+// ❌ Missing 'use client' directive but uses client features
+import { useState } from 'react'
+
+export function Counter() {
+  const [count, setCount] = useState(0)
+  return <button onClick={() => setCount(count + 1)}>{count}</button>
+}
+```
+
+```tsx
+// ✅ Has 'use client' directive
+'use client'
+
+import { useState } from 'react'
+
+export function Counter() {
+  const [count, setCount] = useState(0)
+  return <button onClick={() => setCount(count + 1)}>{count}</button>
+}
+```
+
+## Server Components
+
+Prefer Server Components when no client-side interactivity is needed
+
+```tsx
+// ❌ Unnecessarily using 'use client'
+'use client'
+
+export function Heading({ title }) {
+  return <h1>{title}</h1>
+}
+```
+
+```tsx
+// ✅ Server component with no client directive
+export function Heading({ title }) {
+  return <h1>{title}</h1>
+}
+```
+
+## Page Organization
+
+Organize page.tsx files properly with layouts
+
+```tsx
+// ❌ Complex logic in page component
+export default function Page() {
+  // Complex data fetching and manipulation here
+  // UI rendering logic mixed with data processing
+  return <div>...</div>
+}
+```
+
+```tsx
+// ✅ Clean page component
+// In page.tsx
+import { PageContent } from './components'
+import { getPageData } from './actions'
+
+export default async function Page() {
+  return <PageContent dataPromise={getPageData()} />
+}
+```
+
+## Data Fetching
+
+Use React Server Components for data fetching instead of client-side fetching where possible
+
+```tsx
+// ❌ Client-side data fetching when server fetching would be better
+'use client'
+
+import { useEffect, useState } from 'react'
+
+export function UserProfile({ userId }) {
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    fetch(`/api/users/${userId}`)
+      .then((res) => res.json())
+      .then((data) => setUser(data))
+  }, [userId])
+
+  if (!user) return <div>Loading...</div>
+  return <div>{user.name}</div>
+}
+```
+
+```tsx
+// ✅ Server component with data fetching
+async function getUser(userId) {
+  const res = await fetch(`https://api.example.com/users/${userId}`)
+  return res.json()
+}
+
+export default async function UserProfile({ userId }) {
+  const user = await getUser(userId)
+  return <div>{user.name}</div>
+}
+```
+
+## Metadata
+
+Use metadata exports in page files for SEO
+
+```tsx
+// ❌ Missing metadata
+export default function Page() {
+  return <div>Page content</div>
+}
+```
+
+```tsx
+// ✅ With metadata
+export const metadata = {
+  title: 'Page Title',
+  description: 'Page description for SEO',
+}
+
+export default function Page() {
+  return <div>Page content</div>
+}
+```
+
+## Route Handlers
+
+Follow Next.js App Router API conventions
+
+```ts
+// ❌ Old API Routes pattern
+export default function handler(req, res) {
+  if (req.method === 'GET') {
+    res.status(200).json({ message: 'Hello' })
+  }
+}
+```
+
+```ts
+// ✅ Modern Route Handlers
+// In app/api/hello/route.ts
+export async function GET() {
+  return Response.json({ message: 'Hello' })
+}
+
+export async function POST(request) {
+  const body = await request.json()
+  // Process the data
+  return Response.json({ success: true })
+}
+```
+
+## Loading States
+
+Use loading.js files for Suspense boundaries
+
+```tsx
+// ❌ Manual loading states
+'use client'
+
+import { useState, useEffect } from 'react'
+
+export default function Page() {
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(null)
+
+  useEffect(() => {
+    fetchData().then((result) => {
+      setData(result)
+      setLoading(false)
+    })
+  }, [])
+
+  if (loading) return <div>Loading...</div>
+  return <div>{data}</div>
+}
+```
+
+```tsx
+// ✅ Using loading.js with Suspense
+// In loading.js
+export default function Loading() {
+  return <div>Loading page content...</div>
+}
+
+// In page.js
+import { Suspense } from 'react'
+import DataComponent from './data-component'
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading data...</div>}>
+      <DataComponent />
+    </Suspense>
+  )
+}
+```
+
+## Error Handling
+
+Use error.js files for error boundaries
+
+```tsx
+// ❌ Manual error handling
+'use client'
+
+import { useState, useEffect } from 'react'
+
+export default function Page() {
+  const [error, setError] = useState(null)
+  const [data, setData] = useState(null)
+
+  useEffect(() => {
+    fetchData().catch((err) => setError(err))
+  }, [])
+
+  if (error) return <div>Error: {error.message}</div>
+  return <div>{data}</div>
+}
+```
+
+```tsx
+// ✅ Using error.js
+// In error.js
+'use client'
+
+export default function Error({ error, reset }) {
+  return (
+    <div>
+      <h2>Something went wrong!</h2>
+      <p>{error.message}</p>
+      <button onClick={reset}>Try again</button>
+    </div>
+  )
+}
+```
+
+## Not Found Handling
+
+Use not-found.js for 404 pages
+
+```tsx
+// ❌ Manual 404 handling
+export default function Page({ params }) {
+  const { slug } = params
+  const page = findPageBySlug(slug)
+
+  if (!page) {
+    return <div>Page not found</div>
+  }
+
+  return <div>{page.content}</div>
+}
+```
+
+```tsx
+// ✅ Using not-found.js
+// In page.js
+import { notFound } from 'next/navigation'
+
+export default function Page({ params }) {
+  const { slug } = params
+  const page = findPageBySlug(slug)
+
+  if (!page) {
+    notFound()
+  }
+
+  return <div>{page.content}</div>
+}
+
+// In not-found.js
+export default function NotFound() {
+  return (
+    <div>
+      <h2>Not Found</h2>
+      <p>Could not find requested resource</p>
+    </div>
+  )
+}
+```
+
+## Parallel Routes
+
+Use slots for parallel routes
+
+```tsx
+// ❌ Complex conditional rendering
+export default function Dashboard({ params }) {
+  const { tab } = params
+
+  return (
+    <div>
+      <DashboardHeader />
+      {tab === 'analytics' && <AnalyticsPanel />}
+      {tab === 'settings' && <SettingsPanel />}
+      {tab === 'users' && <UsersPanel />}
+    </div>
+  )
+}
+```
+
+```tsx
+// ✅ Using parallel routes with slots
+// In app/dashboard/layout.tsx
+export default function DashboardLayout({ children, analytics, settings }) {
+  return (
+    <div>
+      <DashboardHeader />
+      {children}
+      {analytics}
+      {settings}
+    </div>
+  )
+}
+
+// In app/dashboard/@analytics/page.tsx
+export default function AnalyticsPage() {
+  return <AnalyticsPanel />
+}
+
+// In app/dashboard/@settings/page.tsx
+export default function SettingsPage() {
+  return <SettingsPanel />
+}
+```
+
+## Intercepting Routes
+
+Use intercepting routes for modals and overlays
+
+```tsx
+// ❌ Manual modal state management
+'use client'
+
+import { useState } from 'react'
+import Modal from '@/components/modal'
+
+export default function GalleryPage({ images }) {
+  const [selectedImage, setSelectedImage] = useState(null)
+
+  return (
+    <>
+      <div className="gallery">
+        {images.map((image) => (
+          <img
+            key={image.id}
+            src={image.thumbnail}
+            onClick={() => setSelectedImage(image)}
+          />
+        ))}
+      </div>
+
+      {selectedImage && (
+        <Modal onClose={() => setSelectedImage(null)}>
+          <img src={selectedImage.fullSize} />
+        </Modal>
+      )}
+    </>
+  )
+}
+```
+
+```tsx
+// ✅ Using intercepting routes
+// In app/gallery/page.tsx
+import Link from 'next/link'
+
+export default function GalleryPage({ images }) {
+  return (
+    <div className="gallery">
+      {images.map((image) => (
+        <Link key={image.id} href={`/gallery/${image.id}`}>
+          <img src={image.thumbnail} />
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+// In app/gallery/[id]/page.tsx
+export default function ImagePage({ params }) {
+  const { id } = params
+  const image = getImageById(id)
+
+  return <img src={image.fullSize} />
+}
+
+// In app/gallery/@modal/[id]/page.tsx
+import Modal from '@/components/modal'
+
+export default function ImageModal({ params }) {
+  const { id } = params
+  const image = getImageById(id)
+
+  return (
+    <Modal>
+      <img src={image.fullSize} />
+    </Modal>
+  )
+}
+```
+
+## Server Actions
+
+Use Server Actions for form submissions and mutations. You should always use next-safe-action and follow [next-safe-action.mdc](mdc:.cursor/rules/next-safe-action.mdc) rules.
+
+```tsx
+// ❌ Client-side form handling with API route
+'use client'
+
+export function ContactForm() {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    const formData = new FormData(e.target)
+
+    const response = await fetch('/api/contact', {
+      method: 'POST',
+      body: formData,
+    })
+
+    const data = await response.json()
+    // Handle response
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="name" />
+      <input name="email" />
+      <button type="submit">Send</button>
+    </form>
+  )
+}
+```
+
+```tsx
+// ✅ Using Server Actions
+// In app/actions.ts
+'use server'
+
+import { actionClient } from '@/lib/action.ts'
+import { z } from 'zod'
+
+export const submitContact = actionClient
+  .schema(
+    z.object({
+      name: z.string(),
+      email: z.string().email(),
+    })
+  )
+  .action(async ({ parsedInput: { name, email } }) => {
+    await saveContactToDatabase({ name, email })
+  })
+
+// In app/contact/page.tsx
+import { submitContact } from '../actions'
+
+export default function ContactPage() {
+  return (
+    <form action={submitContact}>
+      <input name="name" />
+      <input name="email" />
+      <button type="submit">Send</button>
+    </form>
+  )
+}
+```
+
+## Image Optimization
+
+Use Next.js Image component for optimized images
+
+```tsx
+// ❌ Standard img tag without optimization
+export function ProfileCard({ user }) {
+  return (
+    <div>
+      <img src={user.avatar} width={200} height={200} />
+      <h2>{user.name}</h2>
+    </div>
+  )
+}
+```
+
+```tsx
+// ✅ Using Next.js Image component
+import Image from 'next/image'
+
+export function ProfileCard({ user }) {
+  return (
+    <div>
+      <Image
+        src={user.avatar}
+        width={200}
+        height={200}
+        alt={`${user.name}'s profile picture`}
+      />
+      <h2>{user.name}</h2>
+    </div>
+  )
+}
+```
+
+## Font Optimization
+
+Use Next.js Font system for optimized fonts
+
+```tsx
+// ❌ Using fonts without Next.js optimization
+export default function Layout({ children }) {
+  return (
+    <html lang="en">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Roboto&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+```tsx
+// ✅ Using Next.js Font system
+import { Roboto } from 'next/font/google'
+
+const roboto = Roboto({
+  weight: ['400', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+export default function Layout({ children }) {
+  return (
+    <html lang="en" className={roboto.className}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```

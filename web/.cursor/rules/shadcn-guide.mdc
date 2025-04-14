@@ -1,0 +1,286 @@
+---
+description: Rules to follow when using Shadcn
+globs: 
+alwaysApply: false
+---
+# ShadCN UI Coding Standards
+
+## Understanding ShadCN UI
+
+ShadCN UI is not a traditional component library but a collection of reusable components that you copy into your project.
+
+```tsx
+// ❌ Incorrect understanding
+import { Button } from "shadcn-ui"  // This doesn't exist as an npm package
+
+// ✅ Correct understanding
+import { Button } from "@/components/ui/button"  // Component is part of your codebase
+```
+
+## Installing Components
+
+Use the CLI tool to add components to your project:
+
+```tsx
+// ❌ Incorrect way: Manually copying code from documentation
+// This makes future updates difficult and can lead to inconsistencies
+
+// ✅ Correct way: Using the CLI tool to add components
+// pnpm dlx shadcn@latest add button
+```
+
+## Component Selection
+
+Choose components based on specific needs:
+
+```tsx
+// ❌ Installing unnecessary components
+// Adding every component at once increases bundle size
+
+// ✅ Installing only what you need
+// npx shadcn@latest add button card avatar
+```
+
+## Customizing Components
+
+Modify components directly in your codebase:
+
+```tsx
+// ❌ Attempting to override styles with complex CSS
+.shadcn-button {
+  /* Complex overrides that might break with updates */
+}
+
+// ✅ Directly editing the component file
+// In components/ui/button.tsx, modify the component's code directly
+```
+
+## Component Usage
+
+Composition is key to using components effectively:
+
+```tsx
+// ❌ Not using component composition
+<Button>
+  <div className="flex items-center">
+    <Icon />
+    <span>Click me</span>
+  </div>
+</Button>
+
+// ✅ Using proper composition patterns
+<Button>
+  <Icon className="mr-2" />
+  <span>Click me</span>
+</Button>
+```
+
+## Form Components
+
+Combine form components with React Hook Form:
+
+```tsx
+// ❌ Not using the integrated form components
+<form>
+  <input type="text" />
+  <Button>Submit</Button>
+</form>
+
+// ✅ Using the Form components with React Hook Form
+<Form {...form}>
+  <FormField
+    control={form.control}
+    name="email"
+    render={({ field }) => (
+      <FormItem>
+        <FormLabel>Email</FormLabel>
+        <FormControl>
+          <Input placeholder="Enter your email" {...field} />
+        </FormControl>
+        <FormMessage />
+      </FormItem>
+    )}
+  />
+  <Button type="submit">Submit</Button>
+</Form>
+```
+
+## Dialog and Modals
+
+Use Dialog components for modals:
+
+```tsx
+// ❌ Custom modal implementation
+<div className={`modal ${isOpen ? 'block' : 'hidden'}`}>
+  <div className="modal-content">...</div>
+</div>
+
+// ✅ Using the Dialog component
+<Dialog open={isOpen} onOpenChange={setIsOpen}>
+  <DialogTrigger>Open</DialogTrigger>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Modal Title</DialogTitle>
+      <DialogDescription>Modal description here.</DialogDescription>
+    </DialogHeader>
+    <div>Modal content</div>
+  </DialogContent>
+</Dialog>
+```
+
+## Theme Customization
+
+Customize themes using CSS variables:
+
+```tsx
+// ❌ Direct color overrides in multiple places
+.button { background-color: #3b82f6; }
+.card { border-color: #3b82f6; }
+
+// ✅ Using CSS variables in your globals.css
+:root {
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+}
+
+.dark {
+  --primary: #60a5fa;
+  --primary-foreground: #000000;
+}
+```
+
+## CLI Usage Guide
+
+The ShadCN CLI provides various options:
+
+```bash
+# Add a specific component
+npx shadcn@latest add button
+
+# Add multiple components at once
+npx shadcn@latest add button card avatar
+
+# List all available components
+npx shadcn@latest add
+
+# Add with options
+npx shadcn@latest add button -y        # Skip confirmation
+npx shadcn@latest add button -o        # Overwrite existing components
+npx shadcn@latest add -a               # Add all available components
+```
+
+## Common Components
+
+Here are some frequently used components and their use cases:
+
+```tsx
+// Button component for actions
+<Button variant="outline" size="sm">Click me</Button>
+
+// Card component for content containers
+<Card>
+  <CardHeader>
+    <CardTitle>Card Title</CardTitle>
+    <CardDescription>Card Description</CardDescription>
+  </CardHeader>
+  <CardContent>Main content here</CardContent>
+  <CardFooter>Footer actions here</CardFooter>
+</Card>
+
+// Dialog for modal interfaces
+<Dialog>
+  <DialogTrigger>Open Dialog</DialogTrigger>
+  <DialogContent>Dialog content here</DialogContent>
+</Dialog>
+
+// Form components for data input
+<Form {...form}>
+  <FormField
+    control={form.control}
+    name="username"
+    render={({ field }) => (
+      <FormItem>
+        <FormLabel>Username</FormLabel>
+        <FormControl>
+          <Input placeholder="johndoe" {...field} />
+        </FormControl>
+        <FormMessage />
+      </FormItem>
+    )}
+  />
+</Form>
+```
+
+## Responsive Design
+
+Use size variants for responsive design:
+
+```tsx
+// ❌ Manual media queries
+<div className="text-sm md:text-base lg:text-lg">Content</div>
+
+// ✅ Using variant props for responsiveness
+<Button size={{
+  default: "sm",
+  md: "default",
+  lg: "lg"
+}}>
+  Responsive Button
+</Button>
+```
+
+## Accessibility
+
+ShadCN components are built with accessibility in mind:
+
+```tsx
+// ❌ Not using proper ARIA attributes
+<div role="button" onClick={handleClick}>Click me</div>
+
+// ✅ Using accessible components
+<Button onClick={handleClick}>Click me</Button>
+```
+
+## Data Display
+
+Use appropriate components for data display:
+
+```tsx
+// ❌ Custom table implementation
+<div className="table-container">
+  <div className="table-row">...</div>
+</div>
+
+// ✅ Using the Table component
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Name</TableHead>
+      <TableHead>Email</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>John Doe</TableCell>
+      <TableCell>john@example.com</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+```
+
+## Icons Integration
+
+Use Lucide icons (default) or other icon libraries:
+
+```tsx
+// ❌ Inconsistent icon usage
+<span className="icon">...</span>
+
+// ✅ Using Lucide icons
+import { Settings, User } from "lucide-react"
+
+<Button>
+  <Settings className="mr-2 h-4 w-4" />
+  Settings
+</Button>
+```
