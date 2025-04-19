@@ -1,38 +1,52 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+// Define paths that require authentication
+const protectedPaths = ["/home", "/dashboard", "/settings", "/profile"];
+
+// Define authentication paths
+const authPaths = ["/signin", "/signup", "/forgot-password"];
 
 // This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
-  // Get the pathname of the request
-  const path = request.nextUrl.pathname
+  const { pathname } = request.nextUrl;
 
-  // Define public paths that don't require authentication
-  const isPublicPath =
-    path === '/signin' ||
-    path === '/signup' ||
-    path === '/' ||
-    path.startsWith('/api/') ||
-    path.startsWith('/waitlist') ||
-    path.startsWith('/forgot-password')
+  // Get the session cookie
+  const sessionCookie = request.cookies.get("session")?.value;
+  const isAuthenticated = !!sessionCookie;
 
-  const sessionCookie = request.cookies.get('session')?.value
-  const isAuthenticated = !!sessionCookie
+  // Check if the path is protected and user is not authenticated
+  const isProtectedPath = protectedPaths.some((path) =>
+    pathname.startsWith(path)
+  );
 
-  if (!isAuthenticated && !isPublicPath) {
-    return NextResponse.redirect(new URL('/signin', request.url))
+  // if (isProtectedPath && !isAuthenticated) {
+  //   // Redirect to signin page with return URL
+  //   const url = new URL("/signin", request.url);
+  //   url.searchParams.set("returnUrl", pathname);
+  //   return NextResponse.redirect(url);
+  // }
+
+  // Check if the path is an auth path and user is already authenticated
+  const isAuthPath = authPaths.some((path) => pathname.startsWith(path));
+  if (isAuthPath && isAuthenticated) {
+    // Redirect to home page
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (isAuthenticated && (path === '/signin' || path === '/signup')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  // If at root path and user is authenticated, redirect to home
+  if (pathname === "/" && isAuthenticated) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  return NextResponse.next()
+  // For all other cases, continue to the requested page
+  return NextResponse.next();
 }
 
 // See "Matching Paths" below to learn more
 export const config = {
   matcher: [
     // Match all paths except for static files, api routes that need to be public, etc.
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)",
   ],
-}
+};

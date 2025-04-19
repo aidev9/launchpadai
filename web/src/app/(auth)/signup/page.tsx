@@ -1,38 +1,45 @@
-import { Metadata } from 'next'
-import Link from 'next/link'
-import SignupForm from './SignupForm'
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import AuthLayout from "../auth-layout";
+import { SignUpForm } from "./components/sign-up-form";
 
-export const metadata: Metadata = {
-  title: 'Sign Up - LaunchpadAI',
-  description:
-    'Create your account on LaunchpadAI and start using our AI tools.',
-}
-
-export default function SignupPage() {
+export default function SignUp() {
   return (
-    <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[calc(100vh-4rem)]">
-      <div className="w-full max-w-md mx-auto bg-white rounded-xl p-8 shadow-2xl">
-        <div className="space-y-6">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold">Create an Account</h1>
-            <p className="text-gray-600 mt-2">
-              Join LaunchpadAI to get started with our AI tools
-            </p>
-          </div>
-
-          <SignupForm />
-
-          <div className="text-center text-sm text-gray-600">
-            Already have an account?{' '}
+    <AuthLayout>
+      <Card className="p-6">
+        <div className="mb-2 flex flex-col space-y-2 text-left">
+          <h1 className="text-lg font-semibold tracking-tight">
+            Create an account
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Already have an account?{" "}
             <Link
-              href="/signin"
-              className="text-blue-600 hover:underline font-medium"
+              href={"/signin"}
+              className="underline underline-offset-4 hover:text-primary"
             >
               Sign In
             </Link>
-          </div>
+          </p>
         </div>
-      </div>
-    </div>
-  )
+        <SignUpForm />
+        <p className="mt-4 px-8 text-center text-sm text-muted-foreground">
+          By creating an account, you agree to our{" "}
+          <a
+            href="/terms"
+            className="underline underline-offset-4 hover:text-primary"
+          >
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a
+            href="/privacy"
+            className="underline underline-offset-4 hover:text-primary"
+          >
+            Privacy Policy
+          </a>
+          .
+        </p>
+      </Card>
+    </AuthLayout>
+  );
 }

@@ -1,21 +1,23 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import type { Metadata } from "next";
 import Providers from "./providers";
+// import FirestoreInit from "@/components/FirestoreInit"; // Removed unused import
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// const geistSans = GeistSans({
+//   subsets: ["latin"],
+//   variable: "--font-sans",
+// });
+// const geistMono = GeistMono({
+//   subsets: ["latin"],
+//   variable: "--font-mono",
+// });
 
 export const metadata: Metadata = {
-  title: "LaunchpadAI - AI Solutions for Enterprises",
-  description: "Deploy and manage AI solutions with ease.",
+  title: "LaunchpadAI",
+  description: "The easiest way to build AI apps",
 };
 
 export default function RootLayout({
@@ -24,11 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head />
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
-        <Providers>{children}</Providers>
+        {/* <FirestoreInit /> */}
+        {children}
       </body>
     </html>
   );

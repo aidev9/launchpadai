@@ -1,26 +1,43 @@
-import { Metadata } from 'next'
-import SigninForm from './SigninForm'
+import { Card } from "@/components/ui/card";
+import AuthLayout from "../auth-layout";
+import { UserAuthForm } from "./components/user-auth-form";
+import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: 'Sign In - LaunchpadAI',
-  description: 'Sign in to your LaunchpadAI account.',
-}
-
-export default function SigninPage() {
+export default function SignIn() {
   return (
-    <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[calc(100vh-4rem)]">
-      <div className="w-full max-w-md mx-auto bg-white rounded-xl p-8 shadow-2xl">
-        <div className="space-y-6">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold">Sign In</h1>
-            <p className="text-gray-600 mt-2">
-              Sign in to your LaunchpadAI account
-            </p>
-          </div>
-
-          <SigninForm />
+    <AuthLayout>
+      <Card className="p-6">
+        <div className="flex flex-col space-y-2 text-left">
+          <h1 className="text-2xl font-semibold tracking-tight">Sign In</h1>
+          <p className="text-sm text-muted-foreground">
+            Don't have an account?{" "}
+            <Link
+              href={"/signup"}
+              className="underline underline-offset-4 hover:text-primary"
+            >
+              Sign Up
+            </Link>
+          </p>
         </div>
-      </div>
-    </div>
-  )
+        <UserAuthForm />
+        <p className="mt-4 px-8 text-center text-sm text-muted-foreground">
+          By clicking Sign In, you agree to our{" "}
+          <a
+            href="/terms"
+            className="underline underline-offset-4 hover:text-primary"
+          >
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a
+            href="/privacy"
+            className="underline underline-offset-4 hover:text-primary"
+          >
+            Privacy Policy
+          </a>
+          .
+        </p>
+      </Card>
+    </AuthLayout>
+  );
 }

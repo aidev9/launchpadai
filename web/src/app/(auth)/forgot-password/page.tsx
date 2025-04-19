@@ -1,24 +1,33 @@
-import { Metadata } from 'next'
-import ForgotPasswordForm from './ForgotPasswordForm'
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import AuthLayout from "../auth-layout";
+import { ForgotForm } from "./components/forgot-password-form";
 
-export const metadata: Metadata = {
-  title: 'Forgot Password | LaunchpadAI',
-  description:
-    'Reset your password to regain access to your LaunchpadAI account',
-}
-
-export default function ForgotPasswordPage() {
+export default function ForgotPassword() {
   return (
-    <div className="max-w-md w-full mx-auto px-4 py-8">
-      <div className="space-y-4 text-center mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Forgot Password</h1>
-        <p className="text-muted-foreground">
-          Enter your email address and we&apos;ll send you a link to reset your
-          password.
+    <AuthLayout>
+      <Card className="p-6">
+        <div className="mb-2 flex flex-col space-y-2 text-left">
+          <h1 className="text-md font-semibold tracking-tight">
+            Forgot Password
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Enter your registered email and <br /> we will send you a link to
+            reset your password.
+          </p>
+        </div>
+        <ForgotForm />
+        <p className="mt-4 px-8 text-center text-sm text-muted-foreground">
+          Don't have an account?{" "}
+          <Link
+            href={"/signup"}
+            className="underline underline-offset-4 hover:text-primary"
+          >
+            Sign up
+          </Link>
+          .
         </p>
-      </div>
-
-      <ForgotPasswordForm />
-    </div>
-  )
+      </Card>
+    </AuthLayout>
+  );
 }

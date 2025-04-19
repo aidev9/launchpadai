@@ -5,6 +5,9 @@ alwaysApply: true
 ---
 # Rules for Creating a Full-Stack App from Scratch (Green Field Project)
 
+ALWAYS USE THESE LIBRARIES:
+- pnpm
+
 Create a full-stack app based on the following stack. Use the lastest versions of each tool or the one speficied below:
 - NextJS - 15.3.0
 	- Install with support for
