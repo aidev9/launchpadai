@@ -58,7 +58,7 @@ export function DataTableFacetedFilter({
     if (JSON.stringify(Array.from(selectedValues)) !== JSON.stringify(value)) {
       setSelectedValues(new Set(value));
     }
-  }, [value, setSelectedValues]);
+  }, [value, setSelectedValues, selectedValues]);
 
   // Handle selection changes
   const handleSelectionChange = (optionValue: string, isSelected: boolean) => {

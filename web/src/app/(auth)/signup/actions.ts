@@ -138,8 +138,3 @@ export const signupAction = actionClient
       }
     }
   );
-
-// Remove this later
-const schema = z.object({
-  name: z.string(),
-});

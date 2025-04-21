@@ -29,7 +29,6 @@ export default function TasksProvider({ children }: Props) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useTasks = () => {
   const tasksContext = React.useContext(TasksContext);
 
