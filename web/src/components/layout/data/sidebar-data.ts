@@ -19,6 +19,7 @@ import {
   IconUserOff,
   IconUsers,
   IconHelpCircle,
+  IconChartPie,
 } from "@tabler/icons-react";
 import { AudioWaveform, Command, GalleryVerticalEnd } from "lucide-react";
 import { type SidebarData } from "../types";
@@ -49,6 +50,11 @@ export const sidebarData: SidebarData = {
           title: "Dashboard",
           url: "/dashboard",
           icon: IconLayoutDashboard,
+        },
+        {
+          title: "Analytics",
+          url: "/analytics",
+          icon: IconChartPie,
         },
         {
           title: "Tasks",
