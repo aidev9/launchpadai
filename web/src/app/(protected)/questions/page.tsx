@@ -9,9 +9,16 @@ import { QuestionsPrimaryButtons } from "./components/questions-primary-buttons"
 import { QuestionsTable } from "./components/questions-table";
 import QuestionsProvider from "./context/questions-context";
 import { questionListSchema } from "./data/schema";
-import { questions } from "./data/questions";
+import { getAllQuestions } from "@/lib/firebase/questions";
 
-export default function Questions() {
+export default async function Questions() {
+  // Fetch questions from Firebase
+  const { success, questions = [], error } = await getAllQuestions();
+
+  if (!success) {
+    console.error("Failed to fetch questions:", error);
+  }
+
   // Parse question list
   const questionList = questionListSchema.parse(questions);
 
