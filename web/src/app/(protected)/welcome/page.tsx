@@ -226,7 +226,8 @@ function TemplateCard({
   template: Template;
   onSelect: () => void;
 }) {
-  const Icon = template.icon;
+  // Add proper typing for the Icon component
+  const Icon: React.ComponentType<{ className?: string }> = template.icon;
 
   return (
     <Card
