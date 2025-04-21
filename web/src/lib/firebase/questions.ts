@@ -1,14 +1,20 @@
 "use server";
 
-import { adminAuth, adminDb } from "./admin";
+import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getCurrentUserId } from "./auth";
 
-const questionsRef = adminDb.collection("questions");
+// Root questions collection reference
+const questionsCollection = adminDb.collection("questions");
+
+// Get the questionsRef for a specific user
+function getUserQuestionsRef(userId: string) {
+  return questionsCollection.doc(userId).collection("questions");
+}
 
 // Schema for question creation/update
 const questionInputSchema = z.object({
-  user_id: z.string(),
   project_id: z.string(),
   question: z.string().min(1, "Question is required"),
   answer: z.string().optional(),
@@ -24,6 +30,8 @@ export async function createQuestion(data: QuestionInput) {
   try {
     // Validate input data
     const validatedData = questionInputSchema.parse(data);
+    const userId = await getCurrentUserId();
+    const questionsRef = getUserQuestionsRef(userId);
 
     // Add timestamps
     const now = new Date().toISOString();
@@ -58,6 +66,9 @@ export async function createQuestion(data: QuestionInput) {
  */
 export async function updateQuestion(id: string, data: Partial<QuestionInput>) {
   try {
+    const userId = await getCurrentUserId();
+    const questionsRef = getUserQuestionsRef(userId);
+
     // Check if question exists
     const questionDoc = await questionsRef.doc(id).get();
     if (!questionDoc.exists) {
@@ -97,6 +108,9 @@ export async function updateQuestion(id: string, data: Partial<QuestionInput>) {
  */
 export async function deleteQuestion(id: string) {
   try {
+    const userId = await getCurrentUserId();
+    const questionsRef = getUserQuestionsRef(userId);
+
     // Check if question exists
     const questionDoc = await questionsRef.doc(id).get();
     if (!questionDoc.exists) {
@@ -126,10 +140,13 @@ export async function deleteQuestion(id: string) {
 }
 
 /**
- * Fetch all questions
+ * Fetch all questions for the current user
  */
 export async function getAllQuestions() {
   try {
+    const userId = await getCurrentUserId();
+    const questionsRef = getUserQuestionsRef(userId);
+
     const snapshot = await questionsRef.orderBy("last_modified", "desc").get();
 
     const questions = snapshot.docs.map((doc) => ({
@@ -155,6 +172,9 @@ export async function getAllQuestions() {
  */
 export async function getQuestionsByProject(projectId: string) {
   try {
+    const userId = await getCurrentUserId();
+    const questionsRef = getUserQuestionsRef(userId);
+
     const snapshot = await questionsRef
       .where("project_id", "==", projectId)
       .orderBy("last_modified", "desc")
@@ -183,6 +203,9 @@ export async function getQuestionsByProject(projectId: string) {
  */
 export async function getQuestion(id: string) {
   try {
+    const userId = await getCurrentUserId();
+    const questionsRef = getUserQuestionsRef(userId);
+
     const questionDoc = await questionsRef.doc(id).get();
 
     if (!questionDoc.exists) {

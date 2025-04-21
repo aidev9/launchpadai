@@ -84,10 +84,6 @@ export function QuestionsActionDialog({ mode }: QuestionsActionDialogProps) {
   const onSubmit = (data: FormValues) => {
     startTransition(async () => {
       try {
-        // For new questions, we need the user_id
-        // In a real app, you would get this from the authenticated user
-        const user_id = "current_user_id";
-
         if (isEdit && currentQuestion) {
           // Update existing question
           const response = await updateQuestion(currentQuestion.id, data);
@@ -108,10 +104,7 @@ export function QuestionsActionDialog({ mode }: QuestionsActionDialogProps) {
           }
         } else {
           // Create new question
-          const response = await createQuestion({
-            ...data,
-            user_id,
-          });
+          const response = await createQuestion(data);
 
           if (response.success) {
             toast({

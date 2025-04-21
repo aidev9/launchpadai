@@ -2,7 +2,6 @@ import { z } from "zod";
 
 const questionSchema = z.object({
   id: z.string(),
-  user_id: z.string(),
   project_id: z.string(),
   question: z.string(),
   answer: z.string().nullable().optional(),
