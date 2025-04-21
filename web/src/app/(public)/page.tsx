@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import ChatWidget from "@/components/ui/chat-widget";
 import { Metadata } from "next";
 
+// Force dynamic rendering since the page uses client components
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "LaunchpadAI - AI Solutions for Enterprises",
   description: "Deploy and manage AI solutions with ease.",
