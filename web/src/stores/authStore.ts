@@ -12,6 +12,13 @@ interface AuthUser {
   exp: number;
 }
 
+// Define action types to avoid using 'any'
+type AuthAction =
+  | { type: "SET_USER"; payload: AuthUser | null }
+  | { type: "SET_ACCESS_TOKEN"; payload: string }
+  | { type: "RESET_ACCESS_TOKEN" }
+  | { type: "RESET" };
+
 // Base atoms
 const userAtom = atom<AuthUser | null>(null);
 const accessTokenAtom = atomWithStorage<string>(ACCESS_TOKEN, "");
@@ -24,7 +31,7 @@ export const authAtom = atom(
     accessToken: get(accessTokenAtom),
   }),
   // Setter
-  (get, set, action: { type: string; payload?: any }) => {
+  (get, set, action: AuthAction) => {
     switch (action.type) {
       case "SET_USER":
         set(userAtom, action.payload);
@@ -48,15 +55,22 @@ export const authAtom = atom(
   }
 );
 
-// Action creators
+// Action creators with explicit return types
 export const authActions = {
-  setUser: (user: AuthUser | null) => ({ type: "SET_USER", payload: user }),
-  setAccessToken: (token: string) => ({
+  setUser: (user: AuthUser | null): AuthAction => ({
+    type: "SET_USER",
+    payload: user,
+  }),
+  setAccessToken: (token: string): AuthAction => ({
     type: "SET_ACCESS_TOKEN",
     payload: token,
   }),
-  resetAccessToken: () => ({ type: "RESET_ACCESS_TOKEN" }),
-  reset: () => ({ type: "RESET" }),
+  resetAccessToken: (): AuthAction => ({
+    type: "RESET_ACCESS_TOKEN",
+  }),
+  reset: (): AuthAction => ({
+    type: "RESET",
+  }),
 };
 
 // Custom hook for using auth in components

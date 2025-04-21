@@ -6,12 +6,8 @@ import {
   TwitterAuthProvider,
   GithubAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
 } from "firebase/auth";
 import { clientAuth, signOutUser } from "@/lib/firebase/client";
-import { adminAuth } from "./admin";
-import { cookies } from "next/headers";
 
 /**
  * Creates a session for a user after successful authentication.
@@ -130,18 +126,6 @@ export async function handleSocialSignIn(
     await signOutUser();
 
     const result = await signInWithPopup(clientAuth, authProvider);
-    // await signInWithRedirect(clientAuth, authProvider);
-
-    // const redirectResult = await getRedirectResult(clientAuth);
-
-    // if (redirectResult) {
-    //   // This is the signed-in user
-    //   const user = redirectResult.user;
-    //   // This gives you a Facebook Access Token.
-    //   await createUserSession(user);
-    // }
-
-    // return redirectResult;
 
     if (!result.user) {
       throw new Error("No user data received from provider");
@@ -150,56 +134,24 @@ export async function handleSocialSignIn(
     // Create session using our dedicated function
     await createUserSession(result.user);
     return result;
-  } catch (error: any) {
+  } catch (error) {
     console.error(`Error signing in with ${provider}:`, error);
 
     // Handle specific auth errors
-    if (error.code === "auth/popup-blocked") {
+    if (error === "auth/popup-blocked") {
       throw new Error(
         "Sign-in popup was blocked. Please allow popups and try again."
       );
     }
-    if (error.code === "auth/popup-closed-by-user") {
+    if (error === "auth/popup-closed-by-user") {
       throw new Error("Sign-in was cancelled. Please try again.");
     }
-    if (error.code === "auth/account-exists-with-different-credential") {
+    if (error === "auth/account-exists-with-different-credential") {
       throw new Error(
         "An account already exists with the same email address but different sign-in credentials."
       );
     }
 
     throw error;
-  }
-}
-
-/**
- * Get current user ID from Firebase session cookie
- * In a production app, this would verify the session cookie and extract the user ID
- */
-export async function getCurrentUserId(): Promise<string> {
-  try {
-    // Get the session cookie from the request
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("session")?.value;
-
-    if (!sessionCookie) {
-      console.warn("No session cookie found, using default user ID");
-      return "current_user_id"; // Fallback for development
-    }
-
-    // Verify the session cookie with Firebase Admin
-    try {
-      const decodedClaims = await adminAuth.verifySessionCookie(
-        sessionCookie,
-        true
-      );
-      return decodedClaims.uid; // Return the actual user ID from the verified session
-    } catch (error) {
-      console.error("Error verifying session cookie:", error);
-      return "current_user_id"; // Fallback for development
-    }
-  } catch (error) {
-    console.error("Error getting user ID:", error);
-    return "current_user_id"; // Fallback for development
   }
 }

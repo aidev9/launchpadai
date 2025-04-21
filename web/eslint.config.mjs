@@ -71,7 +71,7 @@ const eslintConfig = [
       "@typescript-eslint/no-this-alias": "warn",
 
       // Allow for react-refresh references to work
-      "react-refresh/only-export-components": "warn",
+      "react-refresh/only-export-components": "off",
 
       // Fix unescaped entities in JSX
       "react/no-unescaped-entities": "off",

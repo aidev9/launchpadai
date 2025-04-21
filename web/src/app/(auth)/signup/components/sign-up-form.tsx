@@ -33,7 +33,7 @@ import { signupAction } from "@/app/(auth)/signup/actions";
 import {
   handleEmailPasswordSignIn,
   handleSocialSignIn,
-} from "@/lib/firebase/auth";
+} from "@/lib/firebase/clientAuth";
 import { useRouter } from "next/navigation";
 
 type SignUpFormProps = HTMLAttributes<HTMLDivElement>;

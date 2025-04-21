@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { createQuestion, updateQuestion } from "@/lib/firebase/questions";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import {
   dialogOpenAtom,
   currentQuestionAtom,

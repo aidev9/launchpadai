@@ -1,13 +1,7 @@
 "use client";
 
 import { initializeApp, getApps } from "firebase/app";
-import {
-  getAuth,
-  initializeAuth,
-  browserLocalPersistence,
-  indexedDBLocalPersistence,
-  signOut,
-} from "firebase/auth";
+import { getAuth, indexedDBLocalPersistence, signOut } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 

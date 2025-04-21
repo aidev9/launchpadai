@@ -11,6 +11,9 @@ import { QuestionsTable } from "./components/questions-table";
 import { questionListSchema } from "./data/schema";
 import { getAllQuestions } from "@/lib/firebase/questions";
 
+// Force dynamic rendering since we use cookies
+export const dynamic = "force-dynamic";
+
 export default async function Questions() {
   // Fetch questions from Firebase
   const { success, questions = [], error } = await getAllQuestions();

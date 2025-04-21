@@ -1,4 +1,3 @@
-import { de } from "@faker-js/faker";
 import { CircleCheck, Clock, HelpCircle } from "lucide-react";
 
 // Status types mapped to their corresponding colors for badges

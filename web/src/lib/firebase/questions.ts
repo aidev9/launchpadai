@@ -3,7 +3,7 @@
 import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getCurrentUserId } from "./auth";
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 
 // Root questions collection reference
 const questionsCollection = adminDb.collection("questions");

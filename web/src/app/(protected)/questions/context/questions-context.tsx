@@ -1,5 +1,5 @@
 "use client";
-import { atom, useAtom, useSetAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useSetAtom } from "jotai";
 import { Question } from "../data/schema";
 
 // Dialog type definition

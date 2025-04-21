@@ -14,11 +14,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useAction } from "next-safe-action/hooks";
-import { forgotPasswordAction } from "../actions";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { clientAuth } from "@/lib/firebase/client";
-import { ro } from "@faker-js/faker";
 import { useRouter } from "next/navigation";
 
 type ForgotFormProps = HTMLAttributes<HTMLDivElement>;

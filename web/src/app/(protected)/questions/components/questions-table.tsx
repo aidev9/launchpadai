@@ -25,7 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Question } from "../data/schema";
 import { DataTablePagination } from "./data-table-pagination";
 import {
   DataTableToolbar,

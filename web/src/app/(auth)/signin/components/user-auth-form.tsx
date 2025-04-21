@@ -30,7 +30,7 @@ import { useAction } from "next-safe-action/hooks";
 import {
   handleEmailPasswordSignIn,
   handleSocialSignIn,
-} from "@/lib/firebase/auth";
+} from "@/lib/firebase/clientAuth";
 import { useRouter } from "next/navigation";
 import { clientAuth } from "@/lib/firebase/client";
 
