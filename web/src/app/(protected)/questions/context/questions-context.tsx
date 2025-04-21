@@ -1,42 +1,49 @@
 "use client";
-import React, { useState } from "react";
-import useDialogState from "@/hooks/use-dialog-state";
+import { atom, useAtom, useSetAtom, useAtomValue } from "jotai";
 import { Question } from "../data/schema";
 
+// Dialog type definition
 type QuestionsDialogType = "add" | "edit" | "delete" | "view";
 
-interface QuestionsContextType {
-  open: QuestionsDialogType | null;
-  setOpen: (str: QuestionsDialogType | null) => void;
-  currentQuestion: Question | null;
-  setCurrentQuestion: React.Dispatch<React.SetStateAction<Question | null>>;
+// Create atoms for state
+export const dialogOpenAtom = atom<QuestionsDialogType | null>(null);
+export const currentQuestionAtom = atom<Question | null>(null);
+
+// Utility hooks for easier atom access
+export function useDialogOpen() {
+  return useAtom(dialogOpenAtom);
 }
 
-const QuestionsContext = React.createContext<QuestionsContextType | null>(null);
+export function useSetDialogOpen() {
+  return useSetAtom(dialogOpenAtom);
+}
 
-interface Props {
+export function useCurrentQuestion() {
+  return useAtom(currentQuestionAtom);
+}
+
+export function useSetCurrentQuestion() {
+  return useSetAtom(currentQuestionAtom);
+}
+
+// Combined hook for compatibility with existing code
+export function useQuestions() {
+  const [open, setOpen] = useAtom(dialogOpenAtom);
+  const [currentQuestion, setCurrentQuestion] = useAtom(currentQuestionAtom);
+
+  return {
+    open,
+    setOpen,
+    currentQuestion,
+    setCurrentQuestion,
+  };
+}
+
+// Provider component is now a simple wrapper with no context
+export default function QuestionsProvider({
+  children,
+}: {
   children: React.ReactNode;
+}) {
+  return <>{children}</>;
 }
-
-export default function QuestionsProvider({ children }: Props) {
-  const [open, setOpen] = useDialogState<QuestionsDialogType>(null);
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-
-  return (
-    <QuestionsContext.Provider
-      value={{ open, setOpen, currentQuestion, setCurrentQuestion }}
-    >
-      {children}
-    </QuestionsContext.Provider>
-  );
-}
-
-export const useQuestions = () => {
-  const questionsContext = React.useContext(QuestionsContext);
-
-  if (!questionsContext) {
-    throw new Error("useQuestions has to be used within <QuestionsContext>");
-  }
-
-  return questionsContext;
-};

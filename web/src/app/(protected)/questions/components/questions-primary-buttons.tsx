@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuestions } from "../context/questions-context";
+import { useSetAtom } from "jotai";
+import { dialogOpenAtom } from "../context/questions-context";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
 export function QuestionsPrimaryButtons() {
-  const { setOpen } = useQuestions();
+  const setOpen = useSetAtom(dialogOpenAtom);
 
   const handleAddClick = () => {
     setOpen("add");

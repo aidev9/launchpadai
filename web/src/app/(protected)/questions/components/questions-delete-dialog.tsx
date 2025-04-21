@@ -12,10 +12,15 @@ import {
 } from "@/components/ui/dialog";
 import { deleteQuestion } from "@/lib/firebase/questions";
 import { useToast } from "@/components/ui/use-toast";
-import { useQuestions } from "../context/questions-context";
+import { useAtom } from "jotai";
+import {
+  dialogOpenAtom,
+  currentQuestionAtom,
+} from "../context/questions-context";
 
 export function QuestionsDeleteDialog() {
-  const { open, setOpen, currentQuestion, setCurrentQuestion } = useQuestions();
+  const [open, setOpen] = useAtom(dialogOpenAtom);
+  const [currentQuestion, setCurrentQuestion] = useAtom(currentQuestionAtom);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 

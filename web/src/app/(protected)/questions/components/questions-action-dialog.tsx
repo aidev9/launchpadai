@@ -25,7 +25,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { createQuestion, updateQuestion } from "@/lib/firebase/questions";
-import { useQuestions } from "../context/questions-context";
+import { useAtom, useAtomValue } from "jotai";
+import {
+  dialogOpenAtom,
+  currentQuestionAtom,
+} from "../context/questions-context";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { tagOptions } from "../data/data";
 import { useToast } from "@/components/ui/use-toast";
@@ -47,7 +51,8 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function QuestionsActionDialog({ mode }: QuestionsActionDialogProps) {
-  const { open, setOpen, currentQuestion, setCurrentQuestion } = useQuestions();
+  const [open, setOpen] = useAtom(dialogOpenAtom);
+  const [currentQuestion, setCurrentQuestion] = useAtom(currentQuestionAtom);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 

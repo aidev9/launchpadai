@@ -7,7 +7,6 @@ import { columns } from "./components/questions-columns";
 import { QuestionsDialogs } from "./components/questions-dialogs";
 import { QuestionsPrimaryButtons } from "./components/questions-primary-buttons";
 import { QuestionsTable } from "./components/questions-table";
-import QuestionsProvider from "./context/questions-context";
 import { questionListSchema } from "./data/schema";
 import { getAllQuestions } from "@/lib/firebase/questions";
 
@@ -23,7 +22,7 @@ export default async function Questions() {
   const questionList = questionListSchema.parse(questions);
 
   return (
-    <QuestionsProvider>
+    <>
       <Header fixed>
         <Search />
         <div className="ml-auto flex items-center space-x-4">
@@ -48,6 +47,6 @@ export default async function Questions() {
       </Main>
 
       <QuestionsDialogs />
-    </QuestionsProvider>
+    </>
   );
 }

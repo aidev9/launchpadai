@@ -10,10 +10,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { useQuestions } from "../context/questions-context";
+import { useAtom, useAtomValue } from "jotai";
+import {
+  dialogOpenAtom,
+  currentQuestionAtom,
+} from "../context/questions-context";
 
 export function QuestionsViewDialog() {
-  const { open, setOpen, currentQuestion } = useQuestions();
+  const [open, setOpen] = useAtom(dialogOpenAtom);
+  const currentQuestion = useAtomValue(currentQuestionAtom);
 
   const isOpen = open === "view";
 

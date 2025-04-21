@@ -1,12 +1,13 @@
 "use client";
 
-import { useQuestions } from "../context/questions-context";
+import { useAtomValue } from "jotai";
+import { dialogOpenAtom } from "../context/questions-context";
 import { QuestionsActionDialog } from "./questions-action-dialog";
 import { QuestionsDeleteDialog } from "./questions-delete-dialog";
 import { QuestionsViewDialog } from "./questions-view-dialog";
 
 export function QuestionsDialogs() {
-  const { open } = useQuestions();
+  const open = useAtomValue(dialogOpenAtom);
 
   return (
     <>

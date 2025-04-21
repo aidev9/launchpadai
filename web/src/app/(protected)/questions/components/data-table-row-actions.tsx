@@ -16,7 +16,11 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { useQuestions } from "../context/questions-context";
+import { useSetAtom } from "jotai";
+import {
+  dialogOpenAtom,
+  currentQuestionAtom,
+} from "../context/questions-context";
 import { Question } from "../data/schema";
 
 interface DataTableRowActionsProps<TData> {
@@ -27,7 +31,8 @@ export function DataTableRowActions<TData>({
   row,
 }: DataTableRowActionsProps<TData>) {
   const question = row.original as Question;
-  const { setOpen, setCurrentQuestion } = useQuestions();
+  const setOpen = useSetAtom(dialogOpenAtom);
+  const setCurrentQuestion = useSetAtom(currentQuestionAtom);
 
   const handleViewClick = () => {
     setCurrentQuestion(question);
