@@ -22,7 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { signupAction } from "@/app/(auth)/signup/actions";
+import { signupAction } from "@/app/auth/signup/actions";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/password-input";
 import { useAction } from "next-safe-action/hooks";

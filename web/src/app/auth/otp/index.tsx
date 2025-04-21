@@ -1,29 +1,29 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import AuthLayout from "../auth-layout";
-import { ForgotForm } from "./components/forgot-password-form";
+import { OtpForm } from "./components/otp-form";
 
-export default function ForgotPassword() {
+export default function Otp() {
   return (
     <AuthLayout>
       <Card className="p-6">
         <div className="mb-2 flex flex-col space-y-2 text-left">
           <h1 className="text-md font-semibold tracking-tight">
-            Forgot Password
+            Two-factor Authentication
           </h1>
           <p className="text-sm text-muted-foreground">
-            Enter your registered email and <br /> we will send you a link to
-            reset your password.
+            Please enter the authentication code. <br /> We have sent the
+            authentication code to your email.
           </p>
         </div>
-        <ForgotForm />
+        <OtpForm />
         <p className="mt-4 px-8 text-center text-sm text-muted-foreground">
-          Don't have an account?{" "}
+          Haven't received it?{" "}
           <Link
-            href={"/signup"}
+            href={"/auth/signin"}
             className="underline underline-offset-4 hover:text-primary"
           >
-            Sign up
+            Resend a new code.
           </Link>
           .
         </p>

@@ -88,7 +88,7 @@ export const sidebarData: SidebarData = {
           items: [
             {
               title: "Sign In",
-              url: "/signin",
+              url: "/auth/signin",
             },
             {
               title: "Sign In (2 Col)",
@@ -96,15 +96,15 @@ export const sidebarData: SidebarData = {
             },
             {
               title: "Sign Up",
-              url: "/signup",
+              url: "/auth/signup",
             },
             {
               title: "Forgot Password",
-              url: "/forgot-password",
+              url: "/auth/forgot-password",
             },
             {
               title: "OTP",
-              url: "/otp",
+              url: "/auth/otp",
             },
           ],
         },

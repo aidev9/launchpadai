@@ -140,4 +140,30 @@
   .faded-bottom {
     @apply after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:hidden after:h-32 after:w-full after:bg-[linear-gradient(180deg,_transparent_10%,_hsl(var(--background))_70%)] after:md:block;
   }
+
+  /* Gradient background for hero and waitlist sections */
+  .gradient-bg {
+    @apply relative bg-gradient-to-br from-indigo-800 via-purple-700 to-blue-900 overflow-hidden;
+  }
+
+  /* Animated pattern overlay */
+  .hero-pattern {
+    @apply before:absolute before:inset-0 before:bg-[url('/images/grid-pattern.svg')] before:bg-repeat before:opacity-10 before:animate-pulse;
+  }
+
+  @keyframes float {
+    0% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
+  }
+
+  .floating-icon {
+    animation: float 6s ease-in-out infinite;
+  }
 }

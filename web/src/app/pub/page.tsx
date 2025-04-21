@@ -35,13 +35,13 @@ export default function LandingPage() {
         </div>
         <nav className="fixed top-0 right-0 p-4 flex space-x-4">
           <Link
-            href="/signin"
+            href="/auth/signin"
             className="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium"
           >
             Sign In
           </Link>
           <Link
-            href="/signup"
+            href="/auth/signup"
             className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium"
           >
             Sign Up
@@ -62,12 +62,12 @@ export default function LandingPage() {
             business.
           </p>
           <div className="flex gap-4">
-            <Link href="/waitlist">
+            <Link href="/pub/waitlist">
               <Button size="lg" className="text-lg px-8 py-6">
                 Join Waitlist
               </Button>
             </Link>
-            <Link href="/ai-naming-assistant">
+            <Link href="/pub/ai-naming-assistant">
               <Button
                 size="lg"
                 className="text-lg px-8 py-6 bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
@@ -193,7 +193,7 @@ export default function LandingPage() {
                   partners. Join our waitlist to be among the first to
                   experience LaunchpadAI when we open up access.
                 </p>
-                <Link href="/waitlist">
+                <Link href="/pub/waitlist">
                   <Button className="w-full md:w-auto">Join Waitlist</Button>
                 </Link>
               </div>

@@ -29,7 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/password-input";
 import { useAction } from "next-safe-action/hooks";
-import { signupAction } from "@/app/(auth)/signup/actions";
+import { signupAction } from "@/app/auth/signup/actions";
 import {
   handleEmailPasswordSignIn,
   handleSocialSignIn,

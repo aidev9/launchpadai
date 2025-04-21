@@ -23,7 +23,7 @@ export default function RootLayout({
         setIsLoading(false);
       } else {
         console.log("User is not authenticated");
-        router.push("/signin");
+        router.push("/auth/signin");
         router.refresh();
       }
     });

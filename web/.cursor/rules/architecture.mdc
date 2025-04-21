@@ -33,7 +33,7 @@ Here's how you should structure the project using these technologies:
 ├── public/              # Static assets
 ├── src/                 # All source code lives here
 │   ├── app/             # Next.js App Router
-│   │   ├── (auth)/      # Auth-related route group
+│   │   ├── auth/      # Auth-related route group
 │   │   │   ├── login/
 │   │   │   ├── signup/
 │   │   │   └── ...

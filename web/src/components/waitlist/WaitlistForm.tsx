@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import AnimatedElement from "@/components/ui/animated-element";
+import Image from "next/image";
 import {
   Select,
   SelectContent,
@@ -154,6 +155,29 @@ export default function WaitlistForm() {
   return (
     <section id="waitlist" className="py-16 md:py-24 gradient-bg hero-pattern">
       <div className="container mx-auto px-6 relative z-10">
+        {/* Floating AI Icon */}
+        <div className="absolute top-10 left-[15%] md:block hidden">
+          <Image
+            src="/images/ai-icon.svg"
+            alt="AI Icon"
+            width={56}
+            height={56}
+            className="floating-icon"
+            style={{ animationDelay: "1.5s" }}
+          />
+        </div>
+
+        <div className="absolute bottom-20 right-[15%] md:block hidden">
+          <Image
+            src="/images/ai-icon.svg"
+            alt="AI Icon"
+            width={40}
+            height={40}
+            className="floating-icon"
+            style={{ animationDelay: "3s" }}
+          />
+        </div>
+
         <AnimatedElement className="max-w-2xl mx-auto bg-white rounded-xl p-8 shadow-2xl">
           <h2 className="text-3xl font-bold text-center mb-6">
             Join the Waitlist

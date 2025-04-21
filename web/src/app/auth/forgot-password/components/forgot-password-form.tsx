@@ -41,7 +41,7 @@ export function ForgotForm({ className, ...props }: ForgotFormProps) {
     sendPasswordResetEmail(clientAuth, data.email);
 
     // Clear form
-    router.push("/signin");
+    router.push("/auth/signin");
   }
 
   return (

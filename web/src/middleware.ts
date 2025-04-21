@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Define authentication paths
-const authPaths = ["/signin", "/signup", "/forgot-password"];
+const authPaths = ["/auth/signin", "/auth/signup", "/auth/forgot-password"];
 
 // This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {

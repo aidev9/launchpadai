@@ -19,6 +19,28 @@ export default function Hero() {
   return (
     <div className="gradient-bg hero-pattern">
       <div className="container mx-auto px-6 py-16 md:py-24 text-center relative z-10">
+        {/* Floating AI Icon */}
+        <div className="absolute top-20 right-[10%] md:block hidden">
+          <Image
+            src="/images/ai-icon.svg"
+            alt="AI Icon"
+            width={64}
+            height={64}
+            className="floating-icon"
+          />
+        </div>
+
+        <div className="absolute bottom-40 left-[10%] md:block hidden">
+          <Image
+            src="/images/ai-icon.svg"
+            alt="AI Icon"
+            width={48}
+            height={48}
+            className="floating-icon"
+            style={{ animationDelay: "2s" }}
+          />
+        </div>
+
         <AnimatedElement threshold={0.01}>
           <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight">
             Launch Your AI Enterprise
