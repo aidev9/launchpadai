@@ -91,6 +91,11 @@ export const columns: ColumnDef<Question>[] = [
       );
     },
     filterFn: (row, id, value) => {
+      // If value is null or empty array, don't filter
+      if (!value || !Array.isArray(value) || value.length === 0) {
+        return true;
+      }
+
       const { answer } = row.original;
       let status = "unanswered";
 
@@ -125,6 +130,11 @@ export const columns: ColumnDef<Question>[] = [
       );
     },
     filterFn: (row, id, value) => {
+      // If value is null or empty array, don't filter
+      if (!value || !Array.isArray(value) || value.length === 0) {
+        return true;
+      }
+
       const tags = row.getValue(id) as string[];
       return value.some((val: string) => tags.includes(val));
     },

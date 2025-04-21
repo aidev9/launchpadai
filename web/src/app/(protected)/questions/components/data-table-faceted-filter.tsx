@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { CheckIcon, PlusCircle } from "lucide-react";
+import { atom, useAtom } from "jotai";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,19 +35,67 @@ interface DataTableFacetedFilterProps {
   onChange: (value: string[]) => void;
 }
 
+// Create a Jotai atom factory for filter values
+const createFilterValuesAtom = (initialValue: string[]) =>
+  atom(new Set(initialValue));
+
 export function DataTableFacetedFilter({
   title,
   options,
   value,
   onChange,
 }: DataTableFacetedFilterProps) {
-  const [selectedValues, setSelectedValues] = React.useState<Set<string>>(
-    new Set(value)
+  // Create a unique atom for this instance using a ref to ensure stability
+  const filterValuesAtomRef = React.useRef(createFilterValuesAtom(value));
+
+  // Use the atom for state management
+  const [selectedValues, setSelectedValues] = useAtom(
+    filterValuesAtomRef.current
   );
 
+  // Sync with external value prop when it changes
   React.useEffect(() => {
-    setSelectedValues(new Set(value));
-  }, [value]);
+    if (JSON.stringify(Array.from(selectedValues)) !== JSON.stringify(value)) {
+      setSelectedValues(new Set(value));
+    }
+  }, [value, setSelectedValues]);
+
+  // Handle selection changes
+  const handleSelectionChange = (optionValue: string, isSelected: boolean) => {
+    setSelectedValues((prev) => {
+      const next = new Set(prev);
+
+      if (isSelected) {
+        next.delete(optionValue);
+      } else {
+        next.add(optionValue);
+      }
+
+      const newSelectedValues = Array.from(next);
+
+      // If all items are deselected, reset filters by calling onChange with empty array
+      if (newSelectedValues.length === 0) {
+        onChange([]);
+      } else {
+        onChange(newSelectedValues);
+      }
+
+      return next;
+    });
+  };
+
+  // Handle clearing all filters
+  const handleClearFilters = () => {
+    // Set local state to empty
+    setSelectedValues(new Set());
+
+    // Call onChange with empty array to update external state
+    onChange([]);
+
+    // Close the popover after clearing
+    const popoverElement = document.activeElement as HTMLElement;
+    popoverElement?.blur?.();
+  };
 
   return (
     <Popover>
@@ -100,16 +149,9 @@ export function DataTableFacetedFilter({
                 return (
                   <CommandItem
                     key={option.value}
-                    onSelect={() => {
-                      if (isSelected) {
-                        selectedValues.delete(option.value);
-                      } else {
-                        selectedValues.add(option.value);
-                      }
-                      const newSelectedValues = Array.from(selectedValues);
-                      setSelectedValues(new Set(newSelectedValues));
-                      onChange(newSelectedValues);
-                    }}
+                    onSelect={() =>
+                      handleSelectionChange(option.value, isSelected)
+                    }
                   >
                     <div
                       className={cn(
@@ -134,10 +176,7 @@ export function DataTableFacetedFilter({
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem
-                    onSelect={() => {
-                      setSelectedValues(new Set());
-                      onChange([]);
-                    }}
+                    onSelect={handleClearFilters}
                     className="justify-center text-center"
                   >
                     Clear filters

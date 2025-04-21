@@ -3,6 +3,7 @@ import { Main } from "@/components/layout/main";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/theme-switch";
+import { Provider } from "jotai";
 import { columns } from "./components/questions-columns";
 import { QuestionsDialogs } from "./components/questions-dialogs";
 import { QuestionsPrimaryButtons } from "./components/questions-primary-buttons";
@@ -22,7 +23,7 @@ export default async function Questions() {
   const questionList = questionListSchema.parse(questions);
 
   return (
-    <>
+    <Provider>
       <Header fixed>
         <Search />
         <div className="ml-auto flex items-center space-x-4">
@@ -47,6 +48,6 @@ export default async function Questions() {
       </Main>
 
       <QuestionsDialogs />
-    </>
+    </Provider>
   );
 }

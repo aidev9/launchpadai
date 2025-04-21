@@ -15,6 +15,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { atom, useAtom } from "jotai";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -26,7 +27,20 @@ import {
 } from "@/components/ui/table";
 import { Question } from "../data/schema";
 import { DataTablePagination } from "./data-table-pagination";
-import { DataTableToolbar } from "./data-table-toolbar";
+import {
+  DataTableToolbar,
+  questionFilterAtom,
+  statusFilterAtom,
+  tagsFilterAtom,
+} from "./data-table-toolbar";
+
+// Create atoms for table state
+export const rowSelectionAtom = atom<Record<string, boolean>>({});
+export const columnVisibilityAtom = atom<VisibilityState>({});
+export const columnFiltersAtom = atom<ColumnFiltersState>([]);
+export const sortingAtom = atom<SortingState>([
+  { id: "last_modified", desc: true },
+]);
 
 interface QuestionsTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -37,14 +51,51 @@ export function QuestionsTable<TData, TValue>({
   columns,
   data,
 }: QuestionsTableProps<TData, TValue>) {
-  const [rowSelection, setRowSelection] = React.useState({});
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "last_modified", desc: true },
+  // Use Jotai atoms for table state
+  const [rowSelection, setRowSelection] = useAtom(rowSelectionAtom);
+  const [columnVisibility, setColumnVisibility] = useAtom(columnVisibilityAtom);
+  const [columnFilters, setColumnFilters] = useAtom(columnFiltersAtom);
+  const [sorting, setSorting] = useAtom(sortingAtom);
+
+  // Get filter atoms
+  const [questionFilter] = useAtom(questionFilterAtom);
+  const [statusFilter] = useAtom(statusFilterAtom);
+  const [tagsFilter] = useAtom(tagsFilterAtom);
+
+  // Sync filter atoms with columnFilters when component mounts
+  React.useEffect(() => {
+    const newColumnFilters: ColumnFiltersState = [];
+
+    if (questionFilter) {
+      newColumnFilters.push({
+        id: "question",
+        value: questionFilter,
+      });
+    }
+
+    if (statusFilter.length > 0) {
+      newColumnFilters.push({
+        id: "status",
+        value: statusFilter,
+      });
+    }
+
+    if (tagsFilter.length > 0) {
+      newColumnFilters.push({
+        id: "tags",
+        value: tagsFilter,
+      });
+    }
+
+    if (JSON.stringify(newColumnFilters) !== JSON.stringify(columnFilters)) {
+      setColumnFilters(newColumnFilters);
+    }
+  }, [
+    questionFilter,
+    statusFilter,
+    tagsFilter,
+    setColumnFilters,
+    columnFilters,
   ]);
 
   const table = useReactTable({
