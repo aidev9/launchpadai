@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { IconCheck, IconMoon, IconSun } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/context/theme-context";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +14,12 @@ import {
 
 export function ThemeSwitch() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // useEffect only runs on the client, so now we can safely show the UI
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   /* Update theme-color meta tag
    * when theme is updated */
@@ -22,6 +28,11 @@ export function ThemeSwitch() {
     const metaThemeColor = document.querySelector("meta[name='theme-color']");
     if (metaThemeColor) metaThemeColor.setAttribute("content", themeColor);
   }, [theme]);
+
+  // Don't render component until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <DropdownMenu modal={false}>
