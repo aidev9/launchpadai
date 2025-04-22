@@ -67,7 +67,7 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
               <Box className="size-4" />
             </div>
-            <div className="grid flex-1 text-left text-sm leading-tight">
+            <div className="grid flex-1 text-left text-sm leading-tight max-w-[calc(var(--sidebar-width)_-_6rem)] overflow-hidden">
               <span className="truncate font-semibold">Loading...</span>
             </div>
           </SidebarMenuButton>
@@ -88,7 +88,7 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
               <Plus className="size-4" />
             </div>
-            <div className="grid flex-1 text-left text-sm leading-tight">
+            <div className="grid flex-1 text-left text-sm leading-tight max-w-[calc(var(--sidebar-width)_-_6rem)] overflow-hidden">
               <span className="truncate font-semibold">Create a Product</span>
               <span className="truncate text-xs">Get started</span>
             </div>
@@ -110,7 +110,7 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                 <Box className="size-4" />
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="grid flex-1 text-left text-sm leading-tight max-w-[calc(var(--sidebar-width)_-_8rem)] overflow-hidden">
                 <span className="truncate font-semibold">
                   {selectedProduct?.name || "Select Product"}
                 </span>
@@ -118,14 +118,15 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
                   {selectedProduct?.stage || ""}
                 </span>
               </div>
-              <ChevronsUpDown className="ml-auto" />
+              <ChevronsUpDown className="ml-auto shrink-0" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 max-w-80 rounded-lg"
             align="start"
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}
+            style={{ maxWidth: "min(80vw, 20rem)" }}
           >
             <DropdownMenuLabel className="text-xs text-muted-foreground">
               Your Products
@@ -136,10 +137,12 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
                 onClick={() => handleProductSelect(product)}
                 className="gap-2 p-2"
               >
-                <div className="flex size-6 items-center justify-center rounded-sm border">
+                <div className="flex size-6 items-center justify-center rounded-sm border shrink-0">
                   <Box className="size-4 shrink-0" />
                 </div>
-                <div className="flex-1 truncate">{product.name}</div>
+                <div className="flex-1 truncate max-w-[calc(100%_-_3rem)]">
+                  {product.name}
+                </div>
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
@@ -147,10 +150,10 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
               className="gap-2 p-2"
               onClick={handleCreateProduct}
             >
-              <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+              <div className="flex size-6 items-center justify-center rounded-md border bg-background shrink-0">
                 <Plus className="size-4" />
               </div>
-              <div className="font-medium text-muted-foreground">
+              <div className="font-medium text-muted-foreground truncate">
                 New Product
               </div>
             </DropdownMenuItem>

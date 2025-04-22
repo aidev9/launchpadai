@@ -1,12 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import { cookies } from "next/headers";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+// Following the exact Next.js route handler pattern for dynamic routes
+export async function GET(request: Request) {
+  // Get the id from the URL path
+  const url = new URL(request.url);
+  const id = url.pathname.split("/").pop();
+
   try {
     // Verify user is authenticated
     const userId = await getCurrentUserId();
@@ -14,7 +16,6 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { id } = params;
     const filePath = `/tmp/${id}`;
 
     // Check if file exists

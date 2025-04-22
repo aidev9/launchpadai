@@ -428,7 +428,7 @@ export function ProductDashboard() {
           <CardHeader className="pb-2">
             <CardTitle>Next Steps</CardTitle>
             <p className="text-muted-foreground text-sm">
-              Continue to build your product
+              Continue building your product
             </p>
           </CardHeader>
           <CardContent className="flex flex-col space-y-3">

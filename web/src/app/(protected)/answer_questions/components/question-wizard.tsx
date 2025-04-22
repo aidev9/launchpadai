@@ -29,6 +29,8 @@ import {
   Plus,
   Check,
   Filter,
+  FileSearch,
+  Download,
 } from "lucide-react";
 import { ensureProductQuestions } from "@/lib/firebase/products";
 import { Badge } from "@/components/ui/badge";
@@ -97,20 +99,21 @@ const PhaseCategory = memo(
     answeredCount: number;
     totalCount: number;
   }) => (
-    <div
-      className={`flex items-center justify-between p-2 rounded cursor-pointer ${
-        isSelected ? "bg-primary/10" : "hover:bg-muted"
-      }`}
+    <button
       onClick={() => onToggle(phase.value)}
+      className={`flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm transition-colors ${
+        isSelected
+          ? "bg-primary text-primary-foreground"
+          : "bg-muted hover:bg-muted/80"
+      }`}
     >
-      <div className="flex items-center">
-        {isSelected && <Check className="h-4 w-4 mr-2 text-primary" />}
-        <span className="font-medium">{phase.label}</span>
-      </div>
-      <div className="text-xs text-muted-foreground">
+      {phase.label}
+      <span
+        className={`text-xs ${isSelected ? "text-primary-foreground" : "text-muted-foreground"}`}
+      >
         {answeredCount}/{totalCount}
-      </div>
-    </div>
+      </span>
+    </button>
   )
 );
 
@@ -723,12 +726,23 @@ export function QuestionWizard() {
   }
 
   return (
-    <div className="flex gap-6">
-      {/* Left sidebar with phases */}
-      <div className="w-64 flex-shrink-0">
-        <h3 className="font-medium mb-4">Question Categories</h3>
+    <div>
+      {/* Header row with title */}
+      <div className="mb-6">
+        <h3 className="text-lg font-medium mb-2">Filter by Phase</h3>
 
-        <div className="space-y-2">
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button
+            onClick={() => setSelectedPhases([])}
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm transition-colors ${
+              selectedPhases.length === 0
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted hover:bg-muted/80"
+            }`}
+          >
+            All
+          </button>
+
           {phases.map((phase) => (
             <PhaseCategory
               key={phase.value}
@@ -742,11 +756,9 @@ export function QuestionWizard() {
         </div>
       </div>
 
-      {/* Main content */}
-      <div
-        className={`flex-1 min-w-0 transition-opacity duration-150 ${isPending ? "opacity-70" : "opacity-100"}`}
-      >
-        <div className="mb-6">
+      {/* Main content area with questions */}
+      <div className="flex flex-col gap-6">
+        <div className="flex-1 min-w-0 transition-opacity duration-150 ${isPending ? 'opacity-70' : 'opacity-100'}">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium">
               Progress: {answeredFilteredQuestions.length} of{" "}
@@ -826,19 +838,19 @@ export function QuestionWizard() {
           </Card>
         )}
 
-        <div className="mt-4 flex justify-end">
+        {/* Add Question Button at the bottom */}
+        <div className="flex justify-center mt-4">
           <Button
-            variant="outline"
-            onClick={() => setModalOpen(true)}
+            variant="default"
             className="flex items-center gap-1"
+            onClick={() => setModalOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            Add Custom Question
+            Add Question
           </Button>
         </div>
       </div>
 
-      {/* Add Question Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
