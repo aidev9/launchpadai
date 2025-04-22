@@ -230,3 +230,128 @@ export async function getQuestion(id: string) {
     };
   }
 }
+
+interface QuestionRecord {
+  id: string;
+  questionId: string;
+  productId: string;
+  answer: string;
+  phase: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Get all questions for a given product
+export async function getProductQuestions(productId: string) {
+  try {
+    const questionsSnapshot = await adminDb
+      .collection("questions")
+      .where("productId", "==", productId)
+      .get();
+
+    if (questionsSnapshot.empty) {
+      return { success: true, questions: [] };
+    }
+
+    const questions = questionsSnapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return { success: true, questions };
+  } catch (error) {
+    console.error("Error getting questions:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+// Get all questions (admin function)
+export async function getAllQuestionsAdmin() {
+  try {
+    const questionsSnapshot = await adminDb.collection("questions").get();
+
+    if (questionsSnapshot.empty) {
+      return { success: true, questions: [] };
+    }
+
+    const questions = questionsSnapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return { success: true, questions };
+  } catch (error) {
+    console.error("Error getting questions:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+// Save a question answer
+export async function saveQuestionAnswer(
+  productId: string,
+  questionId: string,
+  answer: string,
+  phase: string = ""
+) {
+  try {
+    // Check if this question has already been answered
+    const existingSnapshot = await adminDb
+      .collection("questions")
+      .where("productId", "==", productId)
+      .where("questionId", "==", questionId)
+      .limit(1)
+      .get();
+
+    const now = new Date();
+
+    if (!existingSnapshot.empty) {
+      // Update existing answer
+      const docId = existingSnapshot.docs[0].id;
+      await adminDb.collection("questions").doc(docId).update({
+        answer,
+        updatedAt: now,
+      });
+
+      return { success: true, id: docId };
+    } else {
+      // Create new answer
+      const newQuestion: Omit<QuestionRecord, "id"> = {
+        questionId,
+        productId,
+        answer,
+        phase,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const docRef = await adminDb.collection("questions").add(newQuestion);
+      return { success: true, id: docRef.id };
+    }
+  } catch (error) {
+    console.error("Error saving question answer:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+// Delete a question
+export async function deleteQuestionAdmin(questionId: string) {
+  try {
+    await adminDb.collection("questions").doc(questionId).delete();
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting question:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}

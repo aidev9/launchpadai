@@ -22,6 +22,7 @@ import {
   MessageSquare,
   FileSearch,
   Download,
+  ChevronRight,
 } from "lucide-react";
 import { deleteProduct } from "@/lib/firebase/products";
 import { useAtom } from "jotai";
@@ -418,7 +419,10 @@ export function ProductDashboard() {
             </p>
           </CardHeader>
           <CardContent className="flex flex-col space-y-3">
-            <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+            <div
+              onClick={() => router.push(`/answer_questions`)}
+              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+            >
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
                   <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -433,14 +437,21 @@ export function ProductDashboard() {
                 </div>
               </div>
               <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/answer_questions`);
+                }}
                 size="sm"
                 className="bg-black text-white hover:bg-black/90 min-w-[70px] h-8"
               >
-                Start
+                Get Started <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
 
-            <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+            <div
+              onClick={() => router.push(`/review_assets`)}
+              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+            >
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
                   <FileSearch className="h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -455,14 +466,21 @@ export function ProductDashboard() {
                 </div>
               </div>
               <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/review_assets`);
+                }}
                 size="sm"
                 className="bg-black text-white hover:bg-black/90 min-w-[70px] h-8"
               >
-                Open
+                Get Started <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
 
-            <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+            <div
+              onClick={() => router.push(`/download_assets`)}
+              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+            >
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
                   <Download className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -477,10 +495,14 @@ export function ProductDashboard() {
                 </div>
               </div>
               <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/download_assets`);
+                }}
                 size="sm"
                 className="bg-black text-white hover:bg-black/90 min-w-[70px] h-8"
               >
-                Download
+                Get Started <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
           </CardContent>
