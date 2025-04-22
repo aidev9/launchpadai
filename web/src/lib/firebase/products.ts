@@ -177,10 +177,24 @@ export async function getAllProducts() {
       products,
     };
   } catch (error) {
+    // Check if it's an authentication error
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (
+      errorMessage.includes("not authenticated") ||
+      errorMessage.includes("Authentication failed")
+    ) {
+      console.error("Authentication error in getAllProducts:", errorMessage);
+      return {
+        success: false,
+        error: "Authentication required. Please sign in again.",
+        authError: true,
+      };
+    }
+
     console.error("Failed to fetch products:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     };
   }
 }

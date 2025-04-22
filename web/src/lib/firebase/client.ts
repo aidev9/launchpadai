@@ -59,7 +59,7 @@ export const signOutUser = async (router?: ReturnType<typeof useRouter>) => {
     // Route to the home page or any other page
     // Only navigate if router is provided
     if (router) {
-      router.push("/");
+      router.push("/auth/signin");
       router.refresh(); // Ensure the UI updates
     }
     console.log("User signed out successfully");

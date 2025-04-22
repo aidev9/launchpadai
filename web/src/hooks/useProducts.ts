@@ -102,6 +102,7 @@ export function useProducts() {
           };
         } else {
           const errorMsg = result.error || "Failed to fetch products";
+          console.error(`[useProducts] fetchProducts failed: ${errorMsg}`);
           setError(errorMsg);
           return { success: false, error: errorMsg };
         }
@@ -109,7 +110,22 @@ export function useProducts() {
         const errorMessage =
           error instanceof Error ? error.message : "Failed to fetch products";
         setError(errorMessage);
-        console.error("Failed to fetch products:", error);
+        console.error("[useProducts] Error fetching products:", error);
+
+        // Handle authentication errors specifically
+        if (
+          errorMessage.includes("not authenticated") ||
+          errorMessage.includes("Authentication failed")
+        ) {
+          console.log(
+            "[useProducts] Authentication error detected, redirecting to sign in"
+          );
+          // If we're in a browser environment, redirect to sign in
+          if (typeof window !== "undefined") {
+            window.location.href = "/auth/signin";
+          }
+        }
+
         return { success: false, error: errorMessage };
       } finally {
         setIsLoading(false);

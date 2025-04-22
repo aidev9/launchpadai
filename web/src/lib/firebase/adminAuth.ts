@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 
 /**
  * Get current user ID from Firebase session cookie
- * In a production app, this would verify the session cookie and extract the user ID
+ * Throws an error if the user is not authenticated
  */
 export async function getCurrentUserId(): Promise<string> {
   try {
@@ -13,23 +13,22 @@ export async function getCurrentUserId(): Promise<string> {
     const sessionCookie = cookieStore.get("session")?.value;
 
     if (!sessionCookie) {
-      console.warn("No session cookie found, using default user ID");
-      return "current_user_id"; // Fallback for development
+      throw new Error("No session cookie found. User is not authenticated.");
     }
 
     // Verify the session cookie with Firebase Admin
-    try {
-      const decodedClaims = await adminAuth.verifySessionCookie(
-        sessionCookie,
-        true
-      );
-      return decodedClaims.uid; // Return the actual user ID from the verified session
-    } catch (error) {
-      console.error("Error verifying session cookie:", error);
-      return "current_user_id"; // Fallback for development
+    const decodedClaims = await adminAuth.verifySessionCookie(
+      sessionCookie,
+      true
+    );
+
+    if (!decodedClaims.uid) {
+      throw new Error("Invalid user ID in session");
     }
+
+    return decodedClaims.uid;
   } catch (error) {
-    console.error("Error getting user ID:", error);
-    return "current_user_id"; // Fallback for development
+    console.error("Error verifying session cookie:", error);
+    throw new Error("Authentication failed. Please sign in again.");
   }
 }
