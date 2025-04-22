@@ -1,0 +1,50 @@
+"use server";
+
+import { adminDb } from "./admin";
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
+
+// Get the answers reference for a specific user and product
+function getUserAnswersRef(userId: string, productId: string) {
+  return adminDb
+    .collection("products")
+    .doc(userId)
+    .collection("products")
+    .doc(productId)
+    .collection("answers");
+}
+
+// Interface for question answers
+export interface QuestionAnswer {
+  id: string;
+  question: string;
+  answer: string;
+  questionId: string;
+}
+
+/**
+ * Get all question answers for a product
+ */
+export async function getAllQuestionAnswers(productId: string) {
+  try {
+    const userId = await getCurrentUserId();
+    const answersRef = getUserAnswersRef(userId, productId);
+
+    const snapshot = await answersRef.get();
+
+    const answers = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as QuestionAnswer[];
+
+    return {
+      success: true,
+      answers,
+    };
+  } catch (error) {
+    console.error(`Failed to fetch answers for product ${productId}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}

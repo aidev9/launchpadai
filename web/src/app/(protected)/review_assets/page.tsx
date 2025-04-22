@@ -5,6 +5,7 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Provider } from "jotai";
 import { AssetsReviewer } from "./components/assets-reviewer";
+import { PhaseToolbar } from "./components/phase-toolbar";
 
 // Force dynamic rendering since we use cookies
 export const dynamic = "force-dynamic";
@@ -38,6 +39,10 @@ export default async function ReviewAssets() {
           <p className="text-muted-foreground">
             View and edit the assets generated for your startup.
           </p>
+        </div>
+
+        <div className="mb-6">
+          <PhaseToolbar />
         </div>
 
         <div className="flex-1 overflow-auto px-1 py-1 lg:space-y-0">
