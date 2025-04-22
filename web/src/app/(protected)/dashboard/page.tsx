@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -52,6 +52,7 @@ export default function Dashboard() {
     selectedProduct,
     setSelectedProduct,
     setSelectedProductId,
+    clearProductSelection,
   } = useProducts();
   const [filterQuery, setFilterQuery] = useAtom(productFilterAtom);
   const router = useRouter();
@@ -60,12 +61,18 @@ export default function Dashboard() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Refresh products list when component mounts
+  // Add a ref to track initial load state
+  const initialLoadRef = useRef(false);
+
+  // Refresh products list only on initial mount
   useEffect(() => {
-    // Force a refresh from the server to get the latest data
-    fetchProducts(true).catch((err) => {
-      console.error("Error refreshing products:", err);
-    });
+    if (!initialLoadRef.current) {
+      initialLoadRef.current = true;
+      // Force a refresh from the server to get the latest data
+      fetchProducts(true).catch((err) => {
+        console.error("Error refreshing products:", err);
+      });
+    }
   }, [fetchProducts]);
 
   const handleCreateProduct = () => {
@@ -96,11 +103,9 @@ export default function Dashboard() {
     try {
       const result = await deleteProduct(productToDelete.id);
       if (result.success) {
-        // If we're deleting the currently selected product, clear the localStorage value
+        // If we're deleting the currently selected product, clear the selection
         if (productToDelete.id === selectedProduct?.id) {
-          localStorage.removeItem("selectedProductId");
-          setSelectedProductId(null);
-          setSelectedProduct(null);
+          clearProductSelection();
         }
 
         // Refresh products list
@@ -215,9 +220,9 @@ export default function Dashboard() {
 
       <Main>
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight">Your Products</h1>
-            <Button onClick={handleCreateProduct}>
+            <Button onClick={handleCreateProduct} className="w-full md:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Create New Product
             </Button>
@@ -226,7 +231,7 @@ export default function Dashboard() {
           <div className="relative w-full max-w-sm">
             <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search products..."
+              placeholder="Filter products..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
               className="pl-10"

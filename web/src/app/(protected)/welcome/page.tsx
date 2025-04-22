@@ -29,6 +29,7 @@ import { PlusCircle, Search as SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { countProducts } from "@/lib/firebase/products";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -97,6 +98,16 @@ export default function Welcome() {
 
       <Main>
         <div className="flex flex-col gap-8">
+          {/* Breadcrumbs */}
+          <div className="mb-2">
+            <Breadcrumbs
+              items={[
+                { label: "Products", href: "/dashboard" },
+                { label: "Welcome", href: "/welcome", isCurrentPage: true },
+              ]}
+            />
+          </div>
+
           {/* Welcome Header */}
           <div className="flex flex-col items-center text-center space-y-4 mb-4">
             <h1 className="text-4xl font-bold tracking-tight">
@@ -118,7 +129,7 @@ export default function Welcome() {
             <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search templates..."
+              placeholder="Filter templates..."
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

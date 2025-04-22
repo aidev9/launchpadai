@@ -15,141 +15,90 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+// Cache configuration
+const CACHE_TTL = 60000; // 1 minute cache validity
+
 export function useProducts() {
   const [isLoading, setIsLoading] = useState(false);
-  const [hasProducts, setHasProducts] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Track last fetch time to avoid excessive API calls
-  const lastProductsFetchRef = useRef<number>(0);
-  const productCacheRef = useRef<Map<string, Product>>(new Map());
-  const fetchingRef = useRef<boolean>(false);
-  // Track if initial fetch has been attempted regardless of result
-  const initialFetchAttemptedRef = useRef<boolean>(false);
-  // Keep track of product IDs that don't exist in the database
-  const nonExistentProductIdsRef = useRef<Set<string>>(new Set());
+  // Cache and fetch state management with refs to persist across renders
+  const cacheRef = useRef<{
+    products: {
+      data: Product[];
+      timestamp: number;
+    } | null;
+    productMap: Map<string, { data: Product; timestamp: number }>;
+    nonExistentIds: Set<string>;
+  }>({
+    products: null,
+    productMap: new Map(),
+    nonExistentIds: new Set(),
+  });
 
+  const fetchingRef = useRef<{ products: boolean; productId: string | null }>({
+    products: false,
+    productId: null,
+  });
+
+  const initialFetchAttemptedRef = useRef<boolean>(false);
+
+  // Jotai state
   const [products, setProducts] = useAtom(productsAtom);
   const [selectedProductId, setSelectedProductId] = useAtom(
     selectedProductIdAtom
   );
   const [selectedProduct, setSelectedProduct] = useAtom(selectedProductAtom);
 
-  // Fetch products with throttling and caching
+  // Fetch all products - with caching and throttling
   const fetchProducts = useCallback(
     async (force = false): Promise<ApiResponse<Product>> => {
-      // If force is true, we want to bypass throttling and always fetch from the server
-      if (force) {
-        console.log("[useProducts] Force fetching products from server");
-
-        // But still protect against concurrent fetches
-        if (fetchingRef.current) {
-          console.log(
-            "[useProducts] Waiting for current fetch to complete before force fetching"
-          );
-          // Wait for any in-progress fetch to complete first
-          let waitAttempts = 0;
-          while (fetchingRef.current && waitAttempts < 10) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            waitAttempts++;
-          }
-
-          if (fetchingRef.current) {
-            console.log("[useProducts] Gave up waiting for previous fetch");
-            return { success: true, products: products as Product[] };
-          }
-        }
-
-        // Proceed with forced fetch
-        setIsLoading(true);
-        fetchingRef.current = true;
-        setError(null);
-
-        try {
-          const result = await getAllProducts();
-          initialFetchAttemptedRef.current = true;
-
-          if (result.success && result.products) {
-            const productsList = result.products as Product[];
-
-            // Update cache
-            productCacheRef.current.clear(); // Clear existing cache
-            productsList.forEach((product) => {
-              productCacheRef.current.set(product.id, product);
-            });
-
-            // Update last fetch time
-            lastProductsFetchRef.current = Date.now();
-
-            setProducts(productsList);
-            setHasProducts(productsList.length > 0);
-            return {
-              success: result.success,
-              products: productsList,
-              error: result.error,
-            };
-          } else {
-            const errorMsg = result.error || "Failed to fetch products";
-            setError(errorMsg);
-            return { success: false, error: errorMsg };
-          }
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Failed to fetch products";
-          setError(errorMessage);
-          console.error("Failed to fetch products:", error);
-          return { success: false, error: errorMessage };
-        } finally {
-          setIsLoading(false);
-          fetchingRef.current = false;
-        }
+      // Skip if already fetching
+      if (fetchingRef.current.products && !force) {
+        return { success: true, products: products };
       }
 
-      // Normal non-forced fetch with caching and throttling:
-
-      // Prevent concurrent fetches
-      if (fetchingRef.current && !force) {
-        console.log("[useProducts] Fetch already in progress, skipping");
-        return { success: true, products: products as Product[] };
-      }
-
-      // Check if we've recently fetched - throttle to once per minute unless forced
+      // Check cache if not forcing refresh
       const now = Date.now();
-      const timeSinceLastFetch = now - lastProductsFetchRef.current;
-
-      // If we already have products and aren't forcing a refresh
-      // and it's been less than a minute, just use cached data
-      if (!force && products.length > 0 && timeSinceLastFetch < 60000) {
-        setHasProducts(true);
-        return { success: true, products: products as Product[] };
+      if (
+        !force &&
+        cacheRef.current.products &&
+        now - cacheRef.current.products.timestamp < CACHE_TTL
+      ) {
+        return { success: true, products: cacheRef.current.products.data };
       }
 
+      // Proceed with network fetch
       setIsLoading(true);
-      fetchingRef.current = true;
+      fetchingRef.current.products = true;
       setError(null);
 
       try {
         const result = await getAllProducts();
-        // Mark that we've attempted a fetch
         initialFetchAttemptedRef.current = true;
 
         if (result.success && result.products) {
           const productsList = result.products as Product[];
 
           // Update cache
+          cacheRef.current.products = {
+            data: productsList,
+            timestamp: now,
+          };
+
+          // Also update individual product cache entries
           productsList.forEach((product) => {
-            productCacheRef.current.set(product.id, product);
+            cacheRef.current.productMap.set(product.id, {
+              data: product,
+              timestamp: now,
+            });
           });
 
-          // Update last fetch time
-          lastProductsFetchRef.current = now;
-
           setProducts(productsList);
-          setHasProducts(productsList.length > 0);
+
           return {
-            success: result.success,
+            success: true,
             products: productsList,
-            error: result.error,
           };
         } else {
           const errorMsg = result.error || "Failed to fetch products";
@@ -164,20 +113,17 @@ export function useProducts() {
         return { success: false, error: errorMessage };
       } finally {
         setIsLoading(false);
-        fetchingRef.current = false;
+        fetchingRef.current.products = false;
       }
     },
-    [products.length, setProducts]
+    [products, setProducts]
   );
 
-  // Optimized product fetch with caching
+  // Fetch a single product by ID
   const fetchProductById = useCallback(
     async (productId: string): Promise<ApiResponse<Product>> => {
-      // Skip fetching if we already know this product doesn't exist
-      if (nonExistentProductIdsRef.current.has(productId)) {
-        console.log(
-          `[useProducts] Product ${productId} is known not to exist, skipping fetch`
-        );
+      // Skip if known not to exist
+      if (cacheRef.current.nonExistentIds.has(productId)) {
         return {
           success: false,
           error: `Product with ID ${productId} does not exist`,
@@ -185,37 +131,50 @@ export function useProducts() {
       }
 
       // Check cache first
-      if (productCacheRef.current.has(productId)) {
-        const product = productCacheRef.current.get(productId)!;
-        console.log(`[useProducts] Cache hit for product ${productId}`);
+      const cachedProduct = cacheRef.current.productMap.get(productId);
+      if (cachedProduct && Date.now() - cachedProduct.timestamp < CACHE_TTL) {
         return {
           success: true,
-          product,
+          product: cachedProduct.data,
         };
       }
 
-      // If another fetch is already in progress, log it but continue anyway
-      // This prevents error on page refresh when multiple components try to load the product
-      if (fetchingRef.current) {
-        console.log(
-          "[useProducts] Another fetch is already in progress, but we'll continue anyway"
-        );
+      // Check if this product ID is already being fetched
+      if (fetchingRef.current.productId === productId) {
+        // If found in products array while waiting, return it
+        const existingProduct = products.find((p) => p.id === productId);
+        if (existingProduct) {
+          return { success: true, product: existingProduct };
+        }
+
+        // Otherwise wait a bit and return what we have
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return selectedProduct
+          ? { success: true, product: selectedProduct }
+          : { success: false, error: "Product not found" };
       }
 
+      // Fetch from network
       setIsLoading(true);
-      fetchingRef.current = true;
+      fetchingRef.current.productId = productId;
       setError(null);
 
       try {
         const result = await getProduct(productId);
+
         if (result.success && result.product) {
-          // Cache the result
           const product = result.product as Product;
-          productCacheRef.current.set(productId, product);
+
+          // Cache the result
+          cacheRef.current.productMap.set(productId, {
+            data: product,
+            timestamp: Date.now(),
+          });
+
           return { success: true, product };
         } else {
-          // Mark this product ID as non-existent to avoid further fetches
-          nonExistentProductIdsRef.current.add(productId);
+          // Mark as non-existent to avoid future fetches
+          cacheRef.current.nonExistentIds.add(productId);
 
           const errorMsg =
             result.error || `Failed to fetch product with ID ${productId}`;
@@ -223,105 +182,81 @@ export function useProducts() {
           return { success: false, error: errorMsg };
         }
       } catch (error) {
-        // Mark this product ID as non-existent on errors too
-        nonExistentProductIdsRef.current.add(productId);
+        // Mark as non-existent on errors too
+        cacheRef.current.nonExistentIds.add(productId);
 
         const errorMessage =
           error instanceof Error
             ? error.message
             : `Failed to fetch product with ID ${productId}`;
         setError(errorMessage);
-        console.error(`Failed to fetch product with ID ${productId}:`, error);
         return { success: false, error: errorMessage };
       } finally {
         setIsLoading(false);
-        fetchingRef.current = false;
+        fetchingRef.current.productId = null;
       }
     },
-    []
+    [products, selectedProduct]
   );
 
-  // Optimized product selection with caching
+  // Consolidated method for selecting a product - updates both ID and data atoms
   const selectProduct = useCallback(
     async (productId: string): Promise<ApiResponse<Product>> => {
-      console.log("[useProduct] selectProduct called with ID:", productId);
-
       // Skip if already selected
       if (
         selectedProductId === productId &&
         selectedProduct?.id === productId
       ) {
-        console.log("[useProduct] Product already selected, skipping");
         return { success: true, product: selectedProduct };
       }
 
-      // Skip if we know this product doesn't exist
-      if (nonExistentProductIdsRef.current.has(productId)) {
-        console.log(
-          `[useProduct] Product ${productId} is known not to exist, clearing selection`
-        );
-        localStorage.removeItem("selectedProductId");
-        setSelectedProductId(null);
-        setSelectedProduct(null);
+      // Skip if we know this ID doesn't exist
+      if (cacheRef.current.nonExistentIds.has(productId)) {
+        clearProductSelection();
         return {
           success: false,
           error: `Product with ID ${productId} does not exist`,
         };
       }
 
-      // Update the ID atom immediately for better UX
+      // Optimistically update the selected ID immediately for better UX
       setSelectedProductId(productId);
 
-      // Explicitly update localStorage for consistency
-      // (even though atomWithStorage should handle this)
-      localStorage.setItem("selectedProductId", productId);
-
-      // Check cache first (both Map cache and existing products array)
-      if (productCacheRef.current.has(productId)) {
-        const cachedProduct = productCacheRef.current.get(productId)!;
-        console.log("[useProduct] Using cached product:", cachedProduct.name);
-        setSelectedProduct(cachedProduct);
-        return { success: true, product: cachedProduct };
+      // First check if we have the product in any cache
+      // Check product map cache
+      const cachedProduct = cacheRef.current.productMap.get(productId);
+      if (cachedProduct && Date.now() - cachedProduct.timestamp < CACHE_TTL) {
+        setSelectedProduct(cachedProduct.data);
+        return { success: true, product: cachedProduct.data };
       }
 
-      // If not in Map cache, check products array (in-memory state)
+      // Check products array (in-memory state)
       const existingProduct = products.find((p) => p.id === productId);
       if (existingProduct) {
-        console.log(
-          "[useProduct] Found product in state:",
-          existingProduct.name
-        );
-        // Cache it for future lookups
-        productCacheRef.current.set(productId, existingProduct);
+        // Update the cached product map
+        cacheRef.current.productMap.set(productId, {
+          data: existingProduct,
+          timestamp: Date.now(),
+        });
+
         setSelectedProduct(existingProduct);
         return { success: true, product: existingProduct };
       }
 
       // If not found in any cache, fetch from API
-      // Don't check fetchingRef here to avoid errors on page refresh
-      console.log("[useProduct] Product not in cache, fetching from API");
       try {
         const result = await fetchProductById(productId);
+
         if (result.success && result.product) {
-          console.log(
-            "[useProduct] Successfully fetched product:",
-            (result.product as Product).name
-          );
-          setSelectedProduct(result.product as Product);
+          setSelectedProduct(result.product);
           return result;
         } else {
-          console.error("[useProduct] Failed to fetch product:", result.error);
-          // Clear the selection if the product doesn't exist
-          localStorage.removeItem("selectedProductId");
-          setSelectedProductId(null);
-          setSelectedProduct(null);
+          // Clear selection if product doesn't exist
+          clearProductSelection();
           return result;
         }
       } catch (error) {
-        console.error("[useProduct] Error fetching product:", error);
-        localStorage.removeItem("selectedProductId");
-        setSelectedProductId(null);
-        setSelectedProduct(null);
+        clearProductSelection();
         return {
           success: false,
           error: error instanceof Error ? error.message : String(error),
@@ -330,7 +265,7 @@ export function useProducts() {
     },
     [
       selectedProductId,
-      selectedProduct?.id,
+      selectedProduct,
       products,
       setSelectedProductId,
       setSelectedProduct,
@@ -338,72 +273,81 @@ export function useProducts() {
     ]
   );
 
-  // Initialize products data on first mount
+  // Helper to clear product selection
+  const clearProductSelection = useCallback(() => {
+    localStorage.removeItem("selectedProductId");
+    setSelectedProductId(null);
+    setSelectedProduct(null);
+  }, [setSelectedProductId, setSelectedProduct]);
+
+  // Initialize products on first mount
   useEffect(() => {
-    // Only fetch if we have no products, aren't currently loading, and haven't attempted a fetch yet
     if (
       !isLoading &&
       products.length === 0 &&
-      !fetchingRef.current &&
+      !fetchingRef.current.products &&
       !initialFetchAttemptedRef.current
     ) {
-      console.log("[useProducts] Initial product fetch");
       fetchProducts().catch((err) => {
         console.error("[useProducts] Error during initial fetch:", err);
       });
     }
   }, [fetchProducts, isLoading, products.length]);
 
-  // Handle selected product loading
+  // Handle loading selected product when ID changes
   useEffect(() => {
-    console.log("[USE EFFECT] selectedProductId changed:", selectedProduct);
-    // Skip if no product ID is selected or product already matches ID
+    // Skip if no selected ID or product already matches ID
     if (
       !selectedProductId ||
       selectedProduct?.id === selectedProductId ||
-      nonExistentProductIdsRef.current.has(selectedProductId)
+      cacheRef.current.nonExistentIds.has(selectedProductId)
     ) {
       return;
     }
 
-    // Get product data if needed - don't check isLoading or fetchingRef here
-    // to avoid issues on page refresh where multiple components may attempt to load
-    console.log("[useProducts] Loading selected product:", selectedProductId);
-    // Use a local variable to track if this effect instance is still relevant
-    let isCurrent = true;
+    let isMounted = true;
+
     selectProduct(selectedProductId).catch((err) => {
       console.error("[useProducts] Error loading selected product:", err);
-      // Only clear selection if this effect instance is still relevant
-      if (isCurrent) {
-        setSelectedProductId(null);
-        setSelectedProduct(null);
+      if (isMounted) {
+        clearProductSelection();
       }
     });
-    // Cleanup function to prevent state updates if the effect re-runs or unmounts
+
     return () => {
-      isCurrent = false;
+      isMounted = false;
     };
   }, [
     selectedProductId,
-    selectedProduct?.id,
+    selectedProduct,
     selectProduct,
-    setSelectedProductId,
-    setSelectedProduct,
+    clearProductSelection,
   ]);
 
-  // Memoize return values to prevent unnecessary re-renders
-  const returnValue = useMemo(
+  // Compute derived state
+  const hasProducts = products.length > 0;
+
+  // Return memoized API to prevent unnecessary renders
+  return useMemo(
     () => ({
+      // Data state
       products,
       selectedProduct,
       selectedProductId,
+
+      // UI state
       isLoading,
       hasProducts,
       error,
+
+      // Methods
       fetchProducts,
-      fetchProductById,
       selectProduct,
-      setSelectedProductId,
+      clearProductSelection,
+
+      // For compatibility with existing code
+      fetchProductById,
+      setSelectedProductId: selectProduct,
       setSelectedProduct,
     }),
     [
@@ -414,12 +358,10 @@ export function useProducts() {
       hasProducts,
       error,
       fetchProducts,
-      fetchProductById,
       selectProduct,
-      setSelectedProductId,
+      clearProductSelection,
+      fetchProductById,
       setSelectedProduct,
     ]
   );
-
-  return returnValue;
 }

@@ -52,6 +52,7 @@ import {
 import { useAtom } from "jotai";
 import { CountrySelect } from "@/components/ui/country-select";
 import { set } from "nprogress";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -226,19 +227,22 @@ export default function ProductWizard() {
             ...result.data,
           } as Product;
 
-          console.log("[dddddd] updatedProduct", updatedProduct);
+          console.log("[Product Creation] Updated product:", updatedProduct);
 
-          setSelectedProduct(updatedProduct);
-          setSelectedProductId(updatedProduct.id);
-
-          console.log("[VVVVV] result.id", result.id);
-
-          // Save to localStorage for persistence
+          // Set product ID in localStorage first for better persistence
           localStorage.setItem("selectedProductId", result.id);
-        }
 
-        // Redirect to product page instead of dashboard
-        router.push(`/product`);
+          // Then update the atoms
+          setSelectedProductId(result.id);
+          setSelectedProduct(updatedProduct);
+
+          // Add a small delay before navigation to ensure state is updated
+          // This is especially important for mobile browsers
+          await new Promise((resolve) => setTimeout(resolve, 300));
+
+          // Use replace instead of push to avoid navigation history issues on mobile
+          router.replace(`/product`);
+        }
       } else {
         console.error(
           isEditMode
@@ -338,16 +342,29 @@ export default function ProductWizard() {
       <Main>
         <div className="max-w-3xl mx-auto">
           <div className="mb-8">
-            <Button
-              variant="ghost"
-              className="mb-4"
-              onClick={() =>
-                router.push(isEditMode ? "/dashboard" : "/welcome")
-              }
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {isEditMode ? "Back to Dashboard" : "Back to Templates"}
-            </Button>
+            <div className="mb-4">
+              <Breadcrumbs
+                items={[
+                  { label: "Products", href: "/dashboard" },
+                  ...(isEditMode && productToEdit
+                    ? [
+                        { label: productToEdit.name, href: "/product" },
+                        {
+                          label: "Edit Product",
+                          href: "",
+                          isCurrentPage: true,
+                        },
+                      ]
+                    : [
+                        {
+                          label: "Create Product",
+                          href: "",
+                          isCurrentPage: true,
+                        },
+                      ]),
+                ]}
+              />
+            </div>
 
             <h1 className="text-3xl font-bold tracking-tight mb-2">
               {isEditMode
@@ -505,13 +522,13 @@ export default function ProductWizard() {
 
                       <div className="mt-4">
                         <p className="text-sm font-medium mb-2">Suggestions:</p>
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className="grid grid-cols-1 gap-3">
                           {problemSuggestions.map((suggestion, index) => (
                             <Button
                               key={index}
                               variant="outline"
                               type="button"
-                              className="justify-start h-auto py-2 px-4 text-left"
+                              className="justify-start h-auto min-h-[3.5rem] py-3 px-4 text-left text-sm break-words whitespace-normal font-normal"
                               onClick={() =>
                                 form.setValue("problem", suggestion)
                               }
@@ -587,9 +604,9 @@ export default function ProductWizard() {
                 </form>
               </Form>
             </CardContent>
-            <CardFooter className="flex justify-between border-t pt-4">
+            <CardFooter className="flex justify-center border-t pt-4">
               {formError && (
-                <div className="text-destructive text-sm mr-auto">
+                <div className="text-destructive text-sm absolute left-4">
                   {formError}
                 </div>
               )}
