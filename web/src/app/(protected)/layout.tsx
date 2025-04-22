@@ -7,6 +7,13 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, getIdToken } from "firebase/auth";
 import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { DevTools } from "jotai-devtools";
+import { useAtomsDebugValue } from "jotai-devtools/utils";
+
+const DebugAtoms = () => {
+  useAtomsDebugValue();
+  return null;
+};
 
 export default function RootLayout({
   children,
@@ -104,5 +111,10 @@ export default function RootLayout({
     );
   }
 
-  return <Providers>{children}</Providers>;
+  return (
+    <Providers>
+      <DebugAtoms />
+      {children}
+    </Providers>
+  );
 }

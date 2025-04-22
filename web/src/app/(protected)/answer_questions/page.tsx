@@ -1,15 +1,39 @@
+"use client";
 import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Provider } from "jotai";
-import { QuestionWizard } from "./components/question-wizard";
+import {
+  QuestionWizard,
+  questionModalOpenAtom,
+} from "./components/question-wizard";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { useAtom } from "jotai";
 
 // Force dynamic rendering since we use cookies
 export const dynamic = "force-dynamic";
 
-export default async function AnswerQuestions() {
+// Client component for the button
+function AddQuestionButton() {
+  const [, setModalOpen] = useAtom(questionModalOpenAtom);
+
+  return (
+    <Button
+      variant="default"
+      size="sm"
+      className="flex items-center gap-1"
+      onClick={() => setModalOpen(true)}
+    >
+      <Plus className="h-4 w-4" />
+      Add Question
+    </Button>
+  );
+}
+
+export default function AnswerQuestions() {
   return (
     <Provider>
       <Header fixed>
@@ -32,9 +56,12 @@ export default async function AnswerQuestions() {
               },
             ]}
           />
-          <h2 className="text-2xl font-bold tracking-tight mt-4">
-            Answer Questions
-          </h2>
+          <div className="flex items-center justify-between mt-4">
+            <h2 className="text-2xl font-bold tracking-tight">
+              Answer Questions
+            </h2>
+            <AddQuestionButton />
+          </div>
           <p className="text-muted-foreground">
             Respond to questions to help us generate assets for your startup.
           </p>

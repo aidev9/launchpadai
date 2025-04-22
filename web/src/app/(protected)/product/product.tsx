@@ -187,6 +187,19 @@ export function ProductDashboard() {
     }
   };
 
+  // Navigation handlers
+  const navigateToAnswerQuestions = () => {
+    router.push("/answer_questions");
+  };
+
+  const navigateToReviewAssets = () => {
+    router.push("/review_assets");
+  };
+
+  const navigateToDownloadAssets = () => {
+    router.push("/download_assets");
+  };
+
   // Handle product not found - return early
   if (!selectedProductId) {
     return (
@@ -420,7 +433,7 @@ export function ProductDashboard() {
           </CardHeader>
           <CardContent className="flex flex-col space-y-3">
             <div
-              onClick={() => router.push(`/answer_questions`)}
+              onClick={navigateToAnswerQuestions}
               className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -439,7 +452,7 @@ export function ProductDashboard() {
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
-                  router.push(`/answer_questions`);
+                  navigateToAnswerQuestions();
                 }}
                 size="sm"
                 className="bg-black text-white hover:bg-black/90 min-w-[70px] h-8"
@@ -449,7 +462,7 @@ export function ProductDashboard() {
             </div>
 
             <div
-              onClick={() => router.push(`/review_assets`)}
+              onClick={navigateToReviewAssets}
               className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -468,7 +481,7 @@ export function ProductDashboard() {
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
-                  router.push(`/review_assets`);
+                  navigateToReviewAssets();
                 }}
                 size="sm"
                 className="bg-black text-white hover:bg-black/90 min-w-[70px] h-8"
@@ -478,7 +491,7 @@ export function ProductDashboard() {
             </div>
 
             <div
-              onClick={() => router.push(`/download_assets`)}
+              onClick={navigateToDownloadAssets}
               className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -497,7 +510,7 @@ export function ProductDashboard() {
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
-                  router.push(`/download_assets`);
+                  navigateToDownloadAssets();
                 }}
                 size="sm"
                 className="bg-black text-white hover:bg-black/90 min-w-[70px] h-8"

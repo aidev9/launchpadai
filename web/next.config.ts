@@ -26,6 +26,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  transpilePackages: ["jotai-devtools"],
 };
 
 export default nextConfig;

@@ -4,13 +4,28 @@ import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
+import { questions as staticQuestions } from "@/app/(protected)/answer_questions/data/questions";
+import { productQuestionInputSchema } from "./schema";
 
 // Root products collection reference
 const productsCollection = adminDb.collection("products");
 
+// Questions collection reference
+const questionsCollection = adminDb.collection("questions");
+
 // Get the productsRef for a specific user
 function getUserProductsRef(userId: string) {
-  return productsCollection.doc(userId).collection("products");
+  return adminDb.collection("products").doc(userId).collection("products");
+}
+
+// Get the questionsRef for a specific user
+function getUserQuestionsRef(userId: string) {
+  return questionsCollection.doc(userId).collection("products");
+}
+
+// Get the product questions ref for a specific user and product
+function getProductQuestionsRef(userId: string, productId: string) {
+  return getUserQuestionsRef(userId).doc(productId).collection("questions");
 }
 
 // Schema for product creation/update
@@ -56,6 +71,22 @@ export async function createProduct(data: ProductInput) {
 
     // Add to Firestore
     const docRef = await productsRef.add(productData);
+    const productId = docRef.id;
+
+    console.log(`Created product with ID: ${productId}`);
+
+    try {
+      // Create questions for this product in the questions collection
+      await createProductQuestions(userId, productId);
+      console.log(`Successfully created questions for product ${productId}`);
+    } catch (questionsError) {
+      console.error(
+        `Failed to create questions for product ${productId}:`,
+        questionsError
+      );
+      // Continue with product creation even if questions creation fails
+      // This way we don't lose the product data
+    }
 
     // Revalidate relevant paths
     revalidatePath("/welcome");
@@ -63,7 +94,7 @@ export async function createProduct(data: ProductInput) {
 
     return {
       success: true,
-      id: docRef.id,
+      id: productId,
       data: productData,
     };
   } catch (error) {
@@ -72,6 +103,73 @@ export async function createProduct(data: ProductInput) {
       success: false,
       error: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+/**
+ * Create questions for a product in the questions collection
+ */
+async function createProductQuestions(userId: string, productId: string) {
+  try {
+    console.log(
+      `Creating questions for product ${productId} (user ${userId}) in questions collection`
+    );
+
+    // Get references
+    const productQuestionsRef = getProductQuestionsRef(userId, productId);
+
+    // Create a batch write
+    const batch = adminDb.batch();
+    let count = 0;
+
+    // Add each question from the static questions data
+    for (const staticQuestion of staticQuestions) {
+      try {
+        // Generate a unique ID for each question
+        const questionId = adminDb.collection("_").doc().id; // Generate a Firebase auto-ID
+
+        // Format the question data - without the id from staticQuestions
+        const now = new Date().toISOString();
+        const questionData = {
+          question: staticQuestion.text,
+          answer: null,
+          tags: [staticQuestion.phase.toLowerCase()],
+          phase: staticQuestion.phase,
+          order: staticQuestion.order,
+          createdAt: now,
+          last_modified: now,
+        };
+
+        // Add to batch
+        const newQuestionRef = productQuestionsRef.doc(questionId);
+        batch.set(newQuestionRef, questionData);
+        count++;
+      } catch (err) {
+        console.error(`Error processing question:`, err);
+        // Continue with other questions
+      }
+    }
+
+    if (count === 0) {
+      console.warn(
+        "No questions were added to the batch. Check if staticQuestions is empty or has invalid data."
+      );
+      return { success: false, count: 0 };
+    }
+
+    // Commit the batch
+    await batch.commit();
+    console.log(
+      `Successfully created ${count} questions for product ${productId} in questions collection`
+    );
+
+    return {
+      success: true,
+      count: count,
+    };
+  } catch (error) {
+    console.error("Failed to create product questions:", error);
+    throw error;
   }
 }
 
@@ -252,6 +350,194 @@ export async function countProducts() {
     return {
       success: false,
       count: 0,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Ensure a product has questions
+ * Useful for migrating existing products or recovering from errors
+ */
+export async function ensureProductQuestions(productId: string) {
+  try {
+    if (!productId) {
+      return {
+        success: false,
+        error: "Product ID is required",
+      };
+    }
+
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    // Check if questions already exist in the new structure
+    const questionsRef = getProductQuestionsRef(userId, productId);
+
+    const snapshot = await questionsRef.limit(1).get();
+
+    if (!snapshot.empty) {
+      // Questions already exist in the new structure
+      console.log(
+        `Questions already exist for product ${productId} in the questions collection`
+      );
+      return {
+        success: true,
+        created: false,
+        message: "Questions already exist",
+      };
+    }
+
+    // Check if questions exist in the old structure
+    const oldQuestionsRef = getUserProductsRef(userId)
+      .doc(productId)
+      .collection("questions");
+
+    const oldSnapshot = await oldQuestionsRef.get();
+
+    if (!oldSnapshot.empty) {
+      console.log(
+        `Migrating questions from old structure to new structure for product ${productId}`
+      );
+
+      // Migrate questions from old structure to new structure
+      const batch = adminDb.batch();
+      let count = 0;
+
+      oldSnapshot.docs.forEach((doc) => {
+        const questionData = doc.data();
+        const newQuestionRef = questionsRef.doc(doc.id);
+        batch.set(newQuestionRef, questionData);
+        count++;
+      });
+
+      await batch.commit();
+      console.log(
+        `Successfully migrated ${count} questions for product ${productId}`
+      );
+
+      return {
+        success: true,
+        created: true,
+        migrated: true,
+        count: count,
+      };
+    }
+
+    // No questions exist, create them
+    const result = await createProductQuestions(userId, productId);
+
+    return {
+      success: true,
+      created: true,
+      count: result.count,
+    };
+  } catch (error) {
+    console.error(
+      `Failed to ensure questions for product ${productId}:`,
+      error
+    );
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Migrate all products' questions to the new structure
+ * This is a one-time operation to move from the old subcollection structure to the new collection structure
+ */
+export async function migrateAllProductQuestions() {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    // Get all products
+    const productsRef = getUserProductsRef(userId);
+    const productsSnapshot = await productsRef.get();
+
+    if (productsSnapshot.empty) {
+      return {
+        success: true,
+        migrated: 0,
+        message: "No products found to migrate",
+      };
+    }
+
+    let totalMigrated = 0;
+    const failedProducts = [];
+
+    // For each product, migrate its questions
+    for (const productDoc of productsSnapshot.docs) {
+      const productId = productDoc.id;
+
+      try {
+        // Check if questions exist in the old structure
+        const oldQuestionsRef = productsRef
+          .doc(productId)
+          .collection("questions");
+        const oldSnapshot = await oldQuestionsRef.get();
+
+        if (oldSnapshot.empty) {
+          console.log(`No questions to migrate for product ${productId}`);
+          continue;
+        }
+
+        // Check if questions already exist in the new structure
+        const newQuestionsRef = getProductQuestionsRef(userId, productId);
+        const newSnapshot = await newQuestionsRef.limit(1).get();
+
+        if (!newSnapshot.empty) {
+          console.log(`Questions already migrated for product ${productId}`);
+          continue;
+        }
+
+        // Migrate questions from old structure to new structure
+        const batch = adminDb.batch();
+        let count = 0;
+
+        oldSnapshot.docs.forEach((doc) => {
+          const questionData = doc.data();
+          const newQuestionRef = newQuestionsRef.doc(doc.id);
+          batch.set(newQuestionRef, questionData);
+          count++;
+        });
+
+        await batch.commit();
+        console.log(
+          `Successfully migrated ${count} questions for product ${productId}`
+        );
+        totalMigrated += count;
+      } catch (error) {
+        console.error(
+          `Failed to migrate questions for product ${productId}:`,
+          error
+        );
+        failedProducts.push(productId);
+      }
+    }
+
+    return {
+      success: true,
+      migrated: totalMigrated,
+      failedProducts: failedProducts,
+      message: `Successfully migrated ${totalMigrated} questions. Failed products: ${failedProducts.length}`,
+    };
+  } catch (error) {
+    console.error("Failed to migrate all product questions:", error);
+    return {
+      success: false,
       error: error instanceof Error ? error.message : String(error),
     };
   }
