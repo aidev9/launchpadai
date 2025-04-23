@@ -449,16 +449,7 @@ export function ProductDashboard() {
                   </p>
                 </div>
               </div>
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigateToAnswerQuestions();
-                }}
-                size="sm"
-                className="bg-black text-white hover:bg-black/90 min-w-[70px] h-8"
-              >
-                Get Started <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
+              <ChevronRight className="h-5 w-5 text-gray-400 ml-2 flex-shrink-0" />
             </div>
 
             <div
@@ -478,16 +469,7 @@ export function ProductDashboard() {
                   </p>
                 </div>
               </div>
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigateToReviewAssets();
-                }}
-                size="sm"
-                className="bg-black text-white hover:bg-black/90 min-w-[70px] h-8"
-              >
-                Get Started <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
+              <ChevronRight className="h-5 w-5 text-gray-400 ml-2 flex-shrink-0" />
             </div>
 
             <div
@@ -507,16 +489,7 @@ export function ProductDashboard() {
                   </p>
                 </div>
               </div>
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigateToDownloadAssets();
-                }}
-                size="sm"
-                className="bg-black text-white hover:bg-black/90 min-w-[70px] h-8"
-              >
-                Get Started <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
+              <ChevronRight className="h-5 w-5 text-gray-400 ml-2 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
