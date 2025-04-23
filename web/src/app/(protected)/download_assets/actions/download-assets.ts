@@ -56,11 +56,44 @@ export async function downloadAssets(data: {
 
         if (result.success && result.asset) {
           const asset = result.asset;
-          assetsFolder?.file(
-            asset.document,
+
+          // Use document title or a fallback title
+          let documentTitle = asset.document;
+
+          // If document is empty, try other fields that might contain a title
+          if (!documentTitle) {
+            if (asset.title) {
+              documentTitle = asset.title;
+            } else if (asset.content) {
+              // Try to extract a title from content (first line or first 30 chars)
+              const firstLine = asset.content.split("\n")[0]?.trim();
+              if (firstLine && firstLine.length < 50) {
+                documentTitle = firstLine.replace(/^#\s+/, ""); // Remove Markdown heading
+              } else {
+                documentTitle = asset.content.substring(0, 30).trim() + "...";
+              }
+            } else {
+              documentTitle = `Document ${assetId.substring(0, 6)}`;
+            }
+          }
+
+          // Ensure title is safe for filenames by removing invalid characters
+          const safeTitleForFilename = documentTitle
+            .replace(/[<>:"/\\|?*]/g, "-") // Replace invalid filename characters
+            .replace(/\s+/g, " ") // Normalize whitespace
+            .trim();
+
+          // Generate filename with .md extension
+          const fileName = safeTitleForFilename.endsWith(".md")
+            ? safeTitleForFilename
+            : `${safeTitleForFilename}.md`;
+
+          // Generate content
+          const content =
             asset.content ||
-              `# ${asset.document.replace(".md", "")}\n\nNo content available for this asset.`
-          );
+            `# ${documentTitle}\n\nNo content available for this document.`;
+
+          assetsFolder?.file(fileName, content);
         } else {
           console.error(`Failed to fetch asset ${assetId}: ${result.error}`);
         }
