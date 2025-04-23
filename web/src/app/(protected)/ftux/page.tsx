@@ -33,6 +33,8 @@ import {
   PlusCircle,
   LayoutTemplate,
   FileStack,
+  CheckCircle2,
+  Circle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -40,6 +42,15 @@ import { useRouter } from "next/navigation";
 export default function FTUXPage() {
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
+  const [tasks, setTasks] = useState<
+    Array<{ id: string; text: string; completed: boolean }>
+  >([
+    { id: "signup", text: "Sign Up", completed: true },
+    { id: "watchvideo", text: "Watch video", completed: false },
+    { id: "brainstorm", text: "Brainstorm ideas", completed: false },
+    { id: "createproduct", text: "Create a product", completed: false },
+    { id: "settings", text: "Customize settings", completed: false },
+  ]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(clientAuth, (user) => {
@@ -51,6 +62,40 @@ export default function FTUXPage() {
     return () => unsubscribe();
   }, []);
 
+  // Load tasks from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedTasks = localStorage.getItem("ftux_tasks");
+      if (savedTasks) {
+        try {
+          const parsedTasks = JSON.parse(savedTasks);
+          // Make sure signup is always completed
+          const updatedTasks = parsedTasks.map((task: any) =>
+            task.id === "signup" ? { ...task, completed: true } : task
+          );
+          setTasks(updatedTasks);
+        } catch (e) {
+          console.error("Error parsing tasks from localStorage:", e);
+        }
+      }
+    }
+  }, []);
+
+  // Save tasks to localStorage when they change
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ftux_tasks", JSON.stringify(tasks));
+    }
+  }, [tasks]);
+
+  const toggleTask = (id: string) => {
+    setTasks(
+      tasks.map((task) =>
+        task.id === id ? { ...task, completed: !task.completed } : task
+      )
+    );
+  };
+
   // Extract first name
   const firstName = user?.displayName?.split(" ")[0] || "there";
 
@@ -58,7 +103,7 @@ export default function FTUXPage() {
   const cards = [
     {
       id: "explore",
-      title: "Explore Ideas",
+      title: "Brainstorm Ideas",
       icon: <Lightbulb className="size-6" />,
       color: "bg-blue-100 dark:bg-blue-900",
       hoverColor: "group-hover:bg-blue-200 dark:group-hover:bg-blue-800",
@@ -75,12 +120,19 @@ export default function FTUXPage() {
           id: "product-ideas",
           title: "Product Ideas",
           icon: <PackageOpen size={16} />,
+          link: "/ideas/products",
         },
-        { id: "name-ideas", title: "Name Ideas", icon: <Edit size={16} /> },
+        {
+          id: "name-ideas",
+          title: "Name Ideas",
+          icon: <Edit size={16} />,
+          link: "/ideas/names",
+        },
         {
           id: "competitive-research",
           title: "Competitive Research",
           icon: <Search size={16} />,
+          link: "/research/competition",
         },
       ],
     },
@@ -99,40 +151,66 @@ export default function FTUXPage() {
       viewAllBorderColor: "border-purple-300 dark:border-purple-700",
       viewAllBgColor: "bg-purple-50/30 dark:bg-purple-900/10",
       subcards: [
-        { id: "ai-assistant", title: "AI Assistant", icon: <Bot size={16} /> },
+        {
+          id: "ai-assistant",
+          title: "AI Assistant",
+          icon: <Bot size={16} />,
+          link: "/tools/assistant",
+        },
         {
           id: "content-generator",
           title: "Content Generator",
           icon: <FileText size={16} />,
+          link: "/tools/content",
         },
         {
           id: "image-creator",
           title: "Image Creator",
           icon: <Image size={16} />,
+          link: "/tools/images",
         },
         {
           id: "video-editor",
           title: "Video Editor",
           icon: <Video size={16} />,
+          link: "/tools/video",
         },
         {
           id: "calendar",
           title: "Calendar",
           icon: <CalendarClock size={16} />,
+          link: "/tools/calendar",
         },
         {
           id: "payment-processor",
           title: "Payment Processor",
           icon: <CreditCard size={16} />,
+          link: "/tools/payments",
         },
-        { id: "analytics", title: "Analytics", icon: <BarChart3 size={16} /> },
+        {
+          id: "analytics",
+          title: "Analytics",
+          icon: <BarChart3 size={16} />,
+          link: "/tools/analytics",
+        },
         {
           id: "email-marketing",
           title: "Email Marketing",
           icon: <Mail size={16} />,
+          link: "/tools/email",
         },
-        { id: "database", title: "Database", icon: <Database size={16} /> },
-        { id: "automation", title: "Automation", icon: <Repeat size={16} /> },
+        {
+          id: "database",
+          title: "Database",
+          icon: <Database size={16} />,
+          link: "/tools/database",
+        },
+        {
+          id: "automation",
+          title: "Automation",
+          icon: <Repeat size={16} />,
+          link: "/tools/automation",
+        },
       ],
     },
     {
@@ -153,8 +231,10 @@ export default function FTUXPage() {
         id: `prompt-${i + 1}`,
         title: `Prompt ${i + 1}`,
         icon: <MessageSquareText size={16} />,
+        link: `/prompts/template/${i + 1}`,
       })),
       showViewAll: true,
+      viewAllLink: "/prompts/all",
     },
     {
       id: "product",
@@ -175,11 +255,13 @@ export default function FTUXPage() {
           id: "from-template",
           title: "From Template",
           icon: <LayoutTemplate size={16} />,
+          link: "/welcome",
         },
         {
           id: "start-blank",
           title: "Start Blank",
           icon: <FileStack size={16} />,
+          link: "/welcome/wizard?template=blank&type=blank",
         },
       ],
     },
@@ -187,9 +269,9 @@ export default function FTUXPage() {
 
   return (
     <main className="container mx-auto p-6 max-w-7xl">
-      <div className="grid md:grid-cols-2 gap-8 mb-12 relative">
+      <div className="grid md:grid-cols-2 gap-8 relative">
         {/* Left side - Greeting */}
-        <div className="flex flex-col justify-center">
+        <div className="flex flex-col justify-top mt-6">
           <div className="flex items-center gap-4 mb-4">
             <Avatar className="h-16 w-16 border-2 border-primary">
               <AvatarImage
@@ -205,11 +287,37 @@ export default function FTUXPage() {
               </p>
             </div>
           </div>
-          <p className="text-lg mb-6 max-w-[85%]">
-            Watch this quick intro video to get started with LaunchpadAI. It
-            will help you understand the key features and how to make the most
-            of our platform.
+          <p className="text-lg mb-2 max-w-[85%]">
+            Watch this quick intro video to get started with LaunchpadAI.
           </p>
+
+          {/* Your First Tasks */}
+          <div className="mt-0 mb-8">
+            <h2 className="text-xl font-semibold mb-3">Your First Tasks</h2>
+            <div className="space-y-2">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center gap-3 cursor-pointer"
+                  onClick={() => toggleTask(task.id)}
+                >
+                  {task.completed ? (
+                    <CheckCircle2 className="h-6 w-6 text-green-500 flex-shrink-0" />
+                  ) : (
+                    <Circle className="h-6 w-6 text-gray-300 flex-shrink-0" />
+                  )}
+                  <span
+                    className={cn(
+                      "text-base",
+                      task.completed && "line-through text-muted-foreground"
+                    )}
+                  >
+                    {task.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Arrow pointing to video - positioned in center */}
@@ -248,9 +356,7 @@ export default function FTUXPage() {
       </div>
 
       {/* Multiple ways to get started section */}
-      <h2 className="text-2xl font-bold mb-6">
-        Based on your needs, LaunchpadAI can help you in multiple ways:
-      </h2>
+      <h2 className="text-2xl font-bold mb-6">Choose your journey:</h2>
 
       {/* Main cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -325,6 +431,7 @@ export default function FTUXPage() {
                           card.subCardBorderColor,
                           card.subCardBgColor
                         )}
+                        onClick={() => router.push(subcard.link)}
                       >
                         <CardContent className="p-3 flex items-center gap-2">
                           <div className={cn("rounded-full p-1.5", card.color)}>
@@ -363,6 +470,9 @@ export default function FTUXPage() {
                         card.viewAllBorderColor,
                         card.viewAllBgColor
                       )}
+                      onClick={() =>
+                        router.push(card.viewAllLink || "/prompts/all")
+                      }
                     >
                       <CardContent className="p-3 flex items-center justify-center">
                         <PlusCircle
