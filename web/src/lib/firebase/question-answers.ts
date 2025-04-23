@@ -6,11 +6,11 @@ import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 // Get the answers reference for a specific user and product
 function getUserAnswersRef(userId: string, productId: string) {
   return adminDb
-    .collection("products")
+    .collection("questions")
     .doc(userId)
     .collection("products")
     .doc(productId)
-    .collection("answers");
+    .collection("questions");
 }
 
 // Interface for question answers
@@ -27,14 +27,26 @@ export interface QuestionAnswer {
 export async function getAllQuestionAnswers(productId: string) {
   try {
     const userId = await getCurrentUserId();
-    const answersRef = getUserAnswersRef(userId, productId);
+    if (!userId) {
+      return {
+        success: false,
+        error: "User not authenticated",
+        answers: [],
+      };
+    }
 
+    const answersRef = getUserAnswersRef(userId, productId);
     const snapshot = await answersRef.get();
 
-    const answers = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as QuestionAnswer[];
+    const answers = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Ensure answer is always a string
+        answer: data.answer || "",
+      };
+    }) as QuestionAnswer[];
 
     return {
       success: true,
@@ -44,6 +56,7 @@ export async function getAllQuestionAnswers(productId: string) {
     console.error(`Failed to fetch answers for product ${productId}:`, error);
     return {
       success: false,
+      answers: [],
       error: error instanceof Error ? error.message : String(error),
     };
   }

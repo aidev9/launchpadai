@@ -3,45 +3,16 @@
 import { z } from "zod";
 // Comment out the safe-action import since there's a module resolution issue
 // import { action } from "@/lib/safe-action";
-import { StateGraph } from "@langchain/langgraph";
-import { ChatOpenAI } from "@langchain/openai";
-import { RunnableSequence } from "@langchain/core/runnables";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { getProduct } from "@/lib/firebase/products";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { saveAsset } from "@/lib/firebase/assets";
 import { type Product } from "@/lib/store/product-store";
 import { assets } from "../data/assets";
-
-// Interface for question answers to fix import error
-interface QuestionAnswer {
-  id: string;
-  question: string;
-  answer: string;
-  questionId: string;
-}
-
-// Function to get question answers
-async function getAllQuestionAnswers(productId: string): Promise<{
-  success: boolean;
-  answers: QuestionAnswer[];
-  error?: string;
-}> {
-  // This is a placeholder. In a real implementation, this would fetch from Firebase
-  // For now, return a mock success response with empty answers
-  try {
-    return {
-      success: true,
-      answers: [] as QuestionAnswer[],
-    };
-  } catch (error) {
-    return {
-      success: false,
-      answers: [],
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
+import {
+  getAllQuestionAnswers,
+  type QuestionAnswer,
+} from "@/lib/firebase/question-answers";
+import { generateAssetContent as generateAIContent } from "@/lib/ai";
 
 // Schema for the input
 const assetGenerationSchema = z.object({
@@ -50,9 +21,9 @@ const assetGenerationSchema = z.object({
 });
 
 // Define the action handler
-async function generateAssetContent(
+async function handleAssetGeneration(
   data: z.infer<typeof assetGenerationSchema>
-) {
+): Promise<{ success: boolean; content?: string; error?: string }> {
   try {
     const { productId, assetId } = data;
 
@@ -94,76 +65,13 @@ async function generateAssetContent(
     }
     const questionAnswers = answersResponse.answers || [];
 
-    // Create the LangGraph model
-    const model = new ChatOpenAI({
-      modelName: "gpt-4o-mini",
-      temperature: 0.7,
+    // Generate the content using our AI module
+    const generatedContent: string = await generateAIContent({
+      systemPrompt: asset.systemPrompt,
+      document: asset.document,
+      product,
+      questionAnswers,
     });
-
-    // Create the system prompt including the document-specific prompt
-    const systemPrompt = ChatPromptTemplate.fromMessages([
-      ["system", asset.systemPrompt],
-      [
-        "system",
-        `
-You are generating a ${asset.document} for a startup. 
-Use the provided product details and question/answer pairs to create a comprehensive document.
-Format your response using proper Markdown syntax.
-Be specific, detailed, and professional.
-      `,
-      ],
-      [
-        "user",
-        `
-Product Name: {product_name}
-Product Description: {product_description}
-Problem: {product_problem}
-Team: {product_team}
-Website: {product_website}
-Country: {product_country}
-Stage: {product_stage}
-
-Here are all the question/answer pairs available for this product:
-{question_answers}
-
-Please generate a comprehensive ${asset.document} based on this information.
-      `,
-      ],
-    ]);
-
-    // Generate content without using StateGraph for simplicity
-    // Format the question/answers for the model input
-    const formattedQAs = questionAnswers
-      .map(
-        (qa: QuestionAnswer) =>
-          `Q: ${qa.question}\nA: ${qa.answer || "Not answered yet"}`
-      )
-      .join("\n\n");
-
-    // Create the chain
-    const chain = RunnableSequence.from([
-      {
-        product_name: async () => product.name || "Unnamed Product",
-        product_description: async () => product.description || "Not provided",
-        product_problem: async () => product.problem || "Not provided",
-        product_team: async () => product.team || "Not provided",
-        product_website: async () => product.website || "Not provided",
-        product_country: async () => product.country || "Not provided",
-        product_stage: async () => product.stage || "Not provided",
-        question_answers: async () => formattedQAs,
-      },
-      systemPrompt,
-      model,
-    ]);
-
-    // Generate the content
-    const response = await chain.invoke({});
-
-    // Extract the content
-    const generatedContent =
-      typeof response.content === "string"
-        ? response.content
-        : JSON.stringify(response);
 
     // Save the generated content to Firestore
     const saveResponse = await saveAsset(productId, {
@@ -200,6 +108,6 @@ Please generate a comprehensive ${asset.document} based on this information.
 export async function generateAsset(data: {
   productId: string;
   assetId: string;
-}) {
-  return generateAssetContent(data);
+}): Promise<{ success: boolean; content?: string; error?: string }> {
+  return handleAssetGeneration(data);
 }
