@@ -12,7 +12,7 @@ import {
   getAllQuestionAnswers,
   type QuestionAnswer,
 } from "@/lib/firebase/question-answers";
-import { generateAssetContent as generateAIContent } from "@/lib/ai";
+import { generateAssetContentWithLangGraph as generateAIContent } from "@/lib/ai";
 
 // Schema for the input
 const assetGenerationSchema = z.object({
@@ -65,7 +65,7 @@ async function handleAssetGeneration(
     }
     const questionAnswers = answersResponse.answers || [];
 
-    // Generate the content using our AI module
+    // Generate the content using our AI module with LangGraph
     const generatedContent: string = await generateAIContent({
       systemPrompt: asset.systemPrompt,
       document: asset.document,
