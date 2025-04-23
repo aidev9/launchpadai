@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { questions as staticQuestions } from "@/app/(protected)/answer_questions/data/questions";
 import { productQuestionInputSchema } from "./schema";
+import { initializeProductAssets } from "./initialize-assets";
 
 // Root products collection reference
 const productsCollection = adminDb.collection("products");
@@ -86,6 +87,18 @@ export async function createProduct(data: ProductInput) {
       );
       // Continue with product creation even if questions creation fails
       // This way we don't lose the product data
+    }
+
+    try {
+      // Initialize assets for this product
+      await initializeProductAssets(productId);
+      console.log(`Successfully initialized assets for product ${productId}`);
+    } catch (assetsError) {
+      console.error(
+        `Failed to initialize assets for product ${productId}:`,
+        assetsError
+      );
+      // Continue with product creation even if asset initialization fails
     }
 
     // Revalidate relevant paths

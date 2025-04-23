@@ -4,10 +4,16 @@ import { useAtom } from "jotai";
 import { atom } from "jotai";
 import { assets } from "../data/assets";
 
-// Get all unique phases from the assets
+// Define all possible phases statically
 const phases = [
   "All",
-  ...Array.from(new Set(assets.map((asset) => asset.phase))),
+  "Discover",
+  "Validate",
+  "Design",
+  "Build",
+  "Secure",
+  "Launch",
+  "Grow",
 ];
 
 // Create an atom to store the selected phases

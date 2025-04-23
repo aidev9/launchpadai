@@ -4,6 +4,8 @@ import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
+import { FirestoreAsset } from "./initialize-assets";
+import { Asset } from "@/app/(protected)/review_assets/data/assets";
 
 // Schema for asset validation
 const assetSchema = z.object({
@@ -17,15 +19,15 @@ const assetSchema = z.object({
     "Launch",
     "Grow",
   ]),
-  document: z.string(),
+  title: z.string(),
+  description: z.string(),
   systemPrompt: z.string(),
+  tags: z.array(z.string()),
   order: z.number(),
   content: z.string().optional(),
-  last_modified: z.coerce.date().optional(),
-  createdAt: z.coerce.date().optional(),
+  last_updated: z.coerce.date().optional(),
+  created_at: z.coerce.date().optional(),
 });
-
-export type Asset = z.infer<typeof assetSchema>;
 
 // Get the assets reference for a specific user and product
 function getUserAssetRef(userId: string, productId: string) {
@@ -101,6 +103,44 @@ export async function getProductAssets(productId: string) {
 }
 
 /**
+ * Get assets by phase for a specific product
+ */
+export async function getAssetsByPhase(
+  productId: string,
+  phase: Asset["phase"]
+) {
+  try {
+    const userId = await getCurrentUserId();
+    const assetsRef = getUserAssetRef(userId, productId);
+
+    const snapshot = await assetsRef
+      .where("phase", "==", phase)
+      .orderBy("order", "asc")
+      .get();
+
+    // Serialize each asset document to handle timestamps
+    const assets = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...serializeFirestoreData(data),
+      };
+    });
+
+    return {
+      success: true,
+      assets,
+    };
+  } catch (error) {
+    console.error(`Failed to fetch assets for phase ${phase}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
  * Get a single asset by ID
  */
 export async function getAsset(productId: string, assetId: string) {
@@ -140,7 +180,7 @@ export async function getAsset(productId: string, assetId: string) {
  */
 export async function saveAsset(
   productId: string,
-  assetData: Partial<Asset> & { id: string }
+  assetData: Partial<FirestoreAsset> & { id: string }
 ) {
   try {
     const userId = await getCurrentUserId();
@@ -149,8 +189,8 @@ export async function saveAsset(
     const now = new Date();
     const assetWithTimestamp = {
       ...assetData,
-      last_modified: now,
-      createdAt: assetData.createdAt || now,
+      last_updated: now,
+      created_at: assetData.created_at || now,
     };
 
     await assetsRef.doc(assetData.id).set(assetWithTimestamp, { merge: true });
@@ -173,10 +213,19 @@ export async function saveAsset(
   }
 }
 
-// Delete an asset
-export async function deleteAsset(assetId: string) {
+/**
+ * Delete an asset
+ */
+export async function deleteAsset(productId: string, assetId: string) {
   try {
-    await adminDb.collection("assets").doc(assetId).delete();
+    const userId = await getCurrentUserId();
+    const assetsRef = getUserAssetRef(userId, productId);
+
+    await assetsRef.doc(assetId).delete();
+
+    // Revalidate the assets page
+    revalidatePath("/review_assets");
+
     return { success: true };
   } catch (error) {
     console.error("Error deleting asset:", error);

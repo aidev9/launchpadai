@@ -17,7 +17,7 @@ export function NextStepsHorizontal() {
         {/* Left button - positioned to match content area */}
         <div
           onClick={() => router.push("/answer_questions")}
-          className="absolute left-4 max-w-[40%] flex items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer bg-background"
+          className="absolute left-4 max-w-[40%] flex items-center p-3 pr-6 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer bg-background"
         >
           <ChevronLeft className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0" />
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
@@ -36,7 +36,7 @@ export function NextStepsHorizontal() {
         {/* Right button - positioned to the right edge */}
         <div
           onClick={() => router.push("/download_assets")}
-          className="absolute right-4 max-w-[40%] flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer bg-background"
+          className="absolute right-4 max-w-[40%] flex items-center justify-between p-3 pl-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer bg-background"
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">

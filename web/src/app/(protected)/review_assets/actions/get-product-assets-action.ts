@@ -1,14 +1,20 @@
 "use server";
 
-import { z } from "zod";
 import { getProductAssets } from "@/lib/firebase/assets";
 
-// Get all assets for a specific product (server action wrapper)
+/**
+ * Get all assets for a product
+ */
 export async function getProductAssetsAction(productId: string) {
   try {
-    // Call the Firestore function
-    const response = await getProductAssets(productId);
-    return response;
+    if (!productId) {
+      return {
+        success: false,
+        error: "Product ID is required",
+      };
+    }
+
+    return await getProductAssets(productId);
   } catch (error) {
     console.error("Error in getProductAssetsAction:", error);
     return {

@@ -13,6 +13,7 @@ import {
   FileText,
   Save,
   StickyNote,
+  Trash2,
   Wand2,
 } from "lucide-react";
 import {
@@ -24,24 +25,18 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { assets, getAssetsByPhase, Asset } from "../data/assets";
 import { toast } from "@/components/ui/use-toast";
 import { selectedPhasesAtom } from "./phase-toolbar";
 import { v4 as uuidv4 } from "uuid";
 import { ErrorBoundary } from "react-error-boundary";
 import { newlyCreatedAssetIdAtom } from "./add-asset-button";
+import { FirestoreAsset } from "@/lib/firebase/initialize-assets";
 
 // Interface definitions
 interface Note {
   id: string;
   note_body: string;
   last_modified: string;
-}
-
-interface FirestoreAsset extends Asset {
-  content?: string;
-  last_modified?: string;
-  createdAt?: string;
 }
 
 // Loading skeleton component
@@ -94,7 +89,7 @@ function AssetsReviewerContent() {
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "success" | "error"
   >("idle");
-  const [displayedAssets, setDisplayedAssets] = useState<Asset[]>([]);
+  const [displayedAssets, setDisplayedAssets] = useState<FirestoreAsset[]>([]);
   const [firestoreAssets, setFirestoreAssets] = useState<
     Record<string, FirestoreAsset>
   >({});
@@ -105,22 +100,37 @@ function AssetsReviewerContent() {
   const [newlyCreatedAssetId, setNewlyCreatedAssetId] = useAtom(
     newlyCreatedAssetIdAtom
   );
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filter assets based on selected phases
   useEffect(() => {
+    if (!Object.keys(firestoreAssets).length) return;
+
+    const assets = Object.values(firestoreAssets);
+    let filteredAssets;
+
     if (selectedPhases.includes("All")) {
-      setDisplayedAssets(assets);
+      filteredAssets = assets;
     } else {
-      const filteredAssets = assets.filter((asset) =>
+      filteredAssets = assets.filter((asset) =>
         selectedPhases.includes(asset.phase)
       );
-      setDisplayedAssets(filteredAssets);
     }
 
-    // Clear selection when phases change
-    setSelectedAssetId("");
-    setAssetContent("");
-  }, [selectedPhases]);
+    setDisplayedAssets(filteredAssets);
+
+    // Only clear selection if the currently selected asset is not in the filtered assets
+    if (selectedAssetId) {
+      const assetStillVisible = filteredAssets.some(
+        (asset) => asset.id === selectedAssetId
+      );
+      if (!assetStillVisible) {
+        setSelectedAssetId("");
+        setAssetContent("");
+      }
+    }
+  }, [selectedPhases, firestoreAssets, selectedAssetId]);
 
   // Load Firestore assets when product changes
   useEffect(() => {
@@ -135,7 +145,7 @@ function AssetsReviewerContent() {
         );
         const response = await getProductAssetsAction(selectedProductId);
 
-        if (response.success && response.assets) {
+        if (response.success && "assets" in response) {
           // Create a map of asset ID to asset data
           const assetMap: Record<string, FirestoreAsset> = {};
           response.assets.forEach((asset: any) => {
@@ -168,6 +178,110 @@ function AssetsReviewerContent() {
     loadFirestoreAssets();
   }, [selectedProductId]);
 
+  // Use the newly created asset ID to trigger immediate refresh and selection
+  useEffect(() => {
+    if (!newlyCreatedAssetId) return;
+
+    console.log("New asset created, ID:", newlyCreatedAssetId);
+
+    // Refresh asset list from Firestore and select the new asset
+    const refreshAssets = async () => {
+      if (!selectedProductId) return;
+
+      setIsLoading(true);
+
+      try {
+        // First, directly select the ID to ensure UI responsiveness
+        setSelectedAssetId(newlyCreatedAssetId);
+
+        // Dynamically import server action
+        const { getProductAssetsAction } = await import(
+          "../actions/get-product-assets-action"
+        );
+        const response = await getProductAssetsAction(selectedProductId);
+
+        if (response.success && "assets" in response) {
+          console.log("Fetched assets:", response.assets.length);
+
+          // Create a map of asset ID to asset data
+          const assetMap: Record<string, FirestoreAsset> = {};
+          response.assets.forEach((asset: any) => {
+            assetMap[asset.id] = asset as FirestoreAsset;
+          });
+
+          // Find the newly created asset
+          const newAsset = response.assets.find(
+            (asset: any) => asset.id === newlyCreatedAssetId
+          );
+
+          if (newAsset) {
+            console.log("Found new asset in response:", newAsset.title);
+          } else {
+            console.log("New asset not found in response");
+          }
+
+          // Update Firestore assets
+          setFirestoreAssets(assetMap);
+
+          // Update displayed assets based on current phase filter
+          const assets = Object.values(assetMap);
+          if (selectedPhases.includes("All")) {
+            setDisplayedAssets(assets);
+          } else {
+            const filteredAssets = assets.filter((asset) =>
+              selectedPhases.includes(asset.phase)
+            );
+            setDisplayedAssets(filteredAssets);
+          }
+
+          // Ensure the asset is selected
+          setSelectedAssetId(newlyCreatedAssetId);
+
+          // Load the content of the newly created asset
+          if (newlyCreatedAssetId in assetMap) {
+            setAssetContent(
+              assetMap[newlyCreatedAssetId].content || "# No content available"
+            );
+          }
+
+          // Add a double-check to ensure selection persists
+          setTimeout(() => {
+            if (selectedAssetId !== newlyCreatedAssetId) {
+              console.log("Selection lost, reselecting asset");
+              setSelectedAssetId(newlyCreatedAssetId);
+            }
+          }, 200);
+        }
+      } catch (error) {
+        console.error("Error refreshing assets after creation:", error);
+        toast({
+          title: "Error refreshing assets",
+          description:
+            "Your asset was created but the list couldn't be refreshed.",
+          variant: "destructive",
+        });
+
+        // Even if there's an error, try to select the asset
+        setSelectedAssetId(newlyCreatedAssetId);
+      } finally {
+        setIsLoading(false);
+
+        // Always clear the newly created asset ID after processing
+        setTimeout(() => {
+          setNewlyCreatedAssetId(null);
+        }, 300);
+      }
+    };
+
+    // Execute the refresh
+    refreshAssets();
+  }, [
+    newlyCreatedAssetId,
+    selectedProductId,
+    setNewlyCreatedAssetId,
+    selectedPhases,
+  ]);
+
   // Load asset content when selected
   useEffect(() => {
     async function loadAssetContent() {
@@ -197,6 +311,7 @@ function AssetsReviewerContent() {
 
           if (
             response.success &&
+            "asset" in response &&
             response.asset &&
             "content" in response.asset
           ) {
@@ -227,86 +342,6 @@ function AssetsReviewerContent() {
     loadAssetContent();
   }, [selectedAssetId, selectedProductId, firestoreAssets]);
 
-  // Listen for newly created assets
-  useEffect(() => {
-    if (newlyCreatedAssetId) {
-      // Refresh asset list from Firestore
-      const refreshAssets = async () => {
-        if (!selectedProductId) return;
-
-        try {
-          // Dynamically import server action
-          const { getProductAssetsAction } = await import(
-            "../actions/get-product-assets-action"
-          );
-          const response = await getProductAssetsAction(selectedProductId);
-
-          if (response.success && response.assets) {
-            // Create a map of asset ID to asset data
-            const assetMap: Record<string, FirestoreAsset> = {};
-            response.assets.forEach((asset: any) => {
-              assetMap[asset.id] = asset as FirestoreAsset;
-            });
-
-            // Update Firestore assets
-            setFirestoreAssets(assetMap);
-
-            // Find the newly created asset
-            const createdAsset = response.assets.find(
-              (asset: any) => asset.id === newlyCreatedAssetId
-            );
-
-            // If we found the asset, update displayed assets if needed
-            if (createdAsset) {
-              // Determine if we should add it based on selected phases
-              const phase = createdAsset.phase || "Discover"; // Default to Discover if missing
-
-              if (
-                selectedPhases.includes("All") ||
-                selectedPhases.includes(phase)
-              ) {
-                // Create a temporary array to check for duplicates
-                const tempAssets = [...displayedAssets];
-                const assetExists = tempAssets.some(
-                  (asset) => asset.id === newlyCreatedAssetId
-                );
-
-                // Only add if it doesn't exist
-                if (!assetExists) {
-                  tempAssets.push({
-                    id: createdAsset.id,
-                    document: createdAsset.document,
-                    phase: phase,
-                    systemPrompt: createdAsset.systemPrompt || "",
-                    order: createdAsset.order || 999,
-                  });
-
-                  setDisplayedAssets(tempAssets);
-                }
-              }
-            }
-
-            // Select the newly created asset
-            setSelectedAssetId(newlyCreatedAssetId);
-
-            // Reset the newly created asset ID atom
-            setNewlyCreatedAssetId(null);
-          }
-        } catch (error) {
-          console.error("Error refreshing assets:", error);
-        }
-      };
-
-      refreshAssets();
-    }
-  }, [
-    newlyCreatedAssetId,
-    selectedProductId,
-    setNewlyCreatedAssetId,
-    selectedPhases,
-    displayedAssets,
-  ]);
-
   const handleSave = async () => {
     if (!selectedAssetId || !selectedProductId || !assetContent) return;
 
@@ -314,8 +349,8 @@ function AssetsReviewerContent() {
     setSaveStatus("saving");
 
     try {
-      // Get metadata for this asset
-      const selectedAsset = assets.find((a) => a.id === selectedAssetId);
+      // Get metadata for this asset from Firestore assets
+      const selectedAsset = firestoreAssets[selectedAssetId];
       if (!selectedAsset) {
         throw new Error("Asset metadata not found");
       }
@@ -327,8 +362,10 @@ function AssetsReviewerContent() {
         asset: {
           id: selectedAssetId,
           phase: selectedAsset.phase,
-          document: selectedAsset.document,
+          title: selectedAsset.title,
+          description: selectedAsset.description,
           systemPrompt: selectedAsset.systemPrompt,
+          tags: selectedAsset.tags,
           order: selectedAsset.order,
           content: assetContent,
         },
@@ -344,7 +381,7 @@ function AssetsReviewerContent() {
         [selectedAssetId]: {
           ...selectedAsset,
           content: assetContent,
-          last_modified: new Date().toISOString(),
+          last_updated: new Date(),
         },
       }));
 
@@ -372,6 +409,7 @@ function AssetsReviewerContent() {
   const handleGenerate = async () => {
     if (!selectedAssetId || !selectedProductId) return;
 
+    const assetIdToPreserve = selectedAssetId;
     setIsGenerating(true);
 
     try {
@@ -379,7 +417,7 @@ function AssetsReviewerContent() {
       const { generateAsset } = await import("../actions/generate-asset");
       const response = await generateAsset({
         productId: selectedProductId,
-        assetId: selectedAssetId,
+        assetId: assetIdToPreserve,
       });
 
       if (!response.success) {
@@ -389,15 +427,18 @@ function AssetsReviewerContent() {
       // Update the content with the generated content
       setAssetContent(response.content || "");
 
+      // Ensure the asset remains selected
+      setSelectedAssetId(assetIdToPreserve);
+
       // Update local Firestore assets cache
-      const selectedAsset = assets.find((a) => a.id === selectedAssetId);
+      const selectedAsset = firestoreAssets[assetIdToPreserve];
       if (selectedAsset) {
         setFirestoreAssets((prev) => ({
           ...prev,
-          [selectedAssetId]: {
+          [assetIdToPreserve]: {
             ...selectedAsset,
             content: response.content || "",
-            last_modified: new Date().toISOString(),
+            last_updated: new Date(),
           },
         }));
       }
@@ -415,6 +456,8 @@ function AssetsReviewerContent() {
       });
     } finally {
       setIsGenerating(false);
+      // Ensure the asset remains selected after generation completes
+      setSelectedAssetId(assetIdToPreserve);
     }
   };
 
@@ -477,134 +520,221 @@ function AssetsReviewerContent() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!selectedAssetId || !selectedProductId) return;
+
+    setIsDeleting(true);
+
+    try {
+      // Use server action to delete asset
+      const { deleteAssetAction } = await import("../actions/asset-actions");
+      const response = await deleteAssetAction({
+        productId: selectedProductId,
+        assetId: selectedAssetId,
+      });
+
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+
+      // Remove from local state
+      setFirestoreAssets((prev) => {
+        const updated = { ...prev };
+        delete updated[selectedAssetId];
+        return updated;
+      });
+
+      // Update displayed assets
+      setDisplayedAssets((prev) =>
+        prev.filter((asset) => asset.id !== selectedAssetId)
+      );
+
+      // Close dialog
+      setDeleteDialogOpen(false);
+
+      // Select the first asset if available
+      const remainingAssets = displayedAssets.filter(
+        (asset) => asset.id !== selectedAssetId
+      );
+
+      if (remainingAssets.length > 0) {
+        setSelectedAssetId(remainingAssets[0].id);
+      } else {
+        setSelectedAssetId("");
+        setAssetContent("");
+      }
+
+      toast({
+        title: "Asset deleted",
+        description: "The asset has been deleted successfully.",
+      });
+    } catch (error) {
+      console.error("Error deleting asset:", error);
+      toast({
+        title: "Error deleting asset",
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-      {/* Asset list - Left column */}
-      <Card className="md:col-span-1 overflow-hidden">
-        <div className="p-4 border-b">
-          <h3 className="font-medium">Assets</h3>
+    <div className="border rounded-lg bg-card text-card-foreground shadow-sm">
+      <div className="flex flex-col lg:flex-row lg:min-h-[500px]">
+        {/* Left sidebar with assets list */}
+        <div className="w-full lg:w-1/4 border-r">
+          <ScrollArea className="h-[500px]">
+            <div className="p-4">
+              <h3 className="text-xl font-bold mb-4">Assets</h3>
+              {isLoading ? (
+                <div className="space-y-2">
+                  {Array(5)
+                    .fill(0)
+                    .map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-10 bg-gray-200 dark:bg-gray-800 rounded animate-pulse"
+                      />
+                    ))}
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {displayedAssets
+                    .sort((a, b) => a.order - b.order)
+                    .map((asset) => (
+                      <li key={asset.id}>
+                        <Button
+                          variant={
+                            selectedAssetId === asset.id ? "default" : "outline"
+                          }
+                          className={`w-full justify-start text-left h-auto py-2 ${
+                            selectedAssetId === asset.id
+                              ? "bg-black text-white hover:bg-black/90"
+                              : ""
+                          }`}
+                          onClick={() => setSelectedAssetId(asset.id)}
+                        >
+                          <div className="flex items-center w-full">
+                            <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
+                            <span className="truncate">{asset.title}</span>
+                          </div>
+                        </Button>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+          </ScrollArea>
         </div>
 
-        <ScrollArea className="h-[calc(100vh-280px)]">
-          <div className="p-4 space-y-2">
-            {displayedAssets.map((asset) => (
-              <Button
-                key={asset.id}
-                variant={selectedAssetId === asset.id ? "secondary" : "ghost"}
-                className="w-full justify-start text-left h-auto py-2"
-                onClick={() => setSelectedAssetId(asset.id)}
-              >
-                <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span className="truncate">{asset.document}</span>
-                {assetExistsInFirestore(asset.id) && (
-                  <span
-                    className="ml-auto bg-green-500 w-2 h-2 rounded-full"
-                    title="Saved in Firestore"
-                  ></span>
-                )}
-              </Button>
-            ))}
-          </div>
-        </ScrollArea>
-      </Card>
-
-      {/* Asset content - Right column */}
-      <Card className="md:col-span-3">
-        {selectedAssetId ? (
-          <>
-            <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="font-medium">
-                {assets.find((a) => a.id === selectedAssetId)?.document ||
-                  "Selected Asset"}
-              </h3>
-              <div className="flex gap-2">
-                {isEditing ? (
-                  <Button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    size="sm"
-                    className="flex items-center gap-1 bg-black text-white hover:bg-black/90"
-                  >
-                    {saveStatus === "saving" && "Saving..."}
-                    {saveStatus === "success" && (
-                      <>
-                        Saved <CheckCircle className="h-4 w-4" />
-                      </>
-                    )}
-                    {saveStatus === "error" && (
-                      <>
-                        Error <AlertCircle className="h-4 w-4" />
-                      </>
-                    )}
-                    {saveStatus === "idle" && (
-                      <>
-                        Save <Save className="h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
+        {/* Right content area with selected asset */}
+        <div className="flex-1 lg:flex-[3]">
+          {selectedAssetId ? (
+            <div className="p-4 h-full flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">
+                  {firestoreAssets[selectedAssetId]?.title || "Loading..."}
+                </h2>
+                <div className="flex space-x-2">
+                  {isEditing ? (
+                    <Button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      size="sm"
+                      className="flex items-center gap-1 bg-black text-white hover:bg-black/90"
+                    >
+                      {saveStatus === "saving" && "Saving..."}
+                      {saveStatus === "success" && (
+                        <>
+                          Saved <CheckCircle className="h-4 w-4" />
+                        </>
+                      )}
+                      {saveStatus === "error" && (
+                        <>
+                          Error <AlertCircle className="h-4 w-4" />
+                        </>
+                      )}
+                      {saveStatus === "idle" && (
+                        <>
+                          Save <Save className="h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={() => setNoteDialogOpen(true)}
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
+                        Add Note <StickyNote className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        onClick={() => setIsEditing(true)}
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
+                        Edit <FileEdit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        onClick={() => setDeleteDialogOpen(true)}
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center gap-1 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                      >
+                        Delete <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        onClick={handleGenerate}
+                        disabled={isGenerating}
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
+                        {isGenerating ? "Generating..." : "Generate"}{" "}
+                        <Wand2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="p-4">
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-[calc(100vh-280px)]">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : isEditing ? (
+                  <Textarea
+                    value={assetContent}
+                    onChange={(e) => setAssetContent(e.target.value)}
+                    className="font-mono text-sm min-h-[calc(100vh-280px)]"
+                  />
                 ) : (
-                  <>
-                    <Button
-                      onClick={() => setNoteDialogOpen(true)}
-                      size="sm"
-                      variant="outline"
-                      className="flex items-center gap-1"
-                    >
-                      Add Note <StickyNote className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      onClick={() => setIsEditing(true)}
-                      size="sm"
-                      variant="outline"
-                      className="flex items-center gap-1"
-                    >
-                      Edit <FileEdit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      onClick={handleGenerate}
-                      disabled={isGenerating}
-                      size="sm"
-                      variant="outline"
-                      className="flex items-center gap-1"
-                    >
-                      {isGenerating ? "Generating..." : "Generate"}{" "}
-                      <Wand2 className="h-4 w-4" />
-                    </Button>
-                  </>
+                  <div className="prose max-w-none dark:prose-invert overflow-auto h-[calc(100vh-280px)] p-2">
+                    <pre className="whitespace-pre-wrap font-mono text-sm">
+                      {assetContent}
+                    </pre>
+                  </div>
                 )}
               </div>
             </div>
-            <div className="p-4">
-              {isLoading ? (
-                <div className="flex justify-center items-center h-[calc(100vh-280px)]">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : isEditing ? (
-                <Textarea
-                  value={assetContent}
-                  onChange={(e) => setAssetContent(e.target.value)}
-                  className="font-mono text-sm min-h-[calc(100vh-280px)]"
-                />
-              ) : (
-                <div className="prose max-w-none dark:prose-invert overflow-auto h-[calc(100vh-280px)] p-2">
-                  <pre className="whitespace-pre-wrap font-mono text-sm">
-                    {assetContent}
-                  </pre>
-                </div>
-              )}
+          ) : (
+            <div className="h-full flex items-center justify-center p-8">
+              <div className="text-center">
+                <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                <h3 className="text-lg font-medium mb-2">No Asset Selected</h3>
+                <p className="text-muted-foreground max-w-md">
+                  Select an asset from the list to view or edit its content.
+                </p>
+              </div>
             </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-[calc(100vh-280px)]">
-            <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-medium mb-2">Select an Asset</h3>
-            <p className="text-muted-foreground text-center max-w-md">
-              Choose an asset from the list to view its contents. You can edit,
-              generate, and save changes.
-            </p>
-          </div>
-        )}
-      </Card>
+          )}
+        </div>
+      </div>
 
       {/* Add Note Dialog */}
       <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
@@ -633,6 +763,38 @@ function AssetsReviewerContent() {
               className="bg-black text-white hover:bg-black/90"
             >
               {isSavingNote ? "Saving..." : "Save Note"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Delete Asset</DialogTitle>
+          </DialogHeader>
+          <div className="py-6">
+            <p className="text-center mb-2">
+              Are you sure you want to delete this asset?
+            </p>
+            <p className="text-center text-muted-foreground text-sm">
+              This action cannot be undone.
+            </p>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? "Deleting..." : "Delete Asset"}
             </Button>
           </DialogFooter>
         </DialogContent>

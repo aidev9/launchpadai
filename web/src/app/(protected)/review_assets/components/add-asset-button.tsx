@@ -35,14 +35,15 @@ export const newlyCreatedAssetIdAtom = atom<string | null>(null);
 export function AddAssetButton() {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [documentName, setDocumentName] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [phase, setPhase] = useState<string>("Discover");
   const [content, setContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const setNewlyCreatedAssetId = useSetAtom(newlyCreatedAssetIdAtom);
 
   const handleAddAsset = async () => {
-    if (!selectedProductId || !documentName || !phase || !content) return;
+    if (!selectedProductId || !title || !phase || !content) return;
 
     setIsSaving(true);
 
@@ -53,8 +54,10 @@ export function AddAssetButton() {
         asset: {
           id: assetId,
           phase: phase as any, // Cast to Asset["phase"]
-          document: documentName,
+          title: title,
+          description: description || title,
           systemPrompt: "Custom asset created by user", // Default prompt
+          tags: [phase],
           order: 999, // High order to show at end of list
           content: content,
         },
@@ -65,13 +68,18 @@ export function AddAssetButton() {
       }
 
       // Reset form and close dialog
-      setDocumentName("");
+      setTitle("");
+      setDescription("");
       setPhase("Discover");
       setContent("");
       setDialogOpen(false);
 
       // Set the newly created asset ID for selection
-      setNewlyCreatedAssetId(assetId);
+      // Add a small delay to ensure the asset is properly added to Firestore before selection
+      setTimeout(() => {
+        console.log("Setting newly created asset ID:", assetId);
+        setNewlyCreatedAssetId(assetId);
+      }, 100);
 
       toast({
         title: "Asset added",
@@ -106,12 +114,22 @@ export function AddAssetButton() {
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="document-name">Document Name</Label>
+              <Label htmlFor="title">Title</Label>
               <Input
-                id="document-name"
-                placeholder="e.g. Custom Report.md"
-                value={documentName}
-                onChange={(e) => setDocumentName(e.target.value)}
+                id="title"
+                placeholder="e.g. Custom Report"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Input
+                id="description"
+                placeholder="Brief description of this asset"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
 
@@ -153,7 +171,7 @@ export function AddAssetButton() {
             <Button
               type="button"
               onClick={handleAddAsset}
-              disabled={isSaving || !documentName || !phase || !content}
+              disabled={isSaving || !title || !phase || !content}
               className="bg-black text-white hover:bg-black/90"
             >
               {isSaving ? "Adding..." : "Add Asset"}

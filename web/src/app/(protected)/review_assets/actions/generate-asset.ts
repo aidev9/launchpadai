@@ -5,9 +5,8 @@ import { z } from "zod";
 // import { action } from "@/lib/safe-action";
 import { getProduct } from "@/lib/firebase/products";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
-import { saveAsset } from "@/lib/firebase/assets";
+import { saveAsset, getAsset } from "@/lib/firebase/assets";
 import { type Product } from "@/lib/store/product-store";
-import { assets } from "../data/assets";
 import {
   getAllQuestionAnswers,
   type QuestionAnswer,
@@ -53,14 +52,15 @@ async function handleAssetGeneration(
     }
     const product = productResponse.product as Product;
 
-    // Get the selected asset
-    const asset = assets.find((a) => a.id === assetId);
-    if (!asset) {
+    // Get the selected asset from Firestore
+    const assetResponse = await getAsset(productId, assetId);
+    if (!assetResponse.success || !assetResponse.asset) {
       return {
         success: false,
-        error: `Asset with ID ${assetId} not found`,
+        error: assetResponse.error || `Asset with ID ${assetId} not found`,
       };
     }
+    const asset = assetResponse.asset;
 
     // Get all question answers for the product
     const answersResponse = await getAllQuestionAnswers(productId);
@@ -79,20 +79,23 @@ async function handleAssetGeneration(
     // Generate the content using our AI module with LangGraph
     const generatedContent: string = await generateAIContent({
       systemPrompt: asset.systemPrompt,
-      document: asset.document,
+      document: asset.title, // Use title instead of document
       product,
       questionAnswers,
       notes,
+      asset: {
+        title: asset.title,
+        description: asset.description,
+        phase: asset.phase,
+        systemPrompt: asset.systemPrompt,
+      },
     });
 
     // Save the generated content to Firestore
     const saveResponse = await saveAsset(productId, {
       id: assetId,
-      phase: asset.phase,
-      document: asset.document,
-      systemPrompt: asset.systemPrompt,
-      order: asset.order,
       content: generatedContent,
+      last_updated: new Date(),
     });
 
     if (!saveResponse.success) {

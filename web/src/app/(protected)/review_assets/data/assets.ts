@@ -13,6 +13,7 @@ export interface Asset {
   order: number;
 }
 
+// Default assets template - used for initializing new products
 export const assets: Asset[] = [
   // Discover Phase Assets
   {
@@ -141,7 +142,11 @@ export const assets: Asset[] = [
   },
 ];
 
-// Helper function to get assets by phase
-export function getAssetsByPhase(phase: Asset["phase"]) {
-  return assets.filter((asset) => asset.phase === phase);
+// Helper function to get assets by phase from Firestore - client import
+export async function getFirestoreAssetsByPhase(
+  productId: string,
+  phase: Asset["phase"]
+) {
+  const { getAssetsByPhase } = await import("@/lib/firebase/assets");
+  return getAssetsByPhase(productId, phase);
 }

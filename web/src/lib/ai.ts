@@ -20,6 +20,12 @@ export interface AssetGenerationData {
   product: Product;
   questionAnswers: QuestionAnswer[];
   notes?: { id: string; note_body: string; last_modified: string }[];
+  asset?: {
+    title: string;
+    description: string;
+    phase: string;
+    systemPrompt: string;
+  };
 }
 
 /**
@@ -37,6 +43,15 @@ const AssetGenerationStateAnnotation = Annotation.Root({
   generatedContent: Annotation<string>(),
   hasAnsweredQuestions: Annotation<boolean>(),
   hasNotes: Annotation<boolean>(),
+  asset: Annotation<
+    | {
+        title: string;
+        description: string;
+        phase: string;
+        systemPrompt: string;
+      }
+    | undefined
+  >(),
 });
 
 /**
@@ -180,6 +195,7 @@ export async function generateAssetContentWithLangGraph({
   product,
   questionAnswers,
   notes = [],
+  asset,
 }: AssetGenerationData): Promise<string> {
   console.log("[LangGraph]");
   try {
@@ -214,6 +230,7 @@ export async function generateAssetContentWithLangGraph({
       generatedContent: "",
       hasAnsweredQuestions: answeredQuestions.length > 0,
       hasNotes: notes.length > 0,
+      asset,
     };
 
     // Define LangGraph nodes
@@ -247,7 +264,13 @@ export async function generateAssetContentWithLangGraph({
 You are generating a ${state.document} for a startup with limited information.
 Use the provided product details to create a basic document.
 Format your response using proper Markdown syntax.
-Be specific, detailed, and professional.`,
+Be specific, detailed, and professional.
+
+Asset Information:
+Title: ${state.asset?.title || state.document}
+Description: ${state.asset?.description || "Not provided"}
+Phase: ${state.asset?.phase || "Not provided"}
+${state.asset?.systemPrompt ? `Additional Instructions: ${state.asset.systemPrompt}` : ""}`,
       };
 
       const userMessage = {
@@ -300,6 +323,12 @@ Use the provided product details, notes, and question/answer pairs to create a c
 Format your response using proper Markdown syntax.
 Be specific, detailed, and professional.
 If notes are provided, they take precedence over question/answer pairs.
+
+Asset Information:
+Title: ${state.asset?.title || state.document}
+Description: ${state.asset?.description || "Not provided"}
+Phase: ${state.asset?.phase || "Not provided"}
+${state.asset?.systemPrompt ? `Additional Instructions: ${state.asset.systemPrompt}` : ""}
           `,
         ],
         [
