@@ -15,6 +15,9 @@ import {
   StickyNote,
   Trash2,
   Wand2,
+  Download,
+  Circle,
+  Check,
 } from "lucide-react";
 import {
   Dialog,
@@ -31,6 +34,7 @@ import { v4 as uuidv4 } from "uuid";
 import { ErrorBoundary } from "react-error-boundary";
 import { newlyCreatedAssetIdAtom } from "./add-asset-button";
 import { FirestoreAsset } from "@/lib/firebase/initialize-assets";
+import { allAssetsAtom } from "../page";
 
 // Interface definitions
 interface Note {
@@ -102,6 +106,7 @@ function AssetsReviewerContent() {
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [, setAllAssets] = useAtom(allAssetsAtom);
 
   // Filter assets based on selected phases
   useEffect(() => {
@@ -461,6 +466,46 @@ function AssetsReviewerContent() {
     }
   };
 
+  const handleDownload = () => {
+    if (!selectedAssetId || !assetContent.trim()) return;
+
+    // Get the asset title for the filename
+    const asset = firestoreAssets[selectedAssetId];
+    if (!asset) return;
+
+    // Create a safe filename from the asset title
+    const title = asset.title || "asset";
+    const safeTitleForFilename = title
+      .replace(/[<>:"/\\|?*]/g, "-") // Replace invalid filename characters
+      .replace(/\s+/g, " ") // Normalize whitespace
+      .trim();
+
+    // Generate filename with .md extension
+    const fileName = safeTitleForFilename.endsWith(".md")
+      ? safeTitleForFilename
+      : `${safeTitleForFilename}.md`;
+
+    // Create a blob with the markdown content
+    const blob = new Blob([assetContent], { type: "text/markdown" });
+    const url = window.URL.createObjectURL(blob);
+
+    // Create a temporary link to trigger the download
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+
+    // Clean up
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    toast({
+      title: "Asset downloaded",
+      description: `${fileName} has been downloaded successfully.`,
+    });
+  };
+
   // Check if an asset exists in our Firestore cache
   const assetExistsInFirestore = (assetId: string) => {
     return assetId in firestoreAssets && !!firestoreAssets[assetId].content;
@@ -580,6 +625,19 @@ function AssetsReviewerContent() {
     }
   };
 
+  // Helper function to check if asset has content
+  const hasContent = (asset: FirestoreAsset) => {
+    return asset.content && asset.content.trim().length > 0;
+  };
+
+  // Update all assets when firestoreAssets changes
+  useEffect(() => {
+    if (Object.keys(firestoreAssets).length) {
+      const assets = Object.values(firestoreAssets);
+      setAllAssets(assets);
+    }
+  }, [firestoreAssets, setAllAssets]);
+
   return (
     <div className="border rounded-lg bg-card text-card-foreground shadow-sm">
       <div className="flex flex-col lg:flex-row lg:min-h-[500px]">
@@ -588,6 +646,52 @@ function AssetsReviewerContent() {
           <ScrollArea className="h-[500px]">
             <div className="p-4">
               <h3 className="text-xl font-bold mb-4">Assets</h3>
+
+              {/* Search/filter input */}
+              <div className="relative mb-4">
+                <input
+                  type="text"
+                  placeholder="Filter assets..."
+                  className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  onChange={(e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    if (searchTerm.trim() === "") {
+                      // Reset to filtered by phase if search is empty
+                      const assets = Object.values(firestoreAssets);
+                      if (selectedPhases.includes("All")) {
+                        setDisplayedAssets(assets);
+                      } else {
+                        setDisplayedAssets(
+                          assets.filter((asset) =>
+                            selectedPhases.includes(asset.phase)
+                          )
+                        );
+                      }
+                    } else {
+                      // Filter by both phase and search term
+                      const assets = Object.values(firestoreAssets);
+                      let filteredByPhase;
+
+                      if (selectedPhases.includes("All")) {
+                        filteredByPhase = assets;
+                      } else {
+                        filteredByPhase = assets.filter((asset) =>
+                          selectedPhases.includes(asset.phase)
+                        );
+                      }
+
+                      // Further filter by search term
+                      setDisplayedAssets(
+                        filteredByPhase.filter((asset) =>
+                          asset.title.toLowerCase().includes(searchTerm)
+                        )
+                      );
+                    }
+                  }}
+                />
+                <FileText className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              </div>
+
               {isLoading ? (
                 <div className="space-y-2">
                   {Array(5)
@@ -603,26 +707,49 @@ function AssetsReviewerContent() {
                 <ul className="space-y-2">
                   {displayedAssets
                     .sort((a, b) => a.order - b.order)
-                    .map((asset) => (
-                      <li key={asset.id}>
-                        <Button
-                          variant={
-                            selectedAssetId === asset.id ? "default" : "outline"
-                          }
-                          className={`w-full justify-start text-left h-auto py-2 ${
-                            selectedAssetId === asset.id
-                              ? "bg-black text-white hover:bg-black/90"
-                              : ""
-                          }`}
-                          onClick={() => setSelectedAssetId(asset.id)}
-                        >
-                          <div className="flex items-center w-full">
-                            <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
-                            <span className="truncate">{asset.title}</span>
+                    .map((asset) => {
+                      const isSelected = selectedAssetId === asset.id;
+                      const hasAssetContent = hasContent(asset);
+
+                      return (
+                        <li key={asset.id}>
+                          <div
+                            className={`relative rounded-md border p-2 cursor-pointer transition-colors ${
+                              isSelected
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-primary/30 hover:bg-muted/30"
+                            }`}
+                            onClick={() => setSelectedAssetId(asset.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`flex items-center justify-center w-5 h-5 rounded-full border ${
+                                  isSelected
+                                    ? "bg-primary border-primary text-primary-foreground"
+                                    : "border-muted-foreground text-transparent"
+                                }`}
+                              >
+                                {isSelected && <Check className="h-3 w-3" />}
+                              </div>
+
+                              <div className="flex-1 flex items-center">
+                                <FileText className="h-4 w-4 mr-2 flex-shrink-0 text-muted-foreground" />
+                                <span className="truncate font-medium">
+                                  {asset.title}
+                                </span>
+                              </div>
+
+                              {hasAssetContent && (
+                                <div
+                                  className="w-2 h-2 rounded-full bg-green-500"
+                                  title="Has content"
+                                ></div>
+                              )}
+                            </div>
                           </div>
-                        </Button>
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                 </ul>
               )}
             </div>
@@ -639,29 +766,51 @@ function AssetsReviewerContent() {
                 </h2>
                 <div className="flex space-x-2">
                   {isEditing ? (
-                    <Button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      size="sm"
-                      className="flex items-center gap-1 bg-black text-white hover:bg-black/90"
-                    >
-                      {saveStatus === "saving" && "Saving..."}
-                      {saveStatus === "success" && (
-                        <>
-                          Saved <CheckCircle className="h-4 w-4" />
-                        </>
-                      )}
-                      {saveStatus === "error" && (
-                        <>
-                          Error <AlertCircle className="h-4 w-4" />
-                        </>
-                      )}
-                      {saveStatus === "idle" && (
-                        <>
-                          Save <Save className="h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
+                    <>
+                      <Button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        size="sm"
+                        className="flex items-center gap-1 bg-black text-white hover:bg-black/90"
+                      >
+                        {saveStatus === "saving" && "Saving..."}
+                        {saveStatus === "success" && (
+                          <>
+                            Saved <CheckCircle className="h-4 w-4" />
+                          </>
+                        )}
+                        {saveStatus === "error" && (
+                          <>
+                            Error <AlertCircle className="h-4 w-4" />
+                          </>
+                        )}
+                        {saveStatus === "idle" && (
+                          <>
+                            Save <Save className="h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setIsEditing(false);
+                          // Reload the original content from Firestore to discard changes
+                          if (
+                            selectedAssetId &&
+                            selectedAssetId in firestoreAssets
+                          ) {
+                            setAssetContent(
+                              firestoreAssets[selectedAssetId].content ||
+                                "# No content available"
+                            );
+                          }
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
+                        Cancel
+                      </Button>
+                    </>
                   ) : (
                     <>
                       <Button
@@ -697,6 +846,14 @@ function AssetsReviewerContent() {
                       >
                         {isGenerating ? "Generating..." : "Generate"}{" "}
                         <Wand2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        onClick={handleDownload}
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
+                        Download <Download className="h-4 w-4" />
                       </Button>
                     </>
                   )}

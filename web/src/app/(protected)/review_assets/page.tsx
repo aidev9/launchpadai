@@ -3,14 +3,18 @@ import { Main } from "@/components/layout/main";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { Provider } from "jotai";
+import { Provider, atom } from "jotai";
 import { NextStepsHorizontal } from "./next-steps-horizontal";
 import AssetsReviewer from "./components/assets-reviewer";
 import { PhaseToolbar } from "./components/phase-toolbar";
 import { AddAssetButton } from "./components/add-asset-button";
+import { FirestoreAsset } from "@/lib/firebase/initialize-assets";
 
 // Force dynamic rendering since we use cookies
 export const dynamic = "force-dynamic";
+
+// Create an atom to share all assets with the phase toolbar
+export const allAssetsAtom = atom<FirestoreAsset[]>([]);
 
 export default function ReviewAssets() {
   return (
