@@ -68,6 +68,7 @@ import {
   saveQuestionAnswer,
   getOrderedProductQuestions,
 } from "@/lib/firebase/actions/questions";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 // Modal state atom
 export const questionModalOpenAtom = atom(false);
@@ -598,15 +599,10 @@ export function QuestionWizard() {
       .string()
       .min(3, { message: "Question must be at least 3 characters long" })
       .max(500, { message: "Question must be less than 500 characters" }),
-    phase: z.enum([
-      "Discover",
-      "Validate",
-      "Design",
-      "Build",
-      "Secure",
-      "Launch",
-      "Grow",
-    ]),
+    answer: z.string().optional(),
+    phases: z
+      .array(z.string())
+      .min(1, { message: "Select at least one phase" }),
   });
 
   type FormValues = z.infer<typeof formSchema>;
@@ -616,7 +612,8 @@ export function QuestionWizard() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       text: "",
-      phase: "Discover",
+      answer: "",
+      phases: [],
     },
   });
 
@@ -628,8 +625,8 @@ export function QuestionWizard() {
       // Create the question in Firebase
       const response = await addProductQuestion(selectedProductId, {
         question: data.text,
-        answer: null,
-        tags: [data.phase.toLowerCase()],
+        answer: data.answer || null,
+        tags: data.phases.map((phase) => phase.toLowerCase()),
       });
 
       if (response.success && response.id) {
@@ -637,9 +634,9 @@ export function QuestionWizard() {
         const newQuestion: Question = {
           id: response.id,
           question: data.text,
-          answer: null,
-          tags: [data.phase.toLowerCase()],
-          phase: data.phase,
+          answer: data.answer || null,
+          tags: data.phases.map((phase) => phase.toLowerCase()),
+          phase: data.phases[0], // Use the first phase as the primary one
           order: allQuestions.length + 1, // Place at the end
           last_modified: new Date(),
           createdAt: new Date(),
@@ -837,18 +834,6 @@ export function QuestionWizard() {
             </CardFooter>
           </Card>
         )}
-
-        {/* Add Question Button at the bottom */}
-        <div className="flex justify-center mt-4">
-          <Button
-            variant="default"
-            className="flex items-center gap-1"
-            onClick={() => setModalOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add Question
-          </Button>
-        </div>
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -881,31 +866,41 @@ export function QuestionWizard() {
 
               <FormField
                 control={form.control}
-                name="phase"
+                name="answer"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Discover">Discover</SelectItem>
-                        <SelectItem value="Validate">Validate</SelectItem>
-                        <SelectItem value="Design">Design</SelectItem>
-                        <SelectItem value="Build">Build</SelectItem>
-                        <SelectItem value="Secure">Secure</SelectItem>
-                        <SelectItem value="Launch">Launch</SelectItem>
-                        <SelectItem value="Grow">Grow</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Answer</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter the answer (optional)"
+                        className="min-h-24"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phases"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phases</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={tagOptions.map((tag) => ({
+                          label: tag.label,
+                          value: tag.value,
+                        }))}
+                        selected={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select phases..."
+                      />
+                    </FormControl>
                     <FormDescription>
-                      Select the category that best fits your question
+                      Select the phases that this question applies to
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
