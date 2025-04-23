@@ -12,27 +12,77 @@ import {
   FileEdit,
   FileText,
   Save,
+  StickyNote,
   Wand2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { assets, getAssetsByPhase, Asset } from "../data/assets";
-import {
-  saveAsset,
-  getProductAssets,
-  getAsset as getFirestoreAsset,
-} from "@/lib/firebase/assets";
 import { toast } from "@/components/ui/use-toast";
-import { generateAsset } from "../actions/generate-asset";
 import { selectedPhasesAtom } from "./phase-toolbar";
+import { v4 as uuidv4 } from "uuid";
+import { ErrorBoundary } from "react-error-boundary";
+import { newlyCreatedAssetIdAtom } from "./add-asset-button";
 
-// Extended Asset type that includes content from Firestore
-interface FirestoreAsset extends Asset {
-  content?: string;
-  last_modified?: string; // ISO string for timestamp
-  createdAt?: string; // ISO string for timestamp
+// Interface definitions
+interface Note {
+  id: string;
+  note_body: string;
+  last_modified: string;
 }
 
-export function AssetsReviewer() {
+interface FirestoreAsset extends Asset {
+  content?: string;
+  last_modified?: string;
+  createdAt?: string;
+}
+
+// Loading skeleton component
+function AssetsReviewerSkeleton() {
+  return (
+    <div className="w-full p-4 space-y-4">
+      <div className="h-10 bg-gray-200 dark:bg-gray-800 rounded animate-pulse"></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array(6)
+          .fill(0)
+          .map((_, i) => (
+            <div
+              key={i}
+              className="h-64 bg-gray-200 dark:bg-gray-800 rounded animate-pulse"
+            ></div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+// Error fallback component
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <div className="p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+      <h2 className="text-xl font-semibold text-red-700 dark:text-red-400 mb-2">
+        Something went wrong loading the assets reviewer
+      </h2>
+      <p className="text-red-600 dark:text-red-400 mb-4">{error.message}</p>
+      <button
+        onClick={() => window.location.reload()}
+        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
+// Main component
+function AssetsReviewerContent() {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [selectedPhases] = useAtom(selectedPhasesAtom);
   const [selectedAssetId, setSelectedAssetId] = useState<string>("");
@@ -48,6 +98,13 @@ export function AssetsReviewer() {
   const [firestoreAssets, setFirestoreAssets] = useState<
     Record<string, FirestoreAsset>
   >({});
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteContent, setNoteContent] = useState("");
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [newlyCreatedAssetId, setNewlyCreatedAssetId] = useAtom(
+    newlyCreatedAssetIdAtom
+  );
 
   // Filter assets based on selected phases
   useEffect(() => {
@@ -72,17 +129,37 @@ export function AssetsReviewer() {
 
       setIsLoading(true);
       try {
-        const response = await getProductAssets(selectedProductId);
+        // Dynamically import server action to avoid bundling server code
+        const { getProductAssetsAction } = await import(
+          "../actions/get-product-assets-action"
+        );
+        const response = await getProductAssetsAction(selectedProductId);
+
         if (response.success && response.assets) {
           // Create a map of asset ID to asset data
           const assetMap: Record<string, FirestoreAsset> = {};
-          response.assets.forEach((asset) => {
+          response.assets.forEach((asset: any) => {
             assetMap[asset.id] = asset as FirestoreAsset;
           });
           setFirestoreAssets(assetMap);
         }
+
+        // Load notes using server action
+        const { getProjectNotesAction } = await import(
+          "../actions/get-project-notes-action"
+        );
+        const notesResponse = await getProjectNotesAction(selectedProductId);
+
+        if (notesResponse.success && notesResponse.notes) {
+          setNotes(notesResponse.notes as Note[]);
+        }
       } catch (error) {
         console.error("Error loading Firestore assets:", error);
+        toast({
+          title: "Error loading assets",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -109,11 +186,15 @@ export function AssetsReviewer() {
             firestoreAssets[selectedAssetId].content || "# No content available"
           );
         } else {
-          // Attempt to load from Firestore directly
-          const response = await getFirestoreAsset(
+          // Attempt to load from Firestore using server action
+          const { getAssetAction } = await import(
+            "../actions/get-asset-action"
+          );
+          const response = await getAssetAction(
             selectedProductId,
             selectedAssetId
           );
+
           if (
             response.success &&
             response.asset &&
@@ -130,6 +211,11 @@ export function AssetsReviewer() {
       } catch (error) {
         console.error("Error loading asset content:", error);
         setAssetContent("# Error loading content");
+        toast({
+          title: "Error loading content",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -141,61 +227,141 @@ export function AssetsReviewer() {
     loadAssetContent();
   }, [selectedAssetId, selectedProductId, firestoreAssets]);
 
+  // Listen for newly created assets
+  useEffect(() => {
+    if (newlyCreatedAssetId) {
+      // Refresh asset list from Firestore
+      const refreshAssets = async () => {
+        if (!selectedProductId) return;
+
+        try {
+          // Dynamically import server action
+          const { getProductAssetsAction } = await import(
+            "../actions/get-product-assets-action"
+          );
+          const response = await getProductAssetsAction(selectedProductId);
+
+          if (response.success && response.assets) {
+            // Create a map of asset ID to asset data
+            const assetMap: Record<string, FirestoreAsset> = {};
+            response.assets.forEach((asset: any) => {
+              assetMap[asset.id] = asset as FirestoreAsset;
+            });
+
+            // Update Firestore assets
+            setFirestoreAssets(assetMap);
+
+            // Find the newly created asset
+            const createdAsset = response.assets.find(
+              (asset: any) => asset.id === newlyCreatedAssetId
+            );
+
+            // If we found the asset, update displayed assets if needed
+            if (createdAsset) {
+              // Determine if we should add it based on selected phases
+              const phase = createdAsset.phase || "Discover"; // Default to Discover if missing
+
+              if (
+                selectedPhases.includes("All") ||
+                selectedPhases.includes(phase)
+              ) {
+                // Create a temporary array to check for duplicates
+                const tempAssets = [...displayedAssets];
+                const assetExists = tempAssets.some(
+                  (asset) => asset.id === newlyCreatedAssetId
+                );
+
+                // Only add if it doesn't exist
+                if (!assetExists) {
+                  tempAssets.push({
+                    id: createdAsset.id,
+                    document: createdAsset.document,
+                    phase: phase,
+                    systemPrompt: createdAsset.systemPrompt || "",
+                    order: createdAsset.order || 999,
+                  });
+
+                  setDisplayedAssets(tempAssets);
+                }
+              }
+            }
+
+            // Select the newly created asset
+            setSelectedAssetId(newlyCreatedAssetId);
+
+            // Reset the newly created asset ID atom
+            setNewlyCreatedAssetId(null);
+          }
+        } catch (error) {
+          console.error("Error refreshing assets:", error);
+        }
+      };
+
+      refreshAssets();
+    }
+  }, [
+    newlyCreatedAssetId,
+    selectedProductId,
+    setNewlyCreatedAssetId,
+    selectedPhases,
+    displayedAssets,
+  ]);
+
   const handleSave = async () => {
-    if (!selectedAssetId || !selectedProductId) return;
+    if (!selectedAssetId || !selectedProductId || !assetContent) return;
 
     setIsSaving(true);
     setSaveStatus("saving");
 
     try {
-      // Get the selected asset
+      // Get metadata for this asset
       const selectedAsset = assets.find((a) => a.id === selectedAssetId);
       if (!selectedAsset) {
-        throw new Error("Asset not found");
+        throw new Error("Asset metadata not found");
       }
 
-      // Call the server action to save the asset
-      const response = await saveAsset(selectedProductId, {
-        id: selectedAssetId,
-        phase: selectedAsset.phase,
-        document: selectedAsset.document,
-        systemPrompt: selectedAsset.systemPrompt,
-        order: selectedAsset.order,
-        content: assetContent,
-      });
-
-      if (!response.success) {
-        throw new Error(response.error || "Failed to save asset");
-      }
-
-      // Update local Firestore assets cache
-      setFirestoreAssets((prev) => ({
-        ...prev,
-        [selectedAssetId]: {
-          ...prev[selectedAssetId],
-          content: assetContent,
+      // Use server action
+      const { saveAssetAction } = await import("../actions/asset-actions");
+      const response = await saveAssetAction({
+        productId: selectedProductId,
+        asset: {
           id: selectedAssetId,
           phase: selectedAsset.phase,
           document: selectedAsset.document,
           systemPrompt: selectedAsset.systemPrompt,
           order: selectedAsset.order,
+          content: assetContent,
+        },
+      });
+
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+
+      // Update local state
+      setFirestoreAssets((prev) => ({
+        ...prev,
+        [selectedAssetId]: {
+          ...selectedAsset,
+          content: assetContent,
+          last_modified: new Date().toISOString(),
         },
       }));
 
       setSaveStatus("success");
       toast({
         title: "Asset saved",
-        description: "Your asset has been saved successfully.",
+        description: "Your changes have been saved successfully.",
       });
 
-      setTimeout(() => setSaveStatus("idle"), 2000);
+      // Exit edit mode
       setIsEditing(false);
     } catch (error) {
       console.error("Error saving asset:", error);
       setSaveStatus("error");
       toast({
         title: "Error saving asset",
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     } finally {
@@ -209,7 +375,8 @@ export function AssetsReviewer() {
     setIsGenerating(true);
 
     try {
-      // Call the real server action to generate the asset
+      // Use server action
+      const { generateAsset } = await import("../actions/generate-asset");
       const response = await generateAsset({
         productId: selectedProductId,
         assetId: selectedAssetId,
@@ -228,25 +395,21 @@ export function AssetsReviewer() {
         setFirestoreAssets((prev) => ({
           ...prev,
           [selectedAssetId]: {
-            ...prev[selectedAssetId],
-            content: response.content,
-            id: selectedAssetId,
-            phase: selectedAsset.phase,
-            document: selectedAsset.document,
-            systemPrompt: selectedAsset.systemPrompt,
-            order: selectedAsset.order,
+            ...selectedAsset,
+            content: response.content || "",
+            last_modified: new Date().toISOString(),
           },
         }));
       }
 
       toast({
-        title: "Asset generated",
-        description: "Your asset has been generated successfully.",
+        title: "Content generated",
+        description: "Your asset content has been generated successfully.",
       });
     } catch (error) {
       console.error("Error generating asset:", error);
       toast({
-        title: "Error generating asset",
+        title: "Error generating content",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
@@ -255,9 +418,63 @@ export function AssetsReviewer() {
     }
   };
 
-  // Function to check if an asset exists in Firestore
+  // Check if an asset exists in our Firestore cache
   const assetExistsInFirestore = (assetId: string) => {
-    return assetId in firestoreAssets;
+    return assetId in firestoreAssets && !!firestoreAssets[assetId].content;
+  };
+
+  const handleSaveNote = async () => {
+    if (!selectedProductId || !noteContent) return;
+
+    setIsSavingNote(true);
+
+    try {
+      // Use server action
+      const { saveNoteAction } = await import("../actions/notes-actions");
+      const response = await saveNoteAction({
+        productId: selectedProductId,
+        note: {
+          id: uuidv4(),
+          note_body: noteContent,
+        },
+      });
+
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+
+      // Update local state
+      if (response.note) {
+        // Convert the Date object to a string if needed
+        const newNote = {
+          ...response.note,
+          last_modified:
+            typeof response.note.last_modified === "object"
+              ? response.note.last_modified.toISOString()
+              : response.note.last_modified,
+        } as Note;
+
+        setNotes((prev) => [...prev, newNote]);
+      }
+
+      // Close dialog and clear content
+      setNoteDialogOpen(false);
+      setNoteContent("");
+
+      toast({
+        title: "Note saved",
+        description: "Your note has been saved successfully.",
+      });
+    } catch (error) {
+      console.error("Error saving note:", error);
+      toast({
+        title: "Error saving note",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingNote(false);
+    }
   };
 
   return (
@@ -306,7 +523,7 @@ export function AssetsReviewer() {
                     onClick={handleSave}
                     disabled={isSaving}
                     size="sm"
-                    className="flex items-center gap-1"
+                    className="flex items-center gap-1 bg-black text-white hover:bg-black/90"
                   >
                     {saveStatus === "saving" && "Saving..."}
                     {saveStatus === "success" && (
@@ -327,6 +544,14 @@ export function AssetsReviewer() {
                   </Button>
                 ) : (
                   <>
+                    <Button
+                      onClick={() => setNoteDialogOpen(true)}
+                      size="sm"
+                      variant="outline"
+                      className="flex items-center gap-1"
+                    >
+                      Add Note <StickyNote className="h-4 w-4" />
+                    </Button>
                     <Button
                       onClick={() => setIsEditing(true)}
                       size="sm"
@@ -380,6 +605,47 @@ export function AssetsReviewer() {
           </div>
         )}
       </Card>
+
+      {/* Add Note Dialog */}
+      <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Note</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              className="min-h-[150px]"
+              placeholder="Add important details or context here... These notes will take precedence over question answers when generating assets."
+              value={noteContent}
+              onChange={(e) => setNoteContent(e.target.value)}
+            />
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={handleSaveNote}
+              disabled={isSavingNote || !noteContent.trim()}
+              className="bg-black text-white hover:bg-black/90"
+            >
+              {isSavingNote ? "Saving..." : "Save Note"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Export the component with error boundary
+export default function AssetsReviewer() {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <AssetsReviewerContent />
+    </ErrorBoundary>
   );
 }

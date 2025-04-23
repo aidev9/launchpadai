@@ -12,7 +12,14 @@ import {
   getAllQuestionAnswers,
   type QuestionAnswer,
 } from "@/lib/firebase/question-answers";
-import { generateAssetContentWithLangGraph as generateAIContent } from "@/lib/ai";
+import { getProjectNotes } from "@/lib/firebase/notes";
+
+// Dynamic import AI utils to avoid bundling them in the client
+const generateAIContent = async (params: any) => {
+  // Import the AI module only on the server
+  const { generateAssetContentWithLangGraph } = await import("@/lib/ai");
+  return generateAssetContentWithLangGraph(params);
+};
 
 // Schema for the input
 const assetGenerationSchema = z.object({
@@ -65,12 +72,17 @@ async function handleAssetGeneration(
     }
     const questionAnswers = answersResponse.answers || [];
 
+    // Get notes for the product
+    const notesResponse = await getProjectNotes(productId);
+    const notes = notesResponse.success ? notesResponse.notes || [] : [];
+
     // Generate the content using our AI module with LangGraph
     const generatedContent: string = await generateAIContent({
       systemPrompt: asset.systemPrompt,
       document: asset.document,
       product,
       questionAnswers,
+      notes,
     });
 
     // Save the generated content to Firestore
@@ -95,7 +107,7 @@ async function handleAssetGeneration(
       content: generatedContent,
     };
   } catch (error) {
-    console.error("Error generating asset content:", error);
+    console.error("Failed to generate asset:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -105,9 +117,8 @@ async function handleAssetGeneration(
 
 // Use a simple server action since we're having issues with safe-action
 // This will work with Next.js server actions directly
-export async function generateAsset(data: {
-  productId: string;
-  assetId: string;
-}): Promise<{ success: boolean; content?: string; error?: string }> {
+export async function generateAsset(
+  data: z.infer<typeof assetGenerationSchema>
+) {
   return handleAssetGeneration(data);
 }

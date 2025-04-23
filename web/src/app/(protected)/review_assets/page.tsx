@@ -4,9 +4,10 @@ import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Provider } from "jotai";
-import { NextStepsCard } from "./next-steps-card";
-import { AssetsReviewer } from "./components/assets-reviewer";
+import { NextStepsHorizontal } from "./next-steps-horizontal";
+import AssetsReviewer from "./components/assets-reviewer";
 import { PhaseToolbar } from "./components/phase-toolbar";
+import { AddAssetButton } from "./components/add-asset-button";
 
 // Force dynamic rendering since we use cookies
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export default function ReviewAssets() {
         </div>
       </Header>
 
-      <Main>
+      <Main className="py-24 px-4">
         <div className="mb-6 flex flex-col md:flex-row gap-6 justify-between">
           <div className="flex-1">
             <Breadcrumbs
@@ -47,12 +48,16 @@ export default function ReviewAssets() {
             </div>
           </div>
 
-          {/* Next Steps Card Component */}
-          <NextStepsCard />
+          {/* Add Asset Button */}
+          <div className="flex items-start mt-6 md:mt-0">
+            <AddAssetButton />
+          </div>
         </div>
 
         <div className="flex-1 overflow-auto px-1 py-1 lg:space-y-0">
           <AssetsReviewer />
+          {/* Horizontal Next Steps Navigation at bottom */}
+          <NextStepsHorizontal />
         </div>
       </Main>
     </Provider>

@@ -167,6 +167,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.1.0(react@19.1.0)
+      react-error-boundary:
+        specifier: ^5.0.0
+        version: 5.0.0(react@19.1.0)
       react-firebase-hooks:
         specifier: ^5.1.1
         version: 5.1.1(firebase@11.6.0)(react@19.1.0)

@@ -19,6 +19,7 @@ export interface AssetGenerationData {
   document: string;
   product: Product;
   questionAnswers: QuestionAnswer[];
+  notes?: { id: string; note_body: string; last_modified: string }[];
 }
 
 /**
@@ -29,9 +30,13 @@ const AssetGenerationStateAnnotation = Annotation.Root({
   document: Annotation<string>(),
   product: Annotation<Product>(),
   questionAnswers: Annotation<QuestionAnswer[]>(),
+  notes:
+    Annotation<{ id: string; note_body: string; last_modified: string }[]>(),
   formattedQAs: Annotation<string>(),
+  formattedNotes: Annotation<string>(),
   generatedContent: Annotation<string>(),
   hasAnsweredQuestions: Annotation<boolean>(),
+  hasNotes: Annotation<boolean>(),
 });
 
 /**
@@ -174,6 +179,7 @@ export async function generateAssetContentWithLangGraph({
   document,
   product,
   questionAnswers,
+  notes = [],
 }: AssetGenerationData): Promise<string> {
   console.log("[LangGraph]");
   try {
@@ -181,6 +187,12 @@ export async function generateAssetContentWithLangGraph({
     const answeredQuestions = questionAnswers.filter(
       (qa) => qa.answer && qa.answer.trim() !== ""
     );
+
+    // Format the notes for the model input (if any)
+    const formattedNotes =
+      notes.length > 0
+        ? notes.map((note) => `Note: ${note.note_body}`).join("\n\n")
+        : "";
 
     // Format the question/answers for the model input
     const formattedQAs =
@@ -196,20 +208,23 @@ export async function generateAssetContentWithLangGraph({
       document,
       product,
       questionAnswers,
+      notes,
       formattedQAs,
+      formattedNotes,
       generatedContent: "",
       hasAnsweredQuestions: answeredQuestions.length > 0,
+      hasNotes: notes.length > 0,
     };
 
     // Define LangGraph nodes
 
     /**
-     * Determines whether to use normal or fallback flow based on available Q&A data
+     * Determines whether to use normal or fallback flow based on available data
      */
     const determineGenerationPath = (
       state: typeof AssetGenerationStateAnnotation.State
     ) => {
-      if (state.hasAnsweredQuestions) {
+      if (state.hasNotes || state.hasAnsweredQuestions) {
         return "fullContentGeneration";
       }
       return "fallbackContentGeneration";
@@ -264,7 +279,7 @@ Note: This is a preliminary version as no detailed Q&A information is available 
     };
 
     /**
-     * Generates comprehensive content using Q&A data and product information
+     * Generates comprehensive content using notes, Q&A data and product information
      */
     const generateFullContent = async (
       state: typeof AssetGenerationStateAnnotation.State
@@ -281,9 +296,10 @@ Note: This is a preliminary version as no detailed Q&A information is available 
           "system",
           `
 You are generating a ${state.document} for a startup. 
-Use the provided product details and question/answer pairs to create a comprehensive document.
+Use the provided product details, notes, and question/answer pairs to create a comprehensive document.
 Format your response using proper Markdown syntax.
 Be specific, detailed, and professional.
+If notes are provided, they take precedence over question/answer pairs.
           `,
         ],
         [
@@ -297,8 +313,8 @@ Website: ${state.product.website || "Not provided"}
 Country: ${state.product.country || "Not provided"}
 Stage: ${state.product.stage || "Not provided"}
 
-Here are all the question/answer pairs available for this product:
-${state.formattedQAs}
+${state.hasNotes ? "Here are the notes for this product (these take precedence):\n" + state.formattedNotes + "\n\n" : ""}
+${state.hasAnsweredQuestions ? "Here are all the question/answer pairs available for this product:\n" + state.formattedQAs : ""}
 
 Please generate a comprehensive ${state.document} based on this information.
           `,
