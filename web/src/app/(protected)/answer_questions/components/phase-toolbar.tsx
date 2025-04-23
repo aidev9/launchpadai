@@ -1,7 +1,10 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { selectedAssetPhasesAtom } from "@/lib/store/assets-store";
+import {
+  allQuestionsAtom,
+  selectedPhasesAtom,
+} from "@/lib/store/questions-store";
 
 // Define all possible phases statically
 const phases = [
@@ -16,7 +19,28 @@ const phases = [
 ];
 
 export function PhaseToolbar() {
-  const [selectedPhases, setSelectedPhases] = useAtom(selectedAssetPhasesAtom);
+  const [selectedPhases, setSelectedPhases] = useAtom(selectedPhasesAtom);
+  const [allQuestions] = useAtom(allQuestionsAtom);
+
+  // Count answered questions per phase
+  const phaseStats = phases.reduce(
+    (acc, phase) => {
+      if (phase === "All") {
+        const totalAnswered = allQuestions.filter(
+          (q) => q.answer && q.answer.trim().length > 0
+        ).length;
+        acc[phase] = { total: allQuestions.length, answered: totalAnswered };
+      } else {
+        const phaseQuestions = allQuestions.filter((q) => q.phase === phase);
+        const answeredCount = phaseQuestions.filter(
+          (q) => q.answer && q.answer.trim().length > 0
+        ).length;
+        acc[phase] = { total: phaseQuestions.length, answered: answeredCount };
+      }
+      return acc;
+    },
+    {} as Record<string, { total: number; answered: number }>
+  );
 
   const handlePhaseToggle = (phase: string) => {
     // If "All" is selected, clear other selections
@@ -56,7 +80,7 @@ export function PhaseToolbar() {
             <button
               key={phase}
               onClick={() => handlePhaseToggle(phase)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors 
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2
                 ${
                   selectedPhases.includes(phase)
                     ? "bg-primary text-primary-foreground"
@@ -64,6 +88,12 @@ export function PhaseToolbar() {
                 }`}
             >
               {phase}
+              <span
+                className={`text-xs ${selectedPhases.includes(phase) ? "text-primary-foreground/80" : "text-secondary-foreground/80"}`}
+              >
+                {phaseStats[phase]?.answered || 0}/
+                {phaseStats[phase]?.total || 0}
+              </span>
             </button>
           ))}
         </div>

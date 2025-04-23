@@ -29,12 +29,14 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
-import { selectedPhasesAtom } from "./phase-toolbar";
 import { v4 as uuidv4 } from "uuid";
 import { ErrorBoundary } from "react-error-boundary";
 import { newlyCreatedAssetIdAtom } from "./add-asset-button";
 import { FirestoreAsset } from "@/lib/firebase/initialize-assets";
-import { allAssetsAtom } from "../page";
+import {
+  allAssetsAtom,
+  selectedAssetPhasesAtom,
+} from "@/lib/store/assets-store";
 
 // Interface definitions
 interface Note {
@@ -83,7 +85,7 @@ function ErrorFallback({ error }: { error: Error }) {
 // Main component
 function AssetsReviewerContent() {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
-  const [selectedPhases] = useAtom(selectedPhasesAtom);
+  const [selectedPhases] = useAtom(selectedAssetPhasesAtom);
   const [selectedAssetId, setSelectedAssetId] = useState<string>("");
   const [assetContent, setAssetContent] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
@@ -150,7 +152,7 @@ function AssetsReviewerContent() {
         );
         const response = await getProductAssetsAction(selectedProductId);
 
-        if (response.success && "assets" in response) {
+        if (response.success && "assets" in response && response.assets) {
           // Create a map of asset ID to asset data
           const assetMap: Record<string, FirestoreAsset> = {};
           response.assets.forEach((asset: any) => {
@@ -205,7 +207,7 @@ function AssetsReviewerContent() {
         );
         const response = await getProductAssetsAction(selectedProductId);
 
-        if (response.success && "assets" in response) {
+        if (response.success && "assets" in response && response.assets) {
           console.log("Fetched assets:", response.assets.length);
 
           // Create a map of asset ID to asset data

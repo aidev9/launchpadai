@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { adminDb } from "../admin";
 import { getCurrentUserId } from "../adminAuth";
 import { getProductQuestionsRef } from "../questions";
+import { ProductQuestionInput } from "@/lib/firebase/schema";
+import { z } from "zod";
 
 // Get reference to the questions collection
 const questionsCollection = adminDb.collection("questions");
@@ -111,6 +113,124 @@ export async function getOrderedProductQuestions(productId: string) {
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export async function deleteQuestionAction(
+  productId: string,
+  questionId: string
+) {
+  try {
+    if (!productId || !questionId) {
+      return {
+        success: false,
+        error: "Product ID and Question ID are required",
+      };
+    }
+
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    // Get reference to the questions collection using the helper function
+    const questionsRef = await getProductQuestionsRefHelper(userId, productId);
+    const questionRef = questionsRef.doc(questionId);
+
+    // Delete the question document
+    await questionRef.delete();
+
+    // Revalidate the UI
+    // Defer revalidation to improve performance
+    Promise.resolve().then(() => {
+      revalidatePath("/answer_questions");
+      revalidatePath("/product");
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error deleting question:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Add a server action for creating questions
+export async function addProductQuestionAction(
+  productId: string,
+  questionData: {
+    question: string;
+    answer: string | null;
+    tags: string[];
+    phase?: string;
+  }
+) {
+  try {
+    if (!productId) {
+      return {
+        success: false,
+        error: "Product ID is required",
+      };
+    }
+
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    // Get reference to the questions collection using the helper function
+    const questionsRef = await getProductQuestionsRefHelper(userId, productId);
+
+    // Generate a unique ID
+    const questionId = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // Prepare the question data
+    const now = new Date().toISOString();
+    const phase = questionData.phase || questionData.tags[0] || "Discover";
+
+    const newQuestion = {
+      question: questionData.question,
+      answer: questionData.answer,
+      tags: questionData.tags,
+      phase: phase,
+      order: Date.now(), // Use timestamp for default ordering
+      createdAt: now,
+      last_modified: now,
+    };
+
+    // Add to Firestore
+    await questionsRef.doc(questionId).set(newQuestion);
+
+    // Revalidate the UI
+    Promise.resolve().then(() => {
+      revalidatePath("/answer_questions");
+      revalidatePath("/product");
+    });
+
+    return {
+      success: true,
+      id: questionId,
+      question: {
+        id: questionId,
+        ...newQuestion,
+      },
+    };
+  } catch (error) {
+    console.error("Error adding question:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }

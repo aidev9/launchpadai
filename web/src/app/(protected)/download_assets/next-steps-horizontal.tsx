@@ -46,7 +46,7 @@ export function NextStepsHorizontal() {
             </div>
             <div className="min-w-0 truncate">
               <p className="font-medium text-sm md:text-base truncate">
-                Read Instructions
+                Setup Instructions
               </p>
               <p className="text-xs text-muted-foreground truncate hidden sm:block">
                 Apply the generated assets
