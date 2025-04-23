@@ -96,7 +96,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             password
           );
 
-          router.push("/dashboard");
+          router.push("/(protected)/ftux");
         } catch (error) {
           console.error("Error signing in after signup:", error);
 
@@ -142,7 +142,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
     };
     const result = await signupAction(data);
     if (result?.data?.success) {
-      router.push("/dashboard");
+      router.push("/(protected)/ftux");
     } else if (result?.data?.message) {
       setErrorMessage(result.data.message);
     }

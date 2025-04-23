@@ -15,7 +15,7 @@ export function middleware(request: NextRequest) {
   // Check if the path is an auth path and user is already authenticated
   const isAuthPath = authPaths.some((path) => pathname.startsWith(path));
   if (isAuthPath && isAuthenticated) {
-    // Redirect to home page
+    // Redirect to dashboard
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

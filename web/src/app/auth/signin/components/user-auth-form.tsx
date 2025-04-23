@@ -69,7 +69,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   const { execute, status, result } = useAction(signupAction, {
     onSuccess: async (data) => {
       if (data.data?.success) {
-        router.push("/dashboard");
+        router.push("/(protected)/ftux");
       }
     },
     onError: (error) => {
@@ -84,7 +84,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
     setIsLoading(true);
     handleEmailPasswordSignIn(data.email, data.password)
       .then(() => {
-        router.push("/dashboard");
+        router.push("/(protected)/ftux");
       })
       .catch((error) => {
         console.error("Error signing in:", error);
@@ -124,7 +124,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           interest: "other",
         };
         execute(data);
-        router.push("/dashboard");
+        router.push("/(protected)/ftux");
       } else {
         console.log("No user is signed in.");
       }
