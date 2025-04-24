@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
   appTemplates,
@@ -30,6 +29,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { countProducts } from "@/lib/firebase/products";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { cn } from "@/lib/utils";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -37,6 +37,7 @@ export const dynamic = "force-dynamic";
 export default function Welcome() {
   const [searchQuery, setSearchQuery] = useState("");
   const [hasProducts, setHasProducts] = useState(false);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["all"]);
   const router = useRouter();
 
   // Check if user has any products
@@ -51,27 +52,46 @@ export default function Welcome() {
     checkProducts();
   }, []);
 
-  // Filter templates based on search query
-  const filterTemplates = (templates: Template[]) => {
-    if (!searchQuery) return templates;
+  // Pills for filtering
+  const pillOptions = [
+    { label: "All", value: "all" },
+    { label: "Apps", value: "app" },
+    { label: "AI Agents", value: "agent" },
+    { label: "Integrations", value: "integration" },
+  ];
 
-    return templates.filter(
-      (template) =>
-        template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        template.description
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        template.tags.some((tag) =>
-          tag.toLowerCase().includes(searchQuery.toLowerCase())
-        ) ||
-        template.type.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  // Handle pill selection
+  const handlePillClick = (value: string) => {
+    if (value === "all") {
+      setSelectedTypes(["all"]);
+    } else {
+      let newTypes = selectedTypes.includes(value)
+        ? selectedTypes.filter((t) => t !== value)
+        : [...selectedTypes.filter((t) => t !== "all"), value];
+      if (newTypes.length === 0) newTypes = ["all"];
+      setSelectedTypes(newTypes);
+    }
   };
 
-  // Filtered template lists
-  const filteredAppTemplates = filterTemplates(appTemplates);
-  const filteredAgentTemplates = filterTemplates(agentTemplates);
-  const filteredIntegrationTemplates = filterTemplates(integrationTemplates);
+  // Filter templates based on pills and search
+  const allTemplatesArr = [
+    ...appTemplates,
+    ...agentTemplates,
+    ...integrationTemplates,
+  ];
+  const filteredTemplates = allTemplatesArr.filter((template) => {
+    const matchesType =
+      selectedTypes.includes("all") || selectedTypes.includes(template.type);
+    const matchesSearch =
+      !searchQuery ||
+      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.tags.some((tag) =>
+        tag.toLowerCase().includes(searchQuery.toLowerCase())
+      ) ||
+      template.type.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesType && matchesSearch;
+  });
 
   // Handle template selection
   const handleTemplateSelect = (template: Template) => {
@@ -124,89 +144,64 @@ export default function Welcome() {
             </p>
           </div>
 
-          {/* Search and Filter */}
-          <div className="relative w-full max-w-sm mx-auto">
-            <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Filter templates..."
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          {/* Pills and Filter Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-3xl mx-auto mb-4">
+            <div className="flex flex-wrap gap-2">
+              {pillOptions.map((pill) => (
+                <button
+                  key={pill.value}
+                  type="button"
+                  className={cn(
+                    "px-4 py-2 rounded-full text-sm font-medium border transition-colors",
+                    selectedTypes.includes(pill.value)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-secondary text-secondary-foreground border-transparent hover:bg-secondary/80"
+                  )}
+                  onClick={() => handlePillClick(pill.value)}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+            <div className="relative flex-1 max-w-xs ml-auto">
+              <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Filter templates..."
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Templates Section */}
           <div className="space-y-6">
-            <Tabs defaultValue="apps" className="w-full">
-              <TabsList className="mb-4 grid w-full grid-cols-3">
-                <TabsTrigger value="apps">Apps</TabsTrigger>
-                <TabsTrigger value="agents">AI Agents</TabsTrigger>
-                <TabsTrigger value="integrations">Integrations</TabsTrigger>
-              </TabsList>
-
-              {/* Apps Tab */}
-              <TabsContent value="apps" className="space-y-4">
-                <h2 className="text-2xl font-semibold">App Templates</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredAppTemplates.length > 0 ? (
-                    filteredAppTemplates.map((template) => (
-                      <TemplateCard
-                        key={template.id}
-                        template={template}
-                        onSelect={() => handleTemplateSelect(template)}
-                      />
-                    ))
-                  ) : (
-                    <p className="col-span-3 text-center text-muted-foreground py-8">
-                      No app templates found matching your search.
-                    </p>
-                  )}
-                </div>
-              </TabsContent>
-
-              {/* AI Agents Tab */}
-              <TabsContent value="agents" className="space-y-4">
-                <h2 className="text-2xl font-semibold">AI Agent Templates</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredAgentTemplates.length > 0 ? (
-                    filteredAgentTemplates.map((template) => (
-                      <TemplateCard
-                        key={template.id}
-                        template={template}
-                        onSelect={() => handleTemplateSelect(template)}
-                      />
-                    ))
-                  ) : (
-                    <p className="col-span-3 text-center text-muted-foreground py-8">
-                      No AI agent templates found matching your search.
-                    </p>
-                  )}
-                </div>
-              </TabsContent>
-
-              {/* Integrations Tab */}
-              <TabsContent value="integrations" className="space-y-4">
-                <h2 className="text-2xl font-semibold">
-                  Integration Templates
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredIntegrationTemplates.length > 0 ? (
-                    filteredIntegrationTemplates.map((template) => (
-                      <TemplateCard
-                        key={template.id}
-                        template={template}
-                        onSelect={() => handleTemplateSelect(template)}
-                      />
-                    ))
-                  ) : (
-                    <p className="col-span-3 text-center text-muted-foreground py-8">
-                      No integration templates found matching your search.
-                    </p>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
+            <h2 className="text-2xl font-semibold">
+              {selectedTypes.includes("all")
+                ? "All Templates"
+                : pillOptions
+                    .filter((p) =>
+                      p.value !== "all" && selectedTypes.includes(p.value)
+                    )
+                    .map((p) => p.label)
+                    .join(", ") + " Templates"}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredTemplates.length > 0 ? (
+                filteredTemplates.map((template) => (
+                  <TemplateCard
+                    key={template.id}
+                    template={template}
+                    onSelect={() => handleTemplateSelect(template)}
+                  />
+                ))
+              ) : (
+                <p className="col-span-3 text-center text-muted-foreground py-8">
+                  No templates found matching your search.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Start Blank Section */}
