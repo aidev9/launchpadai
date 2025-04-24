@@ -232,8 +232,8 @@ export function QuestionsReviewer() {
     try {
       // Call the server action to delete from Firebase
       const response = await deleteQuestionAction(
-        selectedProductId,
-        questionId
+        questionId,
+        selectedProductId
       );
 
       if (response.success) {

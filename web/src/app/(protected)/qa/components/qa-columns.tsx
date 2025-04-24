@@ -59,13 +59,20 @@ export const columns: ColumnDef<Question>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "project_id",
+    accessorKey: "phase",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Project" />
+      <DataTableColumnHeader column={column} title="Phase" />
     ),
-    cell: ({ row }) => (
-      <div className="max-w-24 truncate">{row.getValue("project_id")}</div>
-    ),
+    cell: ({ row }) => {
+      const phase = row.getValue("phase");
+      return phase ? (
+        <Badge variant="outline" className="capitalize">
+          {String(phase)}
+        </Badge>
+      ) : (
+        <div className="text-muted-foreground italic">N/A</div>
+      );
+    },
   },
   {
     id: "status",
@@ -114,6 +121,10 @@ export const columns: ColumnDef<Question>[] = [
     cell: ({ row }) => {
       const tags = row.getValue("tags") as string[];
 
+      if (!tags || tags.length === 0) {
+        return <div className="text-muted-foreground italic">None</div>;
+      }
+
       return (
         <div className="flex flex-wrap gap-1">
           {tags.slice(0, 2).map((tag) => (
@@ -145,11 +156,12 @@ export const columns: ColumnDef<Question>[] = [
       <DataTableColumnHeader column={column} title="Last Modified" />
     ),
     cell: ({ row }) => {
-      const lastModified = row.getValue("last_modified") as Date;
+      const lastModified = row.getValue("last_modified") as string;
+      const date = lastModified ? new Date(lastModified) : null;
 
       return (
         <div className="text-sm text-muted-foreground">
-          {lastModified.toLocaleDateString()}
+          {date ? date.toLocaleDateString() : "N/A"}
         </div>
       );
     },

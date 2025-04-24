@@ -1,11 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { CheckIcon, PlusCircle } from "lucide-react";
-import { atom, useAtom } from "jotai";
+import { CheckIcon, PlusCircledIcon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -21,23 +19,20 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 
-export type Option = {
+export interface OptionType {
   label: string;
   value: string;
   icon?: React.ComponentType<{ className?: string }>;
-};
+}
 
 interface DataTableFacetedFilterProps {
-  title?: string;
-  options: Option[];
+  title: string;
+  options: OptionType[];
   value: string[];
   onChange: (value: string[]) => void;
 }
-
-// Create a Jotai atom factory for filter values
-const createFilterValuesAtom = (initialValue: string[]) =>
-  atom(new Set(initialValue));
 
 export function DataTableFacetedFilter({
   title,
@@ -45,65 +40,15 @@ export function DataTableFacetedFilter({
   value,
   onChange,
 }: DataTableFacetedFilterProps) {
-  // Create a unique atom for this instance using a ref to ensure stability
-  const filterValuesAtomRef = React.useRef(createFilterValuesAtom(value));
-
-  // Use the atom for state management
-  const [selectedValues, setSelectedValues] = useAtom(
-    filterValuesAtomRef.current
-  );
-
-  // Sync with external value prop when it changes
-  React.useEffect(() => {
-    if (JSON.stringify(Array.from(selectedValues)) !== JSON.stringify(value)) {
-      setSelectedValues(new Set(value));
-    }
-  }, [value, setSelectedValues, selectedValues]);
-
-  // Handle selection changes
-  const handleSelectionChange = (optionValue: string, isSelected: boolean) => {
-    setSelectedValues((prev) => {
-      const next = new Set(prev);
-
-      if (isSelected) {
-        next.delete(optionValue);
-      } else {
-        next.add(optionValue);
-      }
-
-      const newSelectedValues = Array.from(next);
-
-      // If all items are deselected, reset filters by calling onChange with empty array
-      if (newSelectedValues.length === 0) {
-        onChange([]);
-      } else {
-        onChange(newSelectedValues);
-      }
-
-      return next;
-    });
-  };
-
-  // Handle clearing all filters
-  const handleClearFilters = () => {
-    // Set local state to empty
-    setSelectedValues(new Set());
-
-    // Call onChange with empty array to update external state
-    onChange([]);
-
-    // Close the popover after clearing
-    const popoverElement = document.activeElement as HTMLElement;
-    popoverElement?.blur?.();
-  };
+  const selectedValues = new Set(value);
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 border-dashed">
-          <PlusCircle className="mr-2 h-4 w-4" />
+          <PlusCircledIcon className="mr-2 h-4 w-4" />
           {title}
-          {selectedValues?.size > 0 && (
+          {selectedValues.size > 0 && (
             <>
               <Separator orientation="vertical" className="mx-2 h-4" />
               <Badge
@@ -149,9 +94,15 @@ export function DataTableFacetedFilter({
                 return (
                   <CommandItem
                     key={option.value}
-                    onSelect={() =>
-                      handleSelectionChange(option.value, isSelected)
-                    }
+                    onSelect={() => {
+                      if (isSelected) {
+                        selectedValues.delete(option.value);
+                      } else {
+                        selectedValues.add(option.value);
+                      }
+                      const filterValues = Array.from(selectedValues);
+                      onChange(filterValues);
+                    }}
                   >
                     <div
                       className={cn(
@@ -176,7 +127,7 @@ export function DataTableFacetedFilter({
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem
-                    onSelect={handleClearFilters}
+                    onSelect={() => onChange([])}
                     className="justify-center text-center"
                   >
                     Clear filters

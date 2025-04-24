@@ -126,7 +126,7 @@ export default function FTUXPage() {
           id: "name-ideas",
           title: "Name Ideas",
           icon: <Edit size={16} />,
-          link: "/ideas/names",
+          link: "/tools/naming-assistant",
         },
         {
           id: "competitive-research",

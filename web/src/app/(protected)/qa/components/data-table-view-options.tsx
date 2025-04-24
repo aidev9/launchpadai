@@ -1,16 +1,16 @@
 "use client";
 
-import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
-import { SlidersHorizontal } from "lucide-react";
 import { Table } from "@tanstack/react-table";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Settings2 } from "lucide-react";
 
 interface DataTableViewOptionsProps<TData> {
   table: Table<TData>;
@@ -27,7 +27,7 @@ export function DataTableViewOptions<TData>({
           size="sm"
           className="ml-auto hidden h-8 lg:flex"
         >
-          <SlidersHorizontal className="mr-2 h-4 w-4" />
+          <Settings2 className="mr-2 h-3.5 w-3.5" />
           View
         </Button>
       </DropdownMenuTrigger>
@@ -48,7 +48,7 @@ export function DataTableViewOptions<TData>({
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >
-                {column.id}
+                {column.id.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase()}
               </DropdownMenuCheckboxItem>
             );
           })}

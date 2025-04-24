@@ -4,8 +4,6 @@ import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
-  SortingState,
-  VisibilityState,
   flexRender,
   getCoreRowModel,
   getFacetedRowModel,
@@ -15,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { atom, useAtom } from "jotai";
+import { useAtom } from "jotai";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -25,41 +23,67 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+/* eslint-disable */
+// @ts-ignore
 import { DataTablePagination } from "./data-table-pagination";
+// @ts-ignore
+import { DataTableToolbar } from "./data-table-toolbar";
+/* eslint-enable */
 import {
-  DataTableToolbar,
+  rowSelectionAtom,
+  columnVisibilityAtom,
+  columnFiltersAtom,
+  sortingAtom,
+  tableInstanceAtom,
   questionFilterAtom,
   statusFilterAtom,
   tagsFilterAtom,
-} from "./data-table-toolbar";
+  phaseFilterAtom,
+} from "./qa-store";
 
-// Create atoms for table state
-export const rowSelectionAtom = atom<Record<string, boolean>>({});
-export const columnVisibilityAtom = atom<VisibilityState>({});
-export const columnFiltersAtom = atom<ColumnFiltersState>([]);
-export const sortingAtom = atom<SortingState>([
-  { id: "last_modified", desc: true },
-]);
+type QAData = {
+  id: string;
+  tags: string[];
+  question: string;
+  order?: number;
+  last_modified?: Date;
+  answer?: string | null;
+  phase?: string;
+  createdAt?: Date;
+};
 
-interface QuestionsTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
+interface QATableProps<TValue> {
+  columns: ColumnDef<QAData, TValue>[];
+  data: QAData[];
 }
 
-export function QuestionsTable<TData, TValue>({
-  columns,
-  data,
-}: QuestionsTableProps<TData, TValue>) {
+export function QATable<TValue>({ columns, data }: QATableProps<TValue>) {
   // Use Jotai atoms for table state
   const [rowSelection, setRowSelection] = useAtom(rowSelectionAtom);
   const [columnVisibility, setColumnVisibility] = useAtom(columnVisibilityAtom);
   const [columnFilters, setColumnFilters] = useAtom(columnFiltersAtom);
   const [sorting, setSorting] = useAtom(sortingAtom);
+  const [, setTableInstance] = useAtom(tableInstanceAtom);
 
   // Get filter atoms
   const [questionFilter] = useAtom(questionFilterAtom);
   const [statusFilter] = useAtom(statusFilterAtom);
   const [tagsFilter] = useAtom(tagsFilterAtom);
+  const [phaseFilter] = useAtom(phaseFilterAtom);
+
+  // Keep track of previous data length to detect when data changes
+  const prevDataLength = React.useRef(data.length);
+
+  // Clear row selection when data changes significantly
+  // This prevents selection state from being out of sync with actual data
+  React.useEffect(() => {
+    // If data length has changed, it means questions were added or deleted
+    if (data.length !== prevDataLength.current) {
+      console.log("Data changed, clearing row selection");
+      setRowSelection({});
+      prevDataLength.current = data.length;
+    }
+  }, [data.length, setRowSelection]);
 
   // Sync filter atoms with columnFilters when component mounts
   React.useEffect(() => {
@@ -86,6 +110,13 @@ export function QuestionsTable<TData, TValue>({
       });
     }
 
+    if (phaseFilter.length > 0) {
+      newColumnFilters.push({
+        id: "phase",
+        value: phaseFilter,
+      });
+    }
+
     if (JSON.stringify(newColumnFilters) !== JSON.stringify(columnFilters)) {
       setColumnFilters(newColumnFilters);
     }
@@ -93,9 +124,18 @@ export function QuestionsTable<TData, TValue>({
     questionFilter,
     statusFilter,
     tagsFilter,
+    phaseFilter,
     setColumnFilters,
     columnFilters,
   ]);
+
+  // Log row selection changes for debugging
+  React.useEffect(() => {
+    const selectedIds = Object.keys(rowSelection);
+    if (selectedIds.length > 0) {
+      console.log("Selected question rows:", selectedIds);
+    }
+  }, [rowSelection]);
 
   const table = useReactTable({
     data,
@@ -118,6 +158,11 @@ export function QuestionsTable<TData, TValue>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
+
+  // Store the table instance in the atom
+  React.useEffect(() => {
+    setTableInstance(table);
+  }, [table, setTableInstance]);
 
   return (
     <div className="space-y-4">

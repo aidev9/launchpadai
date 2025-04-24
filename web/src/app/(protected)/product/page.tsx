@@ -49,52 +49,67 @@ export default function ProductPage() {
     };
   }, [selectedProduct, selectedProductId]);
 
-  // Try to load the product if we have an ID but no product data
+  // Improved logic to handle product initialization
   useEffect(() => {
-    const loadProduct = async () => {
+    const initializeProduct = async () => {
+      // Skip if product is already loaded
+      if (selectedProduct) {
+        console.log(
+          "[ProductPage] Product already loaded:",
+          selectedProduct.name
+        );
+        return;
+      }
+
+      // Skip if we're already loading
+      if (isLoading) {
+        return;
+      }
+
       // If we have an ID but no product data, try to load it
-      if (
-        selectedProductId &&
-        !selectedProduct &&
-        !isLoading &&
-        loadAttempts < 3
-      ) {
+      if (selectedProductId) {
         setIsLoading(true);
         console.log(
-          `[ProductPage] Attempting to load product ID: ${selectedProductId}`
+          `[ProductPage] Initializing from localStorage ID: ${selectedProductId}`
         );
 
         try {
           // Try to load the product from the ID
           await selectProduct(selectedProductId);
-          setLoadAttempts((prev) => prev + 1);
+
+          // If we still don't have a product after attempting to load, redirect to dashboard
+          if (!selectedProduct && loadAttempts >= 2) {
+            console.log(
+              "[ProductPage] Failed to load product, redirecting to dashboard"
+            );
+            router.push("/dashboard");
+          }
         } catch (error) {
           console.error("[ProductPage] Error loading product:", error);
+          // Redirect on error
+          router.push("/dashboard");
         } finally {
           setIsLoading(false);
+          setLoadAttempts((prev) => prev + 1);
         }
+      } else {
+        // No product ID available, redirect to dashboard
+        console.log(
+          "[ProductPage] No product ID in localStorage, redirecting to dashboard"
+        );
+        router.push("/dashboard");
       }
     };
 
-    loadProduct();
+    initializeProduct();
   }, [
     selectedProductId,
     selectedProduct,
     selectProduct,
-    loadAttempts,
+    router,
     isLoading,
+    loadAttempts,
   ]);
-
-  // After sufficient load attempts, redirect if still no product
-  useEffect(() => {
-    // Only redirect after we've tried loading a few times
-    if (loadAttempts >= 3 && !selectedProduct) {
-      console.log(
-        "[ProductPage] No product selected after multiple attempts, redirecting to dashboard"
-      );
-      router.push("/dashboard");
-    }
-  }, [selectedProduct, router, loadAttempts]);
 
   return (
     <>

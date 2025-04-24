@@ -21,6 +21,7 @@ import {
   IconHelpCircle,
   IconChartPie,
   IconCube,
+  IconHome2,
 } from "@tabler/icons-react";
 import { AudioWaveform, Command, GalleryVerticalEnd } from "lucide-react";
 import { type SidebarData } from "../types";
@@ -55,6 +56,11 @@ export const sidebarData: SidebarData = {
           url: "/dashboard",
           icon: IconCube,
         },
+        {
+          title: "Tools",
+          url: "/tools",
+          icon: IconTool,
+        },
         ...(isDev
           ? [
               {
@@ -85,9 +91,10 @@ export const sidebarData: SidebarData = {
               },
             ]
           : []),
+
         {
           title: "Questions",
-          url: "/questions",
+          url: "/qa",
           icon: IconHelpCircle,
         },
       ],
@@ -197,6 +204,11 @@ export const sidebarData: SidebarData = {
                 title: "Help Center",
                 url: "/help-center",
                 icon: IconHelp,
+              },
+              {
+                title: "Welcome",
+                url: "/ftux",
+                icon: IconHome2,
               },
             ],
           },
