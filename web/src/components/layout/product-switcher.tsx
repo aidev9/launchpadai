@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Box, ChevronsUpDown, Plus } from "lucide-react";
+import { Box, ChevronsUpDown, Plus, Compass } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +28,7 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
 
   const { products, selectedProduct, selectProduct, isLoading } = useProducts();
 
-  // Handle product selection
+  // Handle product selection with conditional navigation
   const handleProductSelect = useCallback(
     async (product: Product) => {
       // Skip if we're already viewing this product
@@ -39,16 +39,25 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
 
       console.log("Selecting product:", product.id, product.name);
 
-      // Update the selected product in global state
-      await selectProduct(product.id);
-      console.log("Product selection updated in Jotai store", product.id);
+      try {
+        // Update the selected product in global state
+        await selectProduct(product.id);
+        console.log("Product selection updated in Jotai store", product.id);
 
-      // Navigate to product page if not already there
-      if (pathname !== "/product") {
-        console.log("Navigating to product page");
-        router.push("/product");
-      } else {
-        console.log("Already on product page, no navigation needed");
+        // Only redirect to product page if on specific routes
+        const routesToRedirectFrom = ["/ftux", "/welcome", "/help"];
+        const shouldRedirect = routesToRedirectFrom.some(
+          (route) => pathname === route || pathname.startsWith(`${route}/`)
+        );
+
+        if (shouldRedirect) {
+          console.log("On special route, redirecting to product page");
+          router.push("/product");
+        } else {
+          console.log("Staying on current route with updated product");
+        }
+      } catch (error) {
+        console.error("Error selecting product:", error);
       }
     },
     [selectedProduct, selectProduct, pathname, router]
@@ -57,6 +66,11 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
   // Handle creating a new product
   const handleCreateProduct = useCallback(() => {
     router.push("/welcome");
+  }, [router]);
+
+  // Navigate to the FTUX page
+  const handleStartHere = useCallback(() => {
+    router.push("/ftux");
   }, [router]);
 
   if (isLoading && products.length === 0) {
@@ -128,6 +142,13 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
             sideOffset={4}
             style={{ maxWidth: "min(80vw, 20rem)" }}
           >
+            <DropdownMenuItem className="gap-2 p-2" onClick={handleStartHere}>
+              <div className="flex size-6 items-center justify-center rounded-md border bg-accent shrink-0">
+                <Compass className="size-4" />
+              </div>
+              <div className="font-medium truncate">Start Here</div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs text-muted-foreground">
               Your Products
             </DropdownMenuLabel>

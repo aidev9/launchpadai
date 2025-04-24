@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { signOutUser } from "@/lib/firebase/client";
+import { signOutUser, clientAuth } from "@/lib/firebase/client";
+import { Compass } from "lucide-react";
+import { useEffect, useState } from "react";
 
 // TODO: Refactor this function to reduce code duplication
 function getInitials(displayName: string | null): import("react").ReactNode {
@@ -30,8 +32,33 @@ function getInitials(displayName: string | null): import("react").ReactNode {
   return initials.length > 2 ? initials.slice(0, 2) : initials;
 }
 
-export function ProfileDropdown({ user }: { user: User | null }) {
+export function ProfileDropdown({ user: propUser }: { user?: User | null }) {
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<User | null>(propUser || null);
+
+  // If no user is passed as prop, try to get the current user from Firebase Auth
+  useEffect(() => {
+    if (!propUser) {
+      // Get the current authenticated user
+      const user = clientAuth.currentUser;
+      setCurrentUser(user);
+
+      // Set up auth state listener for changes
+      const unsubscribe = clientAuth.onAuthStateChanged((authUser) => {
+        setCurrentUser(authUser);
+      });
+
+      // Clean up the listener on unmount
+      return () => unsubscribe();
+    }
+  }, [propUser]);
+
+  // Use a placeholder user for UI when not authenticated
+  const displayUser = currentUser || {
+    displayName: "User",
+    email: "",
+    photoURL: "",
+  };
 
   return (
     <DropdownMenu modal={false}>
@@ -39,11 +66,11 @@ export function ProfileDropdown({ user }: { user: User | null }) {
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
             <AvatarImage
-              src={user?.photoURL || ""}
-              alt={user?.displayName || "User"}
+              src={displayUser.photoURL || undefined}
+              alt={displayUser.displayName || "User"}
             />
             <AvatarFallback>
-              {getInitials(user?.displayName || null)}
+              {getInitials(displayUser.displayName || null)}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -52,15 +79,22 @@ export function ProfileDropdown({ user }: { user: User | null }) {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
-              {user?.displayName || "User"}
+              {displayUser.displayName || "User"}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
-              <span className="truncate text-xs">{user?.email}</span>
+              <span className="truncate text-xs">{displayUser.email}</span>
             </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href="/ftux" className="flex items-center">
+              <Compass className="mr-2 h-4 w-4" />
+              Start Here
+              <DropdownMenuShortcut>⌘H</DropdownMenuShortcut>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/settings">
               Profile
