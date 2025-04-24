@@ -97,7 +97,11 @@ export const sidebarData: SidebarData = {
               },
             ]
           : []),
-
+        {
+          title: "Notes",
+          url: "/notes",
+          icon: IconMessages,
+        },
         {
           title: "Questions",
           url: "/qa",

@@ -4,6 +4,7 @@ import { getCurrentUserId } from "./adminAuth";
 export interface Note {
   id: string;
   note_body: string;
+  tags: string[];
   last_modified: Date;
 }
 
@@ -63,6 +64,7 @@ export async function saveNote(
     const noteWithTimestamp = {
       ...noteData,
       last_modified: now,
+      tags: noteData.tags || [],
     };
 
     await notesRef.doc(noteData.id).set(noteWithTimestamp, { merge: true });

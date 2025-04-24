@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 export default function QA() {
   const [selectedProductId, setSelectedProductId] = useAtom(
@@ -160,6 +161,8 @@ export default function QA() {
     );
   };
 
+  const breadcrumbItems = [{ label: "Q&A" }];
+
   return (
     <Provider>
       <Header fixed>
@@ -170,12 +173,13 @@ export default function QA() {
         </div>
       </Header>
 
-      <Main>
+      <Main className="container mx-auto py-6 mt-14">
+        <Breadcrumbs items={breadcrumbItems} className="mb-4" />
         {!selectedProductId ? (
           renderProductSelector()
         ) : (
           <>
-            <div className="mb-2 flex flex-wrap items-center justify-between space-y-2">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight">
                   Questions & Answers
@@ -203,9 +207,11 @@ export default function QA() {
                 <QAPrimaryButtons onRefresh={() => loadQuestions(true)} />
               </div>
             </div>
-            <div className="-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-x-12 lg:space-y-0">
+            <div className="flex-1">
               {isLoading ? (
-                <p>Loading questions...</p>
+                <div className="flex justify-center items-center h-64">
+                  <p>Loading questions...</p>
+                </div>
               ) : (
                 <QATable data={questionList} columns={columns} />
               )}
