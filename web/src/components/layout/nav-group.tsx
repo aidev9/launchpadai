@@ -1,5 +1,5 @@
 "use client";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { NavCollapsible, NavItem, NavLink, type NavGroup } from "./types";
+import { countProducts } from "@/lib/firebase/products";
 
 export function NavGroup({ title, items }: NavGroup) {
   const { state } = useSidebar();
@@ -70,6 +71,19 @@ const NavBadge = ({ children }: { children: ReactNode }) => (
 
 const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
   const { setOpenMobile } = useSidebar();
+
+  // Custom logic for Products link to show product count
+  const isProducts = item.url === "/dashboard";
+  const [productCount, setProductCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isProducts) {
+      countProducts().then((res) => {
+        if (res.success) setProductCount(res.count);
+      });
+    }
+  }, [isProducts]);
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -80,6 +94,12 @@ const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
         <Link href={item.url} onClick={() => setOpenMobile(false)}>
           {item.icon && <item.icon />}
           <span>{item.title}</span>
+          {/* Show badge for Products link */}
+          {isProducts && productCount !== null && (
+            <span className="ml-2 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold w-5 h-5">
+              {productCount}
+            </span>
+          )}
           {item.badge && <NavBadge>{item.badge}</NavBadge>}
         </Link>
       </SidebarMenuButton>

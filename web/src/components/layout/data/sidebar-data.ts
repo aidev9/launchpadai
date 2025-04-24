@@ -60,6 +60,12 @@ export const sidebarData: SidebarData = {
           title: "Tools",
           url: "/tools",
           icon: IconTool,
+          items: [
+            {
+              title: "Naming Assistant",
+              url: "/tools/naming-assistant",
+            },
+          ],
         },
         ...(isDev
           ? [
@@ -96,6 +102,53 @@ export const sidebarData: SidebarData = {
           title: "Questions",
           url: "/qa",
           icon: IconHelpCircle,
+        },
+      ],
+    },
+    {
+      title: "Other",
+      items: [
+        {
+          title: "Settings",
+          icon: IconSettings,
+          url: "/settings",
+          items: [
+            {
+              title: "Profile",
+              url: "/settings",
+              icon: IconUserCog,
+            },
+            {
+              title: "Account",
+              url: "/settings/account",
+              icon: IconTool,
+            },
+            {
+              title: "Appearance",
+              url: "/settings/appearance",
+              icon: IconPalette,
+            },
+            {
+              title: "Notifications",
+              url: "/settings/notifications",
+              icon: IconNotification,
+            },
+            {
+              title: "Display",
+              url: "/settings/display",
+              icon: IconBrowserCheck,
+            },
+          ],
+        },
+        {
+          title: "Help Center",
+          url: "/help-center",
+          icon: IconHelp,
+        },
+        {
+          title: "Welcome",
+          url: "/welcome",
+          icon: IconHome2,
         },
       ],
     },
@@ -162,53 +215,6 @@ export const sidebarData: SidebarData = {
                     icon: IconBarrierBlock,
                   },
                 ],
-              },
-            ],
-          },
-          {
-            title: "Other",
-            items: [
-              {
-                title: "Settings",
-                icon: IconSettings,
-                url: "/settings",
-                items: [
-                  {
-                    title: "Profile",
-                    url: "/settings",
-                    icon: IconUserCog,
-                  },
-                  {
-                    title: "Account",
-                    url: "/settings/account",
-                    icon: IconTool,
-                  },
-                  {
-                    title: "Appearance",
-                    url: "/settings/appearance",
-                    icon: IconPalette,
-                  },
-                  {
-                    title: "Notifications",
-                    url: "/settings/notifications",
-                    icon: IconNotification,
-                  },
-                  {
-                    title: "Display",
-                    url: "/settings/display",
-                    icon: IconBrowserCheck,
-                  },
-                ],
-              },
-              {
-                title: "Help Center",
-                url: "/help-center",
-                icon: IconHelp,
-              },
-              {
-                title: "Welcome",
-                url: "/ftux",
-                icon: IconHome2,
               },
             ],
           },
