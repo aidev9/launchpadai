@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveNote } from "@/lib/firebase/notes";
+import { awardXpPoints } from "@/xp/server-actions";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,6 +14,15 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await saveNote(productId, noteData);
+
+    if (result.success && !noteData.isUpdated) {
+      try {
+        await awardXpPoints("create_note");
+      } catch (xpError) {
+        console.error(`Failed to award XP for note creation:`, xpError);
+      }
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

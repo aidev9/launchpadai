@@ -35,13 +35,25 @@ import {
   FileStack,
   CheckCircle2,
   Circle,
+  Sparkles,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
+import { useXp } from "@/xp/useXp";
+
+import {
+  selectedProductAtom,
+  selectedProductIdAtom,
+  Product,
+} from "@/lib/store/product-store";
+import { useAtom } from "jotai";
+
 export default function FTUXPage() {
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
+  const { xp, awardXp, error: xpError } = useXp();
   const [tasks, setTasks] = useState<
     Array<{ id: string; text: string; completed: boolean }>
   >([
@@ -51,6 +63,68 @@ export default function FTUXPage() {
     { id: "createproduct", text: "Create a product", completed: false },
     { id: "settings", text: "Customize settings", completed: false },
   ]);
+  const [isProductWizardOpen, setIsProductWizardOpen] = useState(false);
+  const [, setSelectedProduct] = useAtom(selectedProductAtom);
+  const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
+
+  // Handle product creation success
+  const handleProductCreated = async (
+    productId: string,
+    productData?: Partial<Product>
+  ) => {
+    try {
+      // Mark the task as completed
+      setTasks(
+        tasks.map((task) =>
+          task.id === "createproduct" ? { ...task, completed: true } : task
+        )
+      );
+
+      // Close the modal
+      setIsProductWizardOpen(false);
+
+      // Award XP for creating product
+      try {
+        await awardXp("create_product");
+      } catch (xpError) {
+        console.warn("Failed to award XP, but continuing:", xpError);
+      }
+
+      // Set the product ID in localStorage for persistence
+      localStorage.setItem("selectedProductId", productId);
+
+      // Create a product object with the data we have
+      const product: Product = {
+        id: productId,
+        name: productData?.name || "New Product",
+        stage: productData?.stage || "Discover",
+        ...productData,
+      };
+
+      // Set the product in the atoms
+      setSelectedProductId(productId);
+      setSelectedProduct(product);
+
+      // Add a small delay to ensure state updates
+      // await new Promise((resolve) => setTimeout(resolve, 800));
+
+      // Try to navigate to the product page first, with fallback to dashboard
+      try {
+        // First try to navigate to the product page, which is what we really want
+        router.push("/product");
+      } catch (navError) {
+        console.warn(
+          "Navigation to /product failed, falling back to dashboard:",
+          navError
+        );
+        // Fallback to dashboard if there are issues
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error("Error in product creation flow:", error);
+      router.push("/dashboard");
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(clientAuth, (user) => {
@@ -320,46 +394,57 @@ export default function FTUXPage() {
           </div>
         </div>
 
-        {/* Arrow pointing to video - positioned in center */}
-        <div className="hidden md:block absolute left-[44%] top-1/2 transform -translate-y-1/2 z-10 pointer-events-none">
-          <motion.div
-            animate={{
-              x: [-5, 15, -5],
-              opacity: [0.6, 1, 0.6],
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: 1.8,
-            }}
-          >
-            <div
-              className="w-0 h-0 
-              border-t-[20px] border-t-transparent 
-              border-b-[20px] border-b-transparent 
-              border-l-[40px] border-l-gray-500"
-            />
-          </motion.div>
-        </div>
-
-        {/* Right side - Video */}
-        <div className="rounded-lg overflow-hidden border shadow-md aspect-video">
-          <iframe
-            width="100%"
-            height="100%"
-            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-            title="Introduction to LaunchpadAI"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          ></iframe>
+        {/* Right side - Video placeholder */}
+        <div className="relative rounded-xl overflow-hidden shadow-lg aspect-video bg-black">
+          {/* Placeholder for video */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-16 w-16 rounded-full bg-black/50 text-white backdrop-blur-sm border-white hover:bg-white hover:text-black"
+            >
+              <Play className="h-6 w-6" />
+            </Button>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white">
+            <h3 className="font-semibold">Getting Started with LaunchpadAI</h3>
+            <p className="text-sm text-gray-300">
+              Learn how to use our platform to build your startup
+            </p>
+          </div>
         </div>
       </div>
+      {/* Gamification Block */}
+      <Card className="mb-8 border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20 shadow-md w-full">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="bg-amber-100 dark:bg-amber-800 rounded-full p-2">
+              <Trophy className="h-6 w-6 text-amber-600 dark:text-amber-300" />
+            </div>
+            <CardTitle className="text-lg">
+              Earn 50 XP and Unlock Premium Features
+            </CardTitle>
+          </div>
+          <CardDescription className="text-base mb-4">
+            Create your first startup or product now and earn 50 XP. You
+            currently have {xp} XP.
+          </CardDescription>
+          <Button
+            className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+            onClick={() =>
+              router.push("/welcome/wizard?template=blank&type=blank")
+            }
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Create Your First Product
+          </Button>
+        </CardContent>
+      </Card>
 
-      {/* Multiple ways to get started section */}
-      <h2 className="text-2xl font-bold mb-6">Choose your journey:</h2>
+      <h1 className="text-2xl font-bold">🚀 Select your journey:</h1>
 
-      {/* Main cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      {/* Feature Cards Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 mt-8">
         {cards.map((card) => (
           <div
             key={card.id}
@@ -493,6 +578,26 @@ export default function FTUXPage() {
           </div>
         ))}
       </div>
+      {/* Add empty space */}
+      <div className="h-96" />
     </main>
+  );
+}
+
+// Play icon component
+function Play(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <polygon points="5 3 19 12 5 21 5 3" />
+    </svg>
   );
 }

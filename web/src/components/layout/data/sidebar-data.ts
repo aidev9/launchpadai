@@ -22,6 +22,7 @@ import {
   IconChartPie,
   IconCube,
   IconHome2,
+  IconMap,
 } from "@tabler/icons-react";
 import { AudioWaveform, Command, GalleryVerticalEnd } from "lucide-react";
 import { type SidebarData } from "../types";
@@ -73,6 +74,11 @@ export const sidebarData: SidebarData = {
                 title: "Analytics",
                 url: "/analytics",
                 icon: IconChartPie,
+              },
+              {
+                title: "Milestones",
+                url: "/milestones",
+                icon: IconMap,
               },
               {
                 title: "Tasks",

@@ -118,33 +118,50 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
     execute(data);
   }
 
-  // Refator this to reduce code duplication
+  // Update Google Sign In handler to properly handle errors
   async function handleGoogleSignIn(): Promise<void> {
-    const userCredential = await handleSocialSignIn("google");
-    const provider:
-      | "google"
-      | "email"
-      | "facebook"
-      | "twitter"
-      | "github"
-      | undefined = "google";
-    const data = {
-      uid: userCredential.user.uid,
-      email: userCredential.user.email ?? "",
-      name: userCredential.user.displayName ?? "",
-      photoURL: userCredential.user.photoURL ?? "",
-      provider,
-      password: "Password123!",
-      company: "",
-      phone: "",
-      role: "other",
-      interest: "other",
-    };
-    const result = await signupAction(data);
-    if (result?.data?.success) {
-      router.push("/ftux");
-    } else if (result?.data?.message) {
-      setErrorMessage(result.data.message);
+    try {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      const userCredential = await handleSocialSignIn("google");
+
+      const provider:
+        | "google"
+        | "email"
+        | "facebook"
+        | "twitter"
+        | "github"
+        | undefined = "google";
+
+      const data = {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email ?? "",
+        name: userCredential.user.displayName ?? "",
+        photoURL: userCredential.user.photoURL ?? "",
+        provider,
+        password: "Password123!",
+        company: "",
+        phone: "",
+        role: "other",
+        interest: "other",
+      };
+
+      const result = await signupAction(data);
+      if (result?.data?.success) {
+        router.push("/ftux");
+      } else if (result?.data?.message) {
+        setErrorMessage(result.data.message);
+      }
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An error occurred during Google sign-in. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
     }
   }
 

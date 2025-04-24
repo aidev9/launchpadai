@@ -4,6 +4,7 @@ import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { z } from "zod";
 import { actionClient } from "@/lib/action";
 import { returnValidationErrors } from "next-safe-action";
+import { awardXpPoints } from "@/xp/server-actions"; // Import the XP award function
 
 // Schema for signup data validation
 const signupSchema = z.object({
@@ -74,10 +75,15 @@ export const signupAction = actionClient
               phone,
               provider,
               photoURL,
+              xp: 0, // Initialize XP field
               createdAt: new Date().toISOString(),
             },
             { merge: true }
           ); // Add merge option for safety
+
+          // Award XP for signing up
+          await awardXpPoints("signup", uid);
+          console.log(`Awarded XP to user ${uid} for signing up`);
         } catch (firestoreError) {
           console.error("Firestore error:", firestoreError);
           // Delete the auth user if Firestore fails
@@ -93,47 +99,13 @@ export const signupAction = actionClient
           firestoreStatus: "skipped",
         };
       } catch (error) {
-        console.error("Error creating user:", error);
-
-        // Handle specific Firebase Auth errors
-        if (error instanceof Error) {
-          if (error.message.includes("email-already-exists")) {
-            return returnValidationErrors(signupSchema, {
-              email: {
-                _errors: [
-                  "This email is already registered. Please login or use a different email.",
-                ],
-              },
-            });
-          }
-
-          if (error.message.includes("invalid-email")) {
-            return returnValidationErrors(signupSchema, {
-              email: { _errors: ["The email address is not valid."] },
-            });
-          }
-
-          if (error.message.includes("weak-password")) {
-            return returnValidationErrors(signupSchema, {
-              password: {
-                _errors: [
-                  "The password is too weak. Please choose a stronger password.",
-                ],
-              },
-            });
-          }
-
-          // Log the specific error information
-          console.error("Specific error details:", {
-            name: error.name,
-            message: error.message,
-            stack: error.stack,
-          });
-        }
-
+        console.error("Error in signupAction:", error);
         return {
           success: false,
-          message: "An error occurred during signup. Please try again later.",
+          serverError:
+            error instanceof Error
+              ? error.message
+              : "An unknown error occurred during signup",
         };
       }
     }

@@ -7,6 +7,7 @@ import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { questions as staticQuestions } from "@/app/(protected)/answer_questions/data/questions";
 import { productQuestionInputSchema } from "./schema";
 import { initializeProductAssets } from "./initialize-assets";
+import { awardXpPoints } from "@/xp/server-actions";
 
 // Root products collection reference
 const productsCollection = adminDb.collection("products");
@@ -99,6 +100,17 @@ export async function createProduct(data: ProductInput) {
         assetsError
       );
       // Continue with product creation even if asset initialization fails
+    }
+
+    // Award XP for creating a product
+    try {
+      await awardXpPoints("create_product", userId);
+      console.log(
+        `Awarded XP to user ${userId} for creating product ${productId}`
+      );
+    } catch (xpError) {
+      console.error(`Failed to award XP for product creation:`, xpError);
+      // Continue with product creation even if XP awarding fails
     }
 
     // Revalidate relevant paths

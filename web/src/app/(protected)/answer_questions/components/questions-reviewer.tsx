@@ -24,6 +24,7 @@ import {
   getOrderedProductQuestions,
   saveQuestionAnswer,
   deleteQuestionAction,
+  answerProductQuestionAction,
 } from "@/lib/firebase/actions/questions";
 import {
   allQuestionsAtom,
@@ -42,6 +43,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { fetchUserProfile } from "@/lib/firebase/actions/profile";
+import { userProfileAtom, updateUserProfileAtom } from "@/lib/store/user-store";
 
 // Main component
 export function QuestionsReviewer() {
@@ -53,6 +56,7 @@ export function QuestionsReviewer() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [allQuestions, setAllQuestions] = useAtom(allQuestionsAtom);
+  const [, updateUserProfile] = useAtom(updateUserProfileAtom);
   const [displayedQuestions, setDisplayedQuestions] = useState<Question[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -169,7 +173,7 @@ export function QuestionsReviewer() {
 
     setIsSaving(true);
     try {
-      const response = await saveQuestionAnswer(
+      const response = await answerProductQuestionAction(
         selectedProductId,
         selectedQuestionId,
         answer
@@ -185,9 +189,26 @@ export function QuestionsReviewer() {
           )
         );
 
+        // Refresh the user profile to update XP in the UI using server action
+        try {
+          const profileResult = await fetchUserProfile();
+          if (profileResult.success && profileResult.profile) {
+            // Update the userProfileAtom with the refreshed data
+            updateUserProfile(profileResult.profile);
+            console.log(
+              "User profile refreshed after XP award:",
+              profileResult.profile.xp
+            );
+          }
+        } catch (profileError) {
+          console.error("Failed to refresh user profile:", profileError);
+          // Non-critical error, don't show to user
+        }
+
         toast({
           title: "Answer saved",
-          description: "Your answer has been saved successfully.",
+          description:
+            "Your answer has been saved successfully and you earned 5 XP!",
         });
       } else {
         throw new Error(response.error || "Failed to save answer");

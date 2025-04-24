@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { signOutUser, clientAuth } from "@/lib/firebase/client";
 import { Compass } from "lucide-react";
 import { useEffect, useState } from "react";
+import XpDisplay from "@/xp/xp-display";
 
 // TODO: Refactor this function to reduce code duplication
 function getInitials(displayName: string | null): import("react").ReactNode {
@@ -34,93 +35,102 @@ function getInitials(displayName: string | null): import("react").ReactNode {
 
 export function ProfileDropdown({ user: propUser }: { user?: User | null }) {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(propUser || null);
+  const [displayUser, setDisplayUser] = useState<any>({
+    displayName: propUser?.displayName || "",
+    email: propUser?.email || "",
+    photoURL: propUser?.photoURL || "",
+  });
 
-  // If no user is passed as prop, try to get the current user from Firebase Auth
   useEffect(() => {
-    if (!propUser) {
-      // Get the current authenticated user
-      const user = clientAuth.currentUser;
-      setCurrentUser(user);
+    const unsubscribe = clientAuth.onAuthStateChanged((user) => {
+      if (user) {
+        setDisplayUser({
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+        });
+      } else if (propUser) {
+        setDisplayUser({
+          displayName: propUser.displayName,
+          email: propUser.email,
+          photoURL: propUser.photoURL,
+        });
+      }
+    });
 
-      // Set up auth state listener for changes
-      const unsubscribe = clientAuth.onAuthStateChanged((authUser) => {
-        setCurrentUser(authUser);
-      });
-
-      // Clean up the listener on unmount
-      return () => unsubscribe();
-    }
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, [propUser]);
 
-  // Use a placeholder user for UI when not authenticated
-  const displayUser = currentUser || {
-    displayName: "User",
-    email: "",
-    photoURL: "",
-  };
-
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarImage
-              src={displayUser.photoURL || undefined}
-              alt={displayUser.displayName || "User"}
-            />
-            <AvatarFallback>
-              {getInitials(displayUser.displayName || null)}
-            </AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">
-              {displayUser.displayName || "User"}
-            </p>
-            <p className="text-xs leading-none text-muted-foreground">
-              <span className="truncate text-xs">{displayUser.email}</span>
-            </p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href="/ftux" className="flex items-center">
-              <Compass className="mr-2 h-4 w-4" />
-              Start Here
-              <DropdownMenuShortcut>⌘H</DropdownMenuShortcut>
-            </Link>
+    <div className="flex items-center gap-4">
+      <XpDisplay />
+
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <Avatar className="h-8 w-8">
+              <AvatarImage
+                src={displayUser.photoURL || undefined}
+                alt={displayUser.displayName || "User"}
+              />
+              <AvatarFallback>
+                {getInitials(displayUser.displayName || null)}
+              </AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">
+                {displayUser.displayName || "User"}
+              </p>
+              <p className="text-xs leading-none text-muted-foreground">
+                <span className="truncate text-xs">{displayUser.email}</span>
+              </p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuItem>
+              <Link href="/dashboard" className="flex w-full">
+                Dashboard
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Link href="/profile" className="flex w-full">
+                Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Link href="/ftux" className="flex w-full">
+                <Compass className="mr-2 h-4 w-4" />
+                Start Here
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Link href="/settings" className="flex w-full">
+                Settings
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => {
+              signOutUser()
+                .then(() => {
+                  router.push("/auth/signin");
+                })
+                .catch((error) => {
+                  console.error("Error signing out: ", error);
+                });
+            }}
+          >
+            Sign out
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/settings">
-              Profile
-              <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/settings">
-              Billing
-              <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/settings">
-              Settings
-              <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>New Team</DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOutUser(router)}>
-          Sign Out
-          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }

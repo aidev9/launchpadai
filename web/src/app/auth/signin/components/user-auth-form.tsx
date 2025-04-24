@@ -200,7 +200,22 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 className="w-full"
                 type="button"
                 disabled={isLoading}
-                onClick={async () => handleSocialSignIn("google")}
+                onClick={async () => {
+                  try {
+                    setIsLoading(true);
+                    await handleSocialSignIn("google");
+                    router.push("/ftux");
+                  } catch (error) {
+                    console.error("Google sign-in error:", error);
+                    setErrorMessage(
+                      error instanceof Error
+                        ? error.message
+                        : "An error occurred during Google sign-in. Please try again."
+                    );
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
               >
                 <IconBrandGoogle className="h-4 w-4" /> Google
               </Button>

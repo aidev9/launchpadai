@@ -6,6 +6,7 @@ import { getCurrentUserId } from "../adminAuth";
 import { getProductQuestionsRef } from "../questions";
 import { ProductQuestionInput } from "@/lib/firebase/schema";
 import { z } from "zod";
+import { awardXpPoints } from "@/xp/server-actions"; // Import XP award function
 
 // Get reference to the questions collection
 const questionsCollection = adminDb.collection("questions");
@@ -228,6 +229,80 @@ export async function addProductQuestionAction(
     };
   } catch (error) {
     console.error("Error adding question:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Update this function to award XP when answering a question
+export async function answerProductQuestionAction(
+  productId: string,
+  questionId: string,
+  answer: string
+) {
+  try {
+    if (!productId || !questionId) {
+      return {
+        success: false,
+        error: "Product ID and Question ID are required",
+      };
+    }
+
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    // Get reference to the questions collection using the helper function
+    const questionsRef = await getProductQuestionsRefHelper(userId, productId);
+
+    // Get the question document to check if it exists
+    const questionDoc = await questionsRef.doc(questionId).get();
+
+    if (!questionDoc.exists) {
+      return {
+        success: false,
+        error: `Question with ID ${questionId} not found`,
+      };
+    }
+
+    // Update the answer in Firestore
+    const now = new Date().toISOString();
+    await questionsRef.doc(questionId).update({
+      answer: answer,
+      last_modified: now,
+    });
+
+    // Award XP for answering a question
+    try {
+      await awardXpPoints("answer_question", userId);
+      console.log(
+        `Awarded XP to user ${userId} for answering question ${questionId}`
+      );
+    } catch (xpError) {
+      console.error(`Failed to award XP for answering question:`, xpError);
+      // Continue even if XP awarding fails
+    }
+
+    // Revalidate relevant paths
+    Promise.resolve().then(() => {
+      revalidatePath("/answer_questions");
+      revalidatePath("/product");
+    });
+
+    return {
+      success: true,
+      questionId,
+      answer,
+      lastModified: now,
+    };
+  } catch (error) {
+    console.error("Error answering question:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
