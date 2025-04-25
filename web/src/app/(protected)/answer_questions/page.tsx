@@ -22,25 +22,6 @@ export const dynamic = "force-dynamic";
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
 
-// Client component for the button - REMOVED, we use the new AddQuestionButton component
-// function AddQuestionButton() {
-//   const [, setModalOpen] = useAtom(questionModalOpenAtom);
-//
-//   return (
-//     <Button
-//       variant="default"
-//       size="sm"
-//       className="flex items-center gap-1"
-//       onClick={() => setModalOpen(true)}
-//     >
-//       <Plus className="h-4 w-4" />
-//       Add Question
-//     </Button>
-//   );
-// }
-
-// Separate component to prevent rerenders of the entire page
-// Using React.memo to prevent unnecessary re-renders
 const QuestionModalProvider = React.memo(
   ({ onShowToast }: { onShowToast: (options: ShowToastOptions) => void }) => {
     // Pass the handler down to the wizard

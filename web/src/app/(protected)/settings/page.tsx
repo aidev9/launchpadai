@@ -20,11 +20,11 @@ const sidebarNavItems = [
   },
 ];
 
-interface SettingsLayoutProps {
+export default function SettingsLayout({
+  children,
+}: Readonly<{
   children: React.ReactNode;
-}
-
-export default function SettingsLayout({ children }: SettingsLayoutProps) {
+}>): React.ReactElement {
   return (
     <div className="space-y-6 p-10 pb-16">
       <div className="space-y-0.5">
