@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { FileDown } from "lucide-react";
-import { PromptsColumn, selectedPromptsAtom } from "./prompts-column";
+import { PromptsColumn } from "./prompts-column";
 import { selectedPhasesAtom } from "./phase-toolbar";
 import { getProductAssets } from "@/lib/firebase/assets";
 import { toast } from "@/components/ui/use-toast";
@@ -28,7 +28,7 @@ interface FirestoreAsset {
 export function AssetsDownloader() {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [selectedPhases] = useAtom(selectedPhasesAtom);
-  const [selectedPrompts] = useAtom(selectedPromptsAtom);
+  // const [selectedPrompts] = useAtom(selectedPromptsAtom);
   const [selectedAssets, setSelectedAssets] = useAtom(selectedAssetsAtom);
   const [displayedAssets, setDisplayedAssets] = useState<FirestoreAsset[]>([]);
   const [allAssets, setAllAssets] = useState<FirestoreAsset[]>([]);
@@ -44,7 +44,6 @@ export function AssetsDownloader() {
         const result = await getProductAssets(selectedProductId);
         if (result.success && result.assets) {
           // Log the assets for debugging
-          console.log("Firebase assets:", result.assets);
           setAllAssets(result.assets as FirestoreAsset[]);
         } else {
           toast({

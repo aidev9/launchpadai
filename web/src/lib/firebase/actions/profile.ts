@@ -4,21 +4,32 @@ import { adminDb } from "../admin";
 import { getCurrentUserId } from "../adminAuth";
 import { UserProfile } from "@/lib/store/user-store";
 import { revalidatePath } from "next/cache";
+import { FieldValue } from "firebase-admin/firestore";
+import { xpActions } from "@/xp/points-schedule"; // Import the XP schedule
+
+// Find the sign-in action and get its points value
+const signInAction = xpActions.find((action) => action.id === "signin");
+const SIGN_IN_XP_AWARD = signInAction?.points || 0; // Default to 0 if not found
+
+// Check if the sign-in action was found and log a warning if not
+if (!signInAction) {
+  console.warn(
+    "XP Action 'signin' not found in points-schedule.ts. Defaulting XP award to 0."
+  );
+}
 
 /**
  * Server action to fetch the current user's profile, including XP
  * This is used to refresh the client-side state when server-side updates occur
+ * Also increments XP on successful fetch (representing sign-in).
  */
 export async function fetchUserProfile(): Promise<{
   success: boolean;
   profile?: UserProfile;
   error?: string;
 }> {
-  console.log("fetchUserProfile server action called");
-
   try {
     // Get the current user ID from the server context
-    console.log("Getting current user ID");
     const userId = await getCurrentUserId();
 
     if (!userId) {
@@ -28,8 +39,6 @@ export async function fetchUserProfile(): Promise<{
         error: "Not authenticated",
       };
     }
-
-    console.log(`Got user ID: ${userId}, fetching user document`);
 
     // Fetch the user document from Firestore
     const userRef = adminDb.collection("users").doc(userId);
@@ -43,34 +52,59 @@ export async function fetchUserProfile(): Promise<{
       };
     }
 
-    // Get the user data
-    const userData = userDoc.data() || {};
-    console.log(`User data retrieved:`, {
-      uid: userId,
-      xp: userData?.xp || 0,
-      hasXpField: "xp" in userData,
-    });
+    // Get the current user data before incrementing
+    const currentData = userDoc.data() || {};
+    const currentXp = currentData.xp || 0;
 
-    // Create a user profile object
+    // Calculate the new XP value. Default to current XP if award is not positive.
+    let newXp = currentXp;
+
+    // Only increment XP if a positive award amount was found
+    if (SIGN_IN_XP_AWARD > 0) {
+      try {
+        await userRef.update({
+          xp: FieldValue.increment(SIGN_IN_XP_AWARD),
+          // Optionally update lastLogin timestamp here too
+          // lastLogin: FieldValue.serverTimestamp(),
+        });
+        // Update newXp only if the database update is successful
+        newXp = currentXp + SIGN_IN_XP_AWARD;
+      } catch (updateError) {
+        console.error(
+          "[fetchUserProfile] Failed to update XP in Firestore:",
+          updateError
+        );
+        // If update fails, keep newXp as currentXp and proceed,
+        // maybe log this for monitoring
+      }
+    }
+
+    // Explicitly handle properties
+    // const xpValue = currentData?.xp ?? 0;
+    const levelValue = currentData?.level ?? 1;
+    // Create restOfCurrentData excluding known numeric/handled fields
+    const { xp: _xp, level: _level, ...restOfCurrentData } = currentData as any;
+
+    // Create a user profile object reflecting the potentially updated XP value
     const profile: UserProfile = {
       uid: userId,
-      xp: userData?.xp || 0,
-      level: userData?.level || 1,
-      ...userData,
+      // Use the calculated new XP for the returned profile
+      xp: newXp,
+      level: levelValue,
+      // Spread the rest of the data, ensuring our new xp isn't overwritten
+      ...restOfCurrentData,
     };
 
     // Revalidate related paths to ensure fresh data
-    console.log("Revalidating paths");
-    revalidatePath("/dashboard");
-    revalidatePath("/answer_questions");
+    revalidatePath("/dashboard"); // Ensure dashboard reflects new XP potentially
+    revalidatePath("/answer_questions"); // Example path, adjust if needed
 
-    console.log("Returning user profile with XP:", profile.xp);
     return {
       success: true,
       profile,
     };
   } catch (error) {
-    console.error("Error fetching user profile:", error);
+    console.error("Error fetching or updating user profile:", error); // Updated log message
     // More detailed error message
     const errorMessage =
       error instanceof Error
@@ -81,7 +115,7 @@ export async function fetchUserProfile(): Promise<{
 
     return {
       success: false,
-      error: errorMessage,
+      error: `Failed to fetch or update profile: ${errorMessage}`, // Updated error message
     };
   }
 }

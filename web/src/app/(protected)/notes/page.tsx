@@ -5,7 +5,7 @@ import { ProfileDropdown } from "@/components/profile-dropdown";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Provider, createStore } from "jotai";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { toast } from "@/components/ui/use-toast";
@@ -34,27 +34,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
-// Debounce function to prevent rapid API calls
-function useDebounce(fn: Function, delay: number) {
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  return useCallback(
-    (...args: any[]) => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      timeoutRef.current = setTimeout(() => {
-        fn(...args);
-      }, delay);
-    },
-    [fn, delay]
-  );
-}
+import { toast as showToast } from "@/hooks/use-toast";
 
 // Replace direct server function calls with API fetches
 async function fetchNotes(productId: string) {
   const res = await fetch(`/api/notes?productId=${productId}`);
+  if (!res.ok) {
+    console.error(`Error fetching notes: ${res.status} ${res.statusText}`);
+    // Optionally throw an error or return a specific error object
+    throw new Error(`Failed to fetch notes: ${res.statusText}`);
+  }
   return await res.json();
 }
 
@@ -69,6 +58,9 @@ async function deleteNotes(productId: string, noteIds: string[]) {
   return await res.json();
 }
 
+// Extract the options type directly from the imported toast function
+type ShowToastOptions = Parameters<typeof showToast>[0];
+
 export default function NotesPage() {
   // Create a fresh store for the notes page to avoid sharing state between pages
   const store = React.useMemo(() => {
@@ -82,7 +74,6 @@ export default function NotesPage() {
     selectedProductIdAtom
   );
   const [notes, setNotes] = useState<Note[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -94,10 +85,8 @@ export default function NotesPage() {
 
   const loadNotes = useCallback(async () => {
     if (!selectedProductId) {
-      setIsLoading(false);
       return;
     }
-    setIsLoading(true);
     setSelectedRows([]); // Clear selected rows when loading new notes
     store.set(rowSelectionAtom, {}); // Also clear the row selection in the store
     try {
@@ -117,13 +106,11 @@ export default function NotesPage() {
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   }, [selectedProductId, store]);
 
   // Debounced version of loadNotes to prevent rapid UI changes
-  const debouncedLoadNotes = useDebounce(loadNotes, 300);
+  // const debouncedLoadNotes = useDebounce(loadNotes, 300);
 
   // Add a function for optimistic updates when adding new notes
   const handleNoteAdded = useCallback((newNote: Note) => {
@@ -176,22 +163,26 @@ export default function NotesPage() {
       const response = await deleteNotes(selectedProductId, noteIdsToDelete);
 
       if (response.success) {
-        toast({
+        // Use the handler function instead of calling toast directly
+        showToastHandler({
           title: `${noteIdsToDelete.length} note${noteIdsToDelete.length > 1 ? "s" : ""} deleted`,
+          // description: "Successfully removed from the system.", // Optional: Add description if desired
+          duration: 5000,
         });
         // No need to reload the entire list since we already updated the UI
       } else {
-        // If there's an error, reload the notes to ensure UI and server are in sync
-        toast({
+        // Use the handler for error toast too
+        showToastHandler({
           title: "Error deleting notes",
           description: response.error || "Failed to delete notes",
           variant: "destructive",
         });
-        loadNotes();
+        loadNotes(); // Reload on error
       }
     } catch (error) {
       console.error("Error during delete API call:", error);
-      toast({
+      // Use the handler for general error toast
+      showToastHandler({
         title: "Error deleting notes",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
@@ -201,6 +192,11 @@ export default function NotesPage() {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  // Handler function using the extracted type
+  const showToastHandler = (options: ShowToastOptions) => {
+    showToast(options);
   };
 
   const renderProductSelector = () => (
@@ -250,55 +246,47 @@ export default function NotesPage() {
   return (
     <Provider store={store}>
       <Header fixed>
-        <Search />
-        <div className="ml-auto flex items-center space-x-4">
+        <div className="flex items-center space-x-4">
+          <Search />
           <ThemeSwitch />
-          <ProfileDropdown user={null} />
+          <ProfileDropdown />
         </div>
       </Header>
-      <Main className="container mx-auto py-6 mt-14 px-4">
-        <Breadcrumbs items={breadcrumbItems} className="mb-4" />
-        {!selectedProductId ? (
-          renderProductSelector()
-        ) : (
+
+      <Main className="py-24 px-4">
+        {selectedProductId ? (
           <>
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-              <div>
+            <div className="mb-6 flex flex-col md:flex-row gap-6 justify-between">
+              <div className="flex-1">
+                <Breadcrumbs items={breadcrumbItems} className="mb-4" />
                 <h2 className="text-2xl font-bold tracking-tight">
                   {productName} - Notes
                 </h2>
                 <p className="text-muted-foreground">Manage your notes here.</p>
               </div>
-              <div className="flex items-center">
+              <div className="flex items-start mt-6 md:mt-0">
                 <NotesPrimaryButtons
+                  selectedProductId={selectedProductId}
                   onDelete={handleDeleteNotes}
                   selectedRows={selectedRows}
                 />
               </div>
             </div>
-            <div className="flex-1">
-              <div className="space-y-4">
-                <div className="rounded-md">
-                  {isLoading ? (
-                    <div className="h-[300px] flex justify-center items-center">
-                      <div className="animate-pulse text-muted-foreground">
-                        Loading notes...
-                      </div>
-                    </div>
-                  ) : (
-                    <NoteTable
-                      data={notes}
-                      setSelectedRows={updateSelectedRows}
-                      selectedRows={selectedRows}
-                    />
-                  )}
-                </div>
-              </div>
+
+            <div className="flex-grow overflow-auto">
+              <NoteTable data={notes} setSelectedRows={updateSelectedRows} />
             </div>
+
+            <NotesDialogs
+              onSuccess={loadNotes}
+              onOptimisticAdd={handleNoteAdded}
+              onShowToast={showToastHandler}
+            />
           </>
+        ) : (
+          renderProductSelector()
         )}
       </Main>
-      <NotesDialogs onSuccess={loadNotes} onOptimisticAdd={handleNoteAdded} />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

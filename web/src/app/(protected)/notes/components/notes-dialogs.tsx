@@ -9,28 +9,35 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/use-toast";
 import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useXp } from "@/xp/useXp";
+// Import toast function just for type extraction
+import { toast as showToast } from "@/hooks/use-toast";
+import { Note } from "./notes-store";
+
+// Extract the options type directly from the imported toast function
+type ShowToastOptions = Parameters<typeof showToast>[0];
 
 interface NotesDialogsProps {
   onSuccess: () => void;
-  onOptimisticAdd?: (note: any) => void;
+  onOptimisticAdd?: (note: Note) => void; // Use Note type
+  onShowToast: (options: ShowToastOptions) => void; // Use the extracted type
 }
 
 export function NotesDialogs({
   onSuccess,
   onOptimisticAdd,
+  onShowToast, // Receive the prop with the correct type
 }: NotesDialogsProps) {
   const [open, setOpen] = useState(false);
   const [noteBody, setNoteBody] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [selectedProductId] = useAtom(selectedProductIdAtom);
-  const { refreshXp } = useXp();
+  const { awardXp } = useXp();
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -39,6 +46,10 @@ export function NotesDialogs({
   }, []);
 
   const handleSave = async () => {
+    console.log("handleSave called", {
+      selectedProductId,
+      noteBody: noteBody.trim(),
+    });
     if (!selectedProductId || !noteBody.trim()) return;
     setSaving(true);
     try {
@@ -81,17 +92,35 @@ export function NotesDialogs({
       });
 
       const result = await res.json();
+      console.log("API Save Result for Note:", result);
 
       if (result.success) {
-        toast({ title: "Note added" });
-        // Refresh XP after successful note creation
-        console.log("Note created, refreshing XP...");
-        refreshXp().catch((err) =>
-          console.error("Failed to refresh XP after note creation:", err)
+        // --- Award XP and show toast via callback ---
+        const createNoteActionId = "create_note";
+        const pointsAwarded = 5; // Match points from points-schedule.ts
+        console.log(
+          `Note created. Attempting XP award for action: ${createNoteActionId}`
         );
+        try {
+          await awardXp(createNoteActionId);
+          // Use callback for success toast with XP
+          onShowToast({
+            title: "Note added",
+            description: `Your note has been added successfully and you earned ${pointsAwarded} XP!`,
+            duration: 5000,
+          });
+        } catch (error) {
+          console.log("error:", error);
+          onShowToast({
+            title: "Note added",
+            description: "Your note has been added successfully.",
+            duration: 5000,
+          });
+        }
+        // --- End XP Award ---
       } else {
-        // If server save fails, show error and reopen the dialog with previous values
-        toast({
+        // Handle server save failure - use callback for error toast
+        onShowToast({
           title: "Error saving note",
           description: result.error,
           variant: "destructive",
@@ -106,7 +135,8 @@ export function NotesDialogs({
         }
       }
     } catch (error) {
-      toast({
+      // Handle general error - use callback for error toast
+      onShowToast({
         title: "Error",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",

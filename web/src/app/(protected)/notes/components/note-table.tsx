@@ -41,14 +41,9 @@ import { columns } from "./notes-columns";
 interface NoteTableProps {
   data: Note[];
   setSelectedRows: (ids: string[]) => void;
-  selectedRows: string[];
 }
 
-export function NoteTable({
-  data,
-  setSelectedRows,
-  selectedRows,
-}: NoteTableProps) {
+export function NoteTable({ data, setSelectedRows }: NoteTableProps) {
   // Use Jotai atoms for table state
   const [rowSelection, setRowSelection] = useAtom(rowSelectionAtom);
   const [columnVisibility, setColumnVisibility] = useAtom(columnVisibilityAtom);

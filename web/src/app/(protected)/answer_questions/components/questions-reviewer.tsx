@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  CheckCircle,
-  Circle,
+  // CheckCircle,
+  // Circle,
   Edit,
   Save,
-  Search,
+  // Search,
   FileText,
   Check,
   Trash2,
@@ -19,10 +19,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   getOrderedProductQuestions,
-  saveQuestionAnswer,
   deleteQuestionAction,
   answerProductQuestionAction,
 } from "@/lib/firebase/actions/questions";
@@ -43,11 +41,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { fetchUserProfile } from "@/lib/firebase/actions/profile";
 import { userProfileAtom, updateUserProfileAtom } from "@/lib/store/user-store";
+import { toast as showToast } from "@/hooks/use-toast";
+import React from "react";
 
-// Main component
-export function QuestionsReviewer() {
+// Extract the options type directly from the imported toast function
+type ShowToastOptions = Parameters<typeof showToast>[0];
+
+interface QuestionsReviewerProps {
+  onShowToast: (options: ShowToastOptions) => void; // Add callback prop
+}
+
+// Define the component function first, then export a memoized version
+function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [selectedPhases] = useAtom(selectedPhasesAtom);
   const [questionModalOpen, setModalOpen] = useAtom(questionModalOpenAtom);
@@ -56,6 +62,7 @@ export function QuestionsReviewer() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [allQuestions, setAllQuestions] = useAtom(allQuestionsAtom);
+  const [userProfile] = useAtom(userProfileAtom);
   const [, updateUserProfile] = useAtom(updateUserProfileAtom);
   const [displayedQuestions, setDisplayedQuestions] = useState<Question[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -119,40 +126,47 @@ export function QuestionsReviewer() {
     previousSelectedQuestionIdRef.current = selectedQuestionId;
   }, [filteredQuestions, selectedQuestionId, setSelectedQuestionId, setAnswer]);
 
-  // Update the loadQuestions useEffect to refresh when allQuestions change
-  useEffect(() => {
-    const loadQuestions = async () => {
-      if (!selectedProductId) return;
+  // Memoize the loadQuestions function
+  const loadQuestions = useCallback(async () => {
+    if (!selectedProductId) return;
 
-      setIsLoading(true);
-      try {
-        const response = await getOrderedProductQuestions(selectedProductId);
+    setIsLoading(true);
+    try {
+      const response = await getOrderedProductQuestions(selectedProductId);
 
-        if (response.success && response.questions) {
-          const questions = response.questions as Question[];
-          console.log("Loaded questions:", questions.length);
-          setAllQuestions(questions);
+      if (response.success && response.questions) {
+        const questions = response.questions as Question[];
+        console.log("Loaded questions:", questions.length);
+        setAllQuestions(questions);
 
-          // If we have questions and none is selected, select the first one
-          if (questions.length > 0 && !selectedQuestionId) {
-            setSelectedQuestionId(questions[0].id);
-            setAnswer(questions[0].answer || "");
-          }
+        // If we have questions and none is selected, select the first one
+        if (questions.length > 0 && !selectedQuestionId) {
+          setSelectedQuestionId(questions[0].id);
+          setAnswer(questions[0].answer || "");
         }
-      } catch (error) {
-        console.error("Error loading questions:", error);
-        toast({
-          title: "Error loading questions",
-          description: error instanceof Error ? error.message : "Unknown error",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Error loading questions:", error);
+      toast({
+        title: "Error loading questions",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    selectedProductId,
+    setAllQuestions,
+    selectedQuestionId,
+    setSelectedQuestionId,
+    setAnswer,
+  ]);
 
+  // Update the loadQuestions useEffect to use the memoized function
+  useEffect(() => {
     loadQuestions();
-  }, [selectedProductId, setAllQuestions]);
+  }, [loadQuestions]);
 
   // Update answer when selecting a different question
   useEffect(() => {
@@ -170,6 +184,12 @@ export function QuestionsReviewer() {
   // Handle saving the answer
   const handleSave = async () => {
     if (!selectedProductId || !selectedQuestionId || !answer.trim()) return;
+
+    // Find the current question state *before* saving
+    const currentQuestion = allQuestions.find(
+      (q) => q.id === selectedQuestionId
+    );
+    const wasPreviouslyAnswered = !!currentQuestion?.answer?.trim();
 
     setIsSaving(true);
     try {
@@ -189,33 +209,51 @@ export function QuestionsReviewer() {
           )
         );
 
-        // Refresh the user profile to update XP in the UI using server action
-        try {
-          const profileResult = await fetchUserProfile();
-          if (profileResult.success && profileResult.profile) {
-            // Update the userProfileAtom with the refreshed data
-            updateUserProfile(profileResult.profile);
-            console.log(
-              "User profile refreshed after XP award:",
-              profileResult.profile.xp
-            );
-          }
-        } catch (profileError) {
-          console.error("Failed to refresh user profile:", profileError);
-          // Non-critical error, don't show to user
-        }
+        const toastTitle = "Answer saved";
+        let toastDescription = "Your answer has been saved successfully.";
+        const toastVariant: "default" | "destructive" | undefined = "default";
 
-        toast({
-          title: "Answer saved",
-          description:
-            "Your answer has been saved successfully and you earned 5 XP!",
+        // Conditional XP Update
+        if (!wasPreviouslyAnswered) {
+          const awardedXp = 5;
+          if (userProfile) {
+            const newXp = (userProfile.xp || 0) + awardedXp;
+            const updatedProfile = { ...userProfile, xp: newXp };
+            updateUserProfile(updatedProfile); // Update the atom
+            console.log(
+              `User profile atom updated locally after FIRST answer. New XP: ${newXp}`
+            );
+            toastDescription = `Your answer has been saved successfully and you earned ${awardedXp} XP!`;
+          } else {
+            console.warn("User profile not available to update XP locally.");
+            // Still show basic success message even if profile update fails locally
+          }
+        } else {
+          console.log(
+            "Question was previously answered, no XP awarded optimistically."
+          );
+          // Keep the default toastDescription
+        }
+        // Use callback for save success toast
+        onShowToast({
+          title: toastTitle,
+          description: toastDescription,
+          duration: 5000,
+          variant: toastVariant,
         });
       } else {
-        throw new Error(response.error || "Failed to save answer");
+        // Use callback for save failure toast
+        onShowToast({
+          title: "Error saving answer",
+          description: response.error || "Failed to save answer",
+          variant: "destructive",
+        });
+        // throw new Error(response.error || "Failed to save answer"); // Don't throw if showing toast
       }
     } catch (error) {
       console.error("Error saving answer:", error);
-      toast({
+      // Use callback for general save error toast
+      onShowToast({
         title: "Error saving answer",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
@@ -236,10 +274,9 @@ export function QuestionsReviewer() {
   };
 
   // Special handler for Add Question button
-  const handleAddQuestion = () => {
-    console.log("Opening question modal");
-    setModalOpen(true);
-  };
+  // const handleAddQuestion = () => {
+  //   setModalOpen(true);
+  // };
 
   // Log when component renders or modal state changes
   useEffect(() => {
@@ -267,16 +304,25 @@ export function QuestionsReviewer() {
           setAnswer("");
         }
 
-        toast({
+        // Use callback for delete success toast
+        onShowToast({
           title: "Success",
           description: "Question deleted successfully",
+          duration: 5000, // Add duration
         });
       } else {
-        throw new Error(response.error || "Failed to delete question");
+        // Use callback for delete failure toast
+        onShowToast({
+          title: "Error deleting question",
+          description: response.error || "Failed to delete question",
+          variant: "destructive",
+        });
+        // throw new Error(response.error || "Failed to delete question"); // Don't throw if showing toast
       }
     } catch (error) {
       console.error("Error deleting question:", error);
-      toast({
+      // Use callback for general delete error toast
+      onShowToast({
         title: "Error deleting question",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
@@ -441,15 +487,16 @@ export function QuestionsReviewer() {
                   </div>
                 </div>
 
-                <div className="p-6 flex-1 flex flex-col">
+                <div className="px-6 flex-1 flex flex-col">
                   <label className="text-sm font-medium mb-2">
                     Your Answer
                   </label>
+
                   <Textarea
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
-                    placeholder="Type your answer here..."
-                    className="flex-1 min-h-[200px] resize-none"
+                    placeholder="Type your answer..."
+                    className="min-h-[200px]"
                   />
 
                   <div className="mt-6 flex justify-end">
@@ -507,3 +554,6 @@ export function QuestionsReviewer() {
     </div>
   );
 }
+
+// Export the memoized version
+export const QuestionsReviewer = React.memo(QuestionsReviewerComponent);

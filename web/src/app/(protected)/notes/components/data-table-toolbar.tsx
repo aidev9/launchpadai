@@ -6,7 +6,7 @@ import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DataTableViewOptions } from "./data-table-view-options";
-import { searchFilterAtom, tagsFilterAtom, Note } from "./notes-store";
+import { searchFilterAtom, tagsFilterAtom } from "./notes-store";
 import {
   DataTableFacetedFilter,
   OptionType,

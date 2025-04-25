@@ -1,6 +1,6 @@
 "use server";
 
-import { z } from "zod";
+// import { z } from "zod";
 // Comment out the safe-action import since there's a module resolution issue
 // import { action } from "@/lib/safe-action";
 import { getProduct } from "@/lib/firebase/products";
@@ -12,22 +12,39 @@ import { getProjectNotes } from "@/lib/firebase/notes";
 import { awardXpPoints } from "@/xp/server-actions"; // Import XP award function
 
 // Dynamic import AI utils to avoid bundling them in the client
-const generateAIContent = async (params: any) => {
+// const generateAIContent = async (params: any) => {
+const generateAIContent = async (params: {
+  systemPrompt: string;
+  document: string;
+  product: Product;
+  questionAnswers: any[]; // Replace with QuestionAnswer type if available
+  notes: any[]; // Replace with Note type if available
+  asset: {
+    title: string;
+    description?: string | null;
+    phase?: string;
+    systemPrompt?: string;
+  };
+}) => {
   // Import the AI module only on the server
   const { generateAssetContentWithLangGraph } = await import("@/lib/ai");
   return generateAssetContentWithLangGraph(params);
 };
 
 // Schema for the input
-const assetGenerationSchema = z.object({
-  productId: z.string(),
-  assetId: z.string(),
-});
+// const assetGenerationSchema = z.object({
+//   productId: z.string(),
+//   assetId: z.string(),
+// });
 
 // Define the action handler
-async function handleAssetGeneration(
-  data: z.infer<typeof assetGenerationSchema>
-): Promise<{ success: boolean; content?: string; error?: string }> {
+// async function handleAssetGeneration(
+//   data: z.infer<typeof assetGenerationSchema>
+// ): Promise<{ success: boolean; content?: string; error?: string }> {
+async function handleAssetGeneration(data: {
+  productId: string;
+  assetId: string;
+}): Promise<{ success: boolean; content?: string; error?: string }> {
   try {
     const { productId, assetId } = data;
 
@@ -83,7 +100,7 @@ async function handleAssetGeneration(
       notes,
       asset: {
         title: asset.title,
-        description: asset.description,
+        description: asset.description || "",
         phase: asset.phase,
         systemPrompt: asset.systemPrompt,
       },
@@ -129,8 +146,12 @@ async function handleAssetGeneration(
 
 // Use a simple server action since we're having issues with safe-action
 // This will work with Next.js server actions directly
-export async function generateAsset(
-  data: z.infer<typeof assetGenerationSchema>
-) {
+// export async function generateAsset(
+//   data: z.infer<typeof assetGenerationSchema>
+// ) {
+export async function generateAsset(data: {
+  productId: string;
+  assetId: string;
+}) {
   return handleAssetGeneration(data);
 }

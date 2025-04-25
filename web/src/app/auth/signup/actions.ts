@@ -3,7 +3,7 @@
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { z } from "zod";
 import { actionClient } from "@/lib/action";
-import { returnValidationErrors } from "next-safe-action";
+// import { returnValidationErrors } from "next-safe-action";
 import { awardXpPoints } from "@/xp/server-actions"; // Import the XP award function
 
 // Schema for signup data validation

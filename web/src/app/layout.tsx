@@ -2,6 +2,8 @@ import "./globals.css";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import type { Metadata } from "next";
+// import { Toaster } from "@/components/ui/toaster"; // Remove direct import
+import { ToasterProvider } from "@/components/toaster-provider"; // Import the wrapper
 
 export const metadata: Metadata = {
   title: "LaunchpadAI",
@@ -20,8 +22,9 @@ export default function RootLayout({
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
         {/* <FirestoreInit /> */}
-
         {children}
+        {/* <Toaster /> */}
+        <ToasterProvider /> {/* Use the wrapper component */}
       </body>
     </html>
   );

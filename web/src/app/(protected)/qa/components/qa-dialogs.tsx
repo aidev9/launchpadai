@@ -33,7 +33,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/components/ui/use-toast";
 import {
   addQAModalOpenAtom,
   editQAModalOpenAtom,
@@ -50,6 +49,11 @@ import {
 } from "@/lib/firebase/actions/questions";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Question } from "../data/schema";
+import { toast as showToast } from "@/hooks/use-toast";
+import { useXp } from "@/xp/useXp";
+
+// Extract the options type directly from the imported toast function
+type ShowToastOptions = Parameters<typeof showToast>[0];
 
 // Form schema for question
 const questionFormSchema = z.object({
@@ -66,9 +70,10 @@ type RowSelection = Record<string, boolean>;
 
 interface QADialogsProps {
   onSuccess?: () => void;
+  onShowToast: (options: ShowToastOptions) => void;
 }
 
-export function QADialogs({ onSuccess }: QADialogsProps) {
+export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
   const [addModalOpen, setAddModalOpen] = useAtom(addQAModalOpenAtom);
   const [editModalOpen, setEditModalOpen] = useAtom(editQAModalOpenAtom);
   const [deleteModalOpen, setDeleteModalOpen] = useAtom(deleteQAModalOpenAtom);
@@ -77,6 +82,7 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
   const [allQuestions, setAllQuestions] = useAtom(allQuestionsAtom);
   const [tableInstance] = useAtom(tableInstanceAtom);
   const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const { awardXp } = useXp();
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,10 +143,9 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
   // Handle form submission
   const onSubmit = async (data: QuestionFormValues) => {
     if (!selectedProductId) {
-      toast({
+      onShowToast({
         title: "Error",
         description: "No product selected. Please select a product first.",
-        variant: "destructive",
       });
       return;
     }
@@ -163,9 +168,40 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
       );
 
       if (response.success) {
-        toast({
+        const isAdding = !editModalOpen;
+        const isAnsweringFirstTime =
+          editModalOpen && data.answer && !selectedQuestion?.answer;
+
+        let toastDescription = isAdding
+          ? "Question added successfully"
+          : "Question updated successfully";
+        let pointsAwarded = 0;
+        let actionId = "";
+
+        if (isAdding) {
+          actionId = "add_question";
+          pointsAwarded = 5; // Points for adding a question
+        } else if (isAnsweringFirstTime) {
+          actionId = "answer_question";
+          pointsAwarded = 5; // Points for answering a question
+          toastDescription = "Answer saved successfully"; // Update description for answering
+        }
+
+        // Award XP if applicable
+        if (actionId && pointsAwarded > 0) {
+          try {
+            await awardXp(actionId);
+            toastDescription += ` You earned ${pointsAwarded} XP!`;
+          } catch (error) {
+            console.log("error:", error);
+          }
+        }
+
+        // Show the toast
+        onShowToast({
           title: "Success",
-          description: "Question saved successfully",
+          description: toastDescription,
+          duration: 5000,
         });
 
         // Close dialogs
@@ -202,10 +238,9 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
       }
     } catch (error) {
       console.error("Error saving question:", error);
-      toast({
+      onShowToast({
         title: "Error saving question",
         description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -215,10 +250,9 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
   // Handle deleting a question
   const handleDelete = async () => {
     if (!selectedProductId) {
-      toast({
+      onShowToast({
         title: "Error",
         description: "No product selected. Please select a product first.",
-        variant: "destructive",
       });
       return;
     }
@@ -237,10 +271,9 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
         console.log("Selected row indices:", selectedRowIndices);
 
         if (selectedRowIndices.length === 0) {
-          toast({
+          onShowToast({
             title: "Error",
             description: "No questions selected for deletion",
-            variant: "destructive",
           });
           setIsSubmitting(false);
           return;
@@ -278,10 +311,9 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
         console.log("Selected question IDs:", selectedQuestionIds);
 
         if (selectedQuestionIds.length === 0) {
-          toast({
+          onShowToast({
             title: "Error",
             description: "Failed to map selected rows to question IDs",
-            variant: "destructive",
           });
           setIsSubmitting(false);
           return;
@@ -321,7 +353,7 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
 
         // Show appropriate toast message
         if (successCount > 0) {
-          toast({
+          onShowToast({
             title: "Success",
             description:
               errorCount > 0
@@ -329,10 +361,9 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
                 : `${successCount} questions deleted successfully`,
           });
         } else {
-          toast({
+          onShowToast({
             title: "Error",
             description: "Failed to delete any questions",
-            variant: "destructive",
           });
         }
       } else if (selectedQuestion) {
@@ -349,7 +380,7 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
             allQuestions.filter((q) => q.id !== selectedQuestion.id)
           );
 
-          toast({
+          onShowToast({
             title: "Success",
             description: "Question deleted successfully",
           });
@@ -370,10 +401,9 @@ export function QADialogs({ onSuccess }: QADialogsProps) {
       }
     } catch (error) {
       console.error("Error deleting question:", error);
-      toast({
+      onShowToast({
         title: "Error deleting question",
         description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);

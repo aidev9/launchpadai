@@ -25,7 +25,6 @@ import {
   Template,
 } from "./data/templates";
 import { PlusCircle, Search as SearchIcon } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { countProducts } from "@/lib/firebase/products";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -36,7 +35,6 @@ export const dynamic = "force-dynamic";
 
 export default function Welcome() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [hasProducts, setHasProducts] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>(["all"]);
   const router = useRouter();
 
@@ -45,7 +43,7 @@ export default function Welcome() {
     const checkProducts = async () => {
       const result = await countProducts();
       if (result.success && result.count > 0) {
-        setHasProducts(true);
+        // setHasProducts(true);
       }
     };
 
@@ -112,7 +110,7 @@ export default function Welcome() {
         <Search />
         <div className="ml-auto flex items-center space-x-4">
           <ThemeSwitch />
-          <ProfileDropdown user={null} />
+          <ProfileDropdown />
         </div>
       </Header>
 
@@ -181,8 +179,9 @@ export default function Welcome() {
               {selectedTypes.includes("all")
                 ? "All Templates"
                 : pillOptions
-                    .filter((p) =>
-                      p.value !== "all" && selectedTypes.includes(p.value)
+                    .filter(
+                      (p) =>
+                        p.value !== "all" && selectedTypes.includes(p.value)
                     )
                     .map((p) => p.label)
                     .join(", ") + " Templates"}

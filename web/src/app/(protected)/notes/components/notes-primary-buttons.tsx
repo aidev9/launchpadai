@@ -8,14 +8,17 @@ interface NotesPrimaryButtonsProps {
   onRefresh?: () => void;
   onDelete: () => void;
   selectedRows: string[];
+  selectedProductId: string | null | undefined;
 }
 
 function NotesPrimaryButtonsComponent({
   onDelete,
   selectedRows,
+  selectedProductId,
 }: NotesPrimaryButtonsProps) {
   // Calculate whether the button should be disabled
   const isDeleteDisabled = !selectedRows || selectedRows.length === 0;
+  const isAddNoteDisabled = !selectedProductId;
 
   // Debug log to verify prop values
   React.useEffect(() => {
@@ -48,6 +51,7 @@ function NotesPrimaryButtonsComponent({
         }
         size="sm"
         className="h-9 gap-1"
+        disabled={isAddNoteDisabled}
       >
         <Plus className="h-4 w-4" /> Add Note
       </Button>
@@ -60,18 +64,21 @@ export const NotesPrimaryButtons = memo(
   NotesPrimaryButtonsComponent,
   (prevProps, nextProps) => {
     // Log the comparison
+    const rowsEqual =
+      JSON.stringify(prevProps.selectedRows) ===
+      JSON.stringify(nextProps.selectedRows);
+    const productEqual =
+      prevProps.selectedProductId === nextProps.selectedProductId;
+
     console.log("NotesPrimaryButtons memo comparison:", {
       prevRows: prevProps.selectedRows,
       nextRows: nextProps.selectedRows,
-      equal:
-        JSON.stringify(prevProps.selectedRows) ===
-        JSON.stringify(nextProps.selectedRows),
+      prevProduct: prevProps.selectedProductId,
+      nextProduct: nextProps.selectedProductId,
+      equal: rowsEqual && productEqual,
     });
 
     // Only re-render when selectedRows actually changes
-    return (
-      JSON.stringify(prevProps.selectedRows) ===
-      JSON.stringify(nextProps.selectedRows)
-    );
+    return rowsEqual && productEqual;
   }
 );

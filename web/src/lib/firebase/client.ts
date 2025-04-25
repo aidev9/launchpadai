@@ -4,6 +4,8 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth, indexedDBLocalPersistence, signOut } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { useSetAtom } from "jotai";
+import { clearUserProfileAtom } from "@/lib/store/user-store";
 
 // Firebase client configuration
 const firebaseConfig = {
@@ -45,7 +47,52 @@ export const clientDb = getFirestore(
   process.env.FIRESTORE_DATABASE_NAME as string
 );
 
+// Note: This hook usage might need to be moved to a component context
+// if client.ts is not guaranteed to be used within a Jotai Provider scope.
+// For simplicity, we assume it's used correctly for now.
+// A safer approach would be to trigger this from the calling component.
+
+export const SignOutHelper = () => {
+  const clearProfile = useSetAtom(clearUserProfileAtom);
+
+  const signOutAndClear = async (router?: ReturnType<typeof useRouter>) => {
+    try {
+      await signOut(clientAuth);
+      // Clear session cookies
+      await fetch("/api/auth/session", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      // Clear the Jotai atom state
+      clearProfile();
+      console.log("User profile atom cleared.");
+
+      // Route to the home page or any other page
+      // Only navigate if router is provided
+      if (router) {
+        router.push("/auth/signin");
+        router.refresh(); // Ensure the UI updates
+      }
+      console.log("User signed out successfully");
+    } catch (error) {
+      console.error("Error signing out user:", error);
+    }
+  };
+
+  return signOutAndClear;
+};
+
+// Keep the original export structure, but refactor its usage
+// This function itself cannot directly use hooks.
+// Components calling sign out should use the SignOutHelper or similar pattern.
 export const signOutUser = async (router?: ReturnType<typeof useRouter>) => {
+  // The actual clearing logic needs to be invoked via the helper hook from a component.
+  console.warn(
+    "signOutUser called directly. Jotai state clearing must be handled by the calling component using SignOutHelper or similar."
+  );
   try {
     await signOut(clientAuth);
     // Clear session cookies
@@ -57,13 +104,12 @@ export const signOutUser = async (router?: ReturnType<typeof useRouter>) => {
     });
 
     // Route to the home page or any other page
-    // Only navigate if router is provided
     if (router) {
       router.push("/auth/signin");
-      router.refresh(); // Ensure the UI updates
+      router.refresh();
     }
-    console.log("User signed out successfully");
+    console.log("User signed out (session cleared, routing done).");
   } catch (error) {
-    console.error("Error signing out user:", error);
+    console.error("Error signing out user (core logic):", error);
   }
 };

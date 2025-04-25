@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import {
@@ -33,6 +33,11 @@ import {
   Question,
 } from "@/lib/store/questions-store";
 import { toast } from "@/components/ui/use-toast";
+import { useXp } from "@/xp/useXp";
+import { toast as showToast } from "@/hooks/use-toast";
+
+// Extract the options type directly from the imported toast function
+type ShowToastOptions = Parameters<typeof showToast>[0];
 
 // Phase options for dropdown
 const phaseOptions = [
@@ -57,10 +62,16 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function QuestionWizard() {
+interface QuestionWizardProps {
+  // Add other props if needed, e.g., if it relies on page state
+  onShowToast: (options: ShowToastOptions) => void; // Add callback prop
+}
+
+export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [modalOpen, setModalOpen] = useAtom(questionModalOpenAtom);
   const [allQuestions, setAllQuestions] = useAtom(allQuestionsAtom);
+  const { awardXp } = useXp();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(
@@ -77,14 +88,12 @@ export function QuestionWizard() {
     },
   });
 
-  // Add a utility function to completely reset the form state
-  const resetFormCompletely = () => {
-    // Reset the form fields
-    form.reset({
-      text: "",
-      answer: "",
-      phases: [],
-    });
+  // Add a utility function to completely reset the form state - memoized with useCallback
+  const resetFormCompletely = useCallback(() => {
+    // Use form.setValue instead of form.reset to potentially avoid re-renders
+    form.setValue("text", "");
+    form.setValue("answer", "");
+    form.setValue("phases", []);
 
     // Clear editing state
     setIsEditing(false);
@@ -92,17 +101,30 @@ export function QuestionWizard() {
     if (typeof window !== "undefined") {
       localStorage.removeItem("editingQuestionId");
     }
-  };
+  }, [form]);
 
   // Use this in the useEffect for modal open/close
   useEffect(() => {
     if (modalOpen) {
       // Only run the code when the modal opens (not on every render)
-      const storedEditingId = localStorage.getItem("editingQuestionId");
+      const storedEditingId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("editingQuestionId")
+          : null;
 
+      // Only update state if absolutely necessary
       if (storedEditingId !== editingQuestionId) {
+        console.log(
+          "Updating editingQuestionId from localStorage:",
+          storedEditingId
+        );
         setEditingQuestionId(storedEditingId);
-        setIsEditing(!!storedEditingId);
+
+        // Only update isEditing if it would actually change
+        const shouldBeEditing = !!storedEditingId;
+        if (isEditing !== shouldBeEditing) {
+          setIsEditing(shouldBeEditing);
+        }
 
         // If editing, populate form with question data
         if (storedEditingId) {
@@ -110,16 +132,18 @@ export function QuestionWizard() {
             (q) => q.id === storedEditingId
           );
           if (questionToEdit) {
-            form.reset({
-              text: questionToEdit.question,
-              answer: questionToEdit.answer || "",
-              phases: questionToEdit.tags?.map(
+            // Use setValue instead of form.reset to potentially reduce re-renders
+            form.setValue("text", questionToEdit.question);
+            form.setValue("answer", questionToEdit.answer || "");
+            form.setValue(
+              "phases",
+              questionToEdit.tags?.map(
                 (tag) => tag.charAt(0).toUpperCase() + tag.slice(1)
-              ) || [questionToEdit.phase], // Capitalize first letter
-            });
+              ) || [questionToEdit.phase]
+            );
           }
         } else {
-          // Reset form for new question
+          // Reset form for new question - only if needed
           resetFormCompletely();
         }
       }
@@ -127,7 +151,14 @@ export function QuestionWizard() {
       // Complete reset when modal closes
       resetFormCompletely();
     }
-  }, [modalOpen, allQuestions, form, editingQuestionId]);
+  }, [
+    modalOpen,
+    allQuestions,
+    editingQuestionId,
+    isEditing,
+    resetFormCompletely,
+    form,
+  ]);
 
   // Replace the debug logging effect with a more targeted one
   useEffect(() => {
@@ -173,9 +204,11 @@ export function QuestionWizard() {
           )
         );
 
-        toast({
+        // Use callback for update success toast
+        onShowToast({
           title: "Success",
           description: "Question updated successfully",
+          duration: 5000, // Add duration
         });
       } else {
         // Create new question using server action
@@ -202,39 +235,60 @@ export function QuestionWizard() {
             question: data.text,
             answer: data.answer || null,
             tags: data.phases.map((phase) => phase.toLowerCase()),
-            phase: data.phases[0], // Use the first phase as the primary one
-            order: allQuestions.length + 1, // Place at the end
-            last_modified: new Date(),
-            createdAt: new Date(),
+            phase: data.phases[0],
+            order: (allQuestions?.length ?? 0) + 1, // Assign next order
+            last_modified: new Date(), // Use current date for new question
+            createdAt: new Date(), // Add createdAt timestamp
           };
+          setAllQuestions((prev) => [...(prev || []), newQuestion]);
 
-          setAllQuestions((prev) => [...prev, newQuestion]);
-
-          toast({
-            title: "Success",
-            description: "Question added successfully",
-          });
+          // --- Award XP and show toast via callback ---
+          const addQuestionActionId = "add_question";
+          const pointsAwarded = 5;
+          console.log(
+            `Question added. Awarding XP for action: ${addQuestionActionId}`
+          );
+          try {
+            await awardXp(addQuestionActionId);
+            // Use callback for success toast with XP (inside timeout)
+            setTimeout(() => {
+              onShowToast({
+                title: "Question added",
+                description: `Your question has been added successfully and you earned ${pointsAwarded} XP!`,
+                duration: 5000,
+              });
+            }, 100);
+          } catch (error) {
+            console.log("error:", error);
+            setTimeout(() => {
+              onShowToast({
+                title: "Question added",
+                description: "Your question has been added successfully.",
+                duration: 5000,
+              });
+            }, 100);
+          }
+          // --- End XP Award ---
         } else {
-          throw new Error(response.error || "Failed to add question");
+          // Use callback for create error toast
+          onShowToast({
+            title: "Error adding question",
+            description: response.error || "Failed to add question",
+            variant: "destructive",
+          });
+          // throw new Error(response.error || "Failed to add question"); // Don't throw if showing toast
         }
       }
 
-      // Reset form and close modal
-      resetFormCompletely();
+      // Close the modal and reset form on success (both create/update)
       setModalOpen(false);
+      resetFormCompletely();
     } catch (error) {
-      console.error(
-        isEditing ? "Error updating question:" : "Error adding question:",
-        error
-      );
-      toast({
+      console.error("Error adding/updating question:", error);
+      // Use callback for general error toast
+      onShowToast({
         title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : isEditing
-              ? "Failed to update question"
-              : "Failed to add question",
+        description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
     } finally {

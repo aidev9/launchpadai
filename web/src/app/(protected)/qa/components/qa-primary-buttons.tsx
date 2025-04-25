@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { Plus, Trash, RefreshCw } from "lucide-react";
+import { Plus, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   addQAModalOpenAtom,
@@ -10,11 +10,11 @@ import {
   selectedQuestionAtom,
 } from "./qa-store";
 
-interface QAPrimaryButtonsProps {
-  onRefresh?: () => void;
-}
+// interface QAPrimaryButtonsProps {
+//   // Removed onRefresh prop
+// }
 
-export function QAPrimaryButtons({ onRefresh }: QAPrimaryButtonsProps) {
+export function QAPrimaryButtons(/* Removed onRefresh prop */) {
   const [rowSelection] = useAtom(rowSelectionAtom);
   const [, setAddModalOpen] = useAtom(addQAModalOpenAtom);
   const [, setDeleteModalOpen] = useAtom(deleteQAModalOpenAtom);
@@ -22,12 +22,6 @@ export function QAPrimaryButtons({ onRefresh }: QAPrimaryButtonsProps) {
 
   // Count selected rows
   const selectedCount = Object.keys(rowSelection).length;
-
-  const handleRefresh = () => {
-    if (onRefresh) {
-      onRefresh();
-    }
-  };
 
   const handleDeleteSelected = () => {
     // Clear any selected question to ensure we're in "multiple delete" mode
@@ -49,16 +43,6 @@ export function QAPrimaryButtons({ onRefresh }: QAPrimaryButtonsProps) {
           Delete Selected ({selectedCount})
         </Button>
       )}
-
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-9 gap-1"
-        onClick={handleRefresh}
-      >
-        <RefreshCw className="h-4 w-4" />
-        Refresh
-      </Button>
 
       <Button
         size="sm"

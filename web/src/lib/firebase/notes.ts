@@ -9,10 +9,12 @@ export interface Note {
 }
 
 // Helper function inline to avoid import issues
-function serializeFirestoreData(data: any): any {
+function serializeFirestoreData(
+  data: Record<string, FirebaseFirestore.FieldValue | any>
+): Record<string, any> {
   if (!data) return data;
 
-  const result: any = {};
+  const result: Record<string, any> = {};
 
   Object.keys(data).forEach((key) => {
     const value = data[key];
@@ -135,6 +137,12 @@ export async function getNote(projectId: string, noteId: string) {
 
     // Serialize the note document to handle timestamps
     const data = noteDoc.data();
+    if (!data) {
+      return {
+        success: false,
+        error: "Note data is missing",
+      };
+    }
     return {
       success: true,
       note: {

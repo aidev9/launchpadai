@@ -215,6 +215,13 @@ export function useProducts() {
     [products, selectedProduct]
   );
 
+  // Helper to clear product selection
+  const clearProductSelection = useCallback(() => {
+    localStorage.removeItem("selectedProductId");
+    setSelectedProductId(null);
+    setSelectedProduct(null);
+  }, [setSelectedProductId, setSelectedProduct]);
+
   // Consolidated method for selecting a product - updates both ID and data atoms
   const selectProduct = useCallback(
     async (productId: string): Promise<ApiResponse<Product>> => {
@@ -286,15 +293,9 @@ export function useProducts() {
       setSelectedProductId,
       setSelectedProduct,
       fetchProductById,
+      clearProductSelection,
     ]
   );
-
-  // Helper to clear product selection
-  const clearProductSelection = useCallback(() => {
-    localStorage.removeItem("selectedProductId");
-    setSelectedProductId(null);
-    setSelectedProduct(null);
-  }, [setSelectedProductId, setSelectedProduct]);
 
   // Initialize products on first mount
   useEffect(() => {

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
-import { cookies } from "next/headers";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 
 // Following the exact Next.js route handler pattern for dynamic routes
@@ -22,6 +21,7 @@ export async function GET(request: Request) {
     try {
       await fs.access(filePath);
     } catch (error) {
+      console.log("error:", error);
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 

@@ -1,7 +1,6 @@
 "use client";
 
-import { HTMLAttributes, startTransition, useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import { HTMLAttributes, useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,7 +31,6 @@ import {
   handleSocialSignIn,
 } from "@/lib/firebase/clientAuth";
 import { useRouter } from "next/navigation";
-import { clientAuth } from "@/lib/firebase/client";
 
 type UserAuthFormProps = HTMLAttributes<HTMLDivElement>;
 
@@ -53,8 +51,6 @@ const formSchema = z.object({
 
 export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -66,7 +62,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   });
 
   // Use next-safe-action hook
-  const { execute, status, result } = useAction(signupAction, {
+  const { result } = useAction(signupAction, {
     onSuccess: async (data) => {
       if (data.data?.success) {
         router.push("/ftux");
@@ -74,9 +70,6 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
     },
     onError: (error) => {
       console.error("Action error:", error);
-      setErrorMessage(
-        error?.error?.serverError || "An error occurred. Please try again."
-      );
     },
   });
 
@@ -88,48 +81,11 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
       })
       .catch((error) => {
         console.error("Error signing in:", error);
-        setErrorMessage(
-          error?.message || "An error occurred. Please try again."
-        );
       })
       .finally(() => {
         setIsLoading(false);
       });
-
-    setErrorMessage(null);
-    setSuccessMessage(null);
   }
-
-  useEffect(() => {
-    onAuthStateChanged(clientAuth, (user) => {
-      if (user) {
-        const provider:
-          | "google"
-          | "email"
-          | "facebook"
-          | "twitter"
-          | "github"
-          | undefined = "google";
-
-        const data = {
-          uid: user.uid,
-          email: user.email ?? "",
-          name: user.displayName ?? "",
-          photoURL: user.photoURL ?? "",
-          provider,
-          password: "Password123!",
-          company: "",
-          phone: "",
-          role: "other",
-          interest: "other",
-        };
-        execute(data);
-        router.push("/ftux");
-      } else {
-        console.log("No user is signed in.");
-      }
-    });
-  }, []);
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
@@ -206,12 +162,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                     await handleSocialSignIn("google");
                     router.push("/ftux");
                   } catch (error) {
-                    console.error("Google sign-in error:", error);
-                    setErrorMessage(
-                      error instanceof Error
-                        ? error.message
-                        : "An error occurred during Google sign-in. Please try again."
-                    );
+                    console.log("error:", error);
                   } finally {
                     setIsLoading(false);
                   }

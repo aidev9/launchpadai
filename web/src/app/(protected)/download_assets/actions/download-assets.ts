@@ -1,7 +1,7 @@
 "use server";
 
-import { z } from "zod";
-import { action } from "@/lib/safe-action";
+// import { z } from "zod";
+// import { action } from "@/lib/safe-action";
 import { prompts } from "../data/prompts";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { getAsset } from "@/lib/firebase/assets";
@@ -11,11 +11,11 @@ import { v4 as uuidv4 } from "uuid";
 import { awardXpPoints } from "@/xp/server-actions";
 
 // Schema for download assets parameters
-const downloadAssetsSchema = z.object({
-  productId: z.string(),
-  assetIds: z.array(z.string()),
-  promptIds: z.array(z.string()),
-});
+// const downloadAssetsSchema = z.object({
+//   productId: z.string(),
+//   assetIds: z.array(z.string()),
+//   promptIds: z.array(z.string()),
+// });
 
 // Direct server action for downloading assets
 export async function downloadAssets(data: {
@@ -59,7 +59,7 @@ export async function downloadAssets(data: {
           const asset = result.asset;
 
           // Use document title or a fallback title
-          let documentTitle = asset.document;
+          let documentTitle = asset.title;
 
           // If document is empty, try other fields that might contain a title
           if (!documentTitle) {

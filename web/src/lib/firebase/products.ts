@@ -5,15 +5,15 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { questions as staticQuestions } from "@/app/(protected)/answer_questions/data/questions";
-import { productQuestionInputSchema } from "./schema";
+// import { productQuestionInputSchema } from "./schema";
 import { initializeProductAssets } from "./initialize-assets";
 import { awardXpPoints } from "@/xp/server-actions";
 
 // Root products collection reference
-const productsCollection = adminDb.collection("products");
+// const productsCollection = adminDb.collection("products");
 
 // Questions collection reference
-const questionsCollection = adminDb.collection("questions");
+// const questionsCollection = adminDb.collection("questions");
 
 // Get the productsRef for a specific user
 function getUserProductsRef(userId: string) {
@@ -22,7 +22,7 @@ function getUserProductsRef(userId: string) {
 
 // Get the questionsRef for a specific user
 function getUserQuestionsRef(userId: string) {
-  return questionsCollection.doc(userId).collection("products");
+  return adminDb.collection("questions").doc(userId).collection("products");
 }
 
 // Get the product questions ref for a specific user and product

@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { clientAuth } from "@/lib/firebase/client";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, getIdToken } from "firebase/auth";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
-import { DevTools } from "jotai-devtools";
+import { setUserProfileAtom } from "@/lib/store/user-store";
+import { fetchUserProfile } from "@/lib/firebase/actions/profile";
 import { useAtomsDebugValue } from "jotai-devtools/utils";
 
 const DebugAtoms = () => {
@@ -24,19 +25,21 @@ export default function RootLayout({
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
+  const setUserProfile = useSetAtom(setUserProfileAtom);
 
   useEffect(() => {
     // Initialize auth state
     const unsubscribe = onAuthStateChanged(clientAuth, async (user) => {
       if (user) {
-        console.log("User is authenticated in Firebase client");
+        setIsLoading(true);
+        setAuthError(null);
 
         try {
           // Get a fresh ID token
           const idToken = await getIdToken(user, true);
 
           // Update the session cookie on the server
-          const response = await fetch("/api/auth/session", {
+          const sessionResponse = await fetch("/api/auth/session", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -44,8 +47,18 @@ export default function RootLayout({
             body: JSON.stringify({ idToken }),
           });
 
-          if (!response.ok) {
+          if (!sessionResponse.ok) {
             throw new Error("Failed to create session");
+          }
+
+          // Fetch user profile data from server action
+          const profileResult = await fetchUserProfile();
+
+          if (profileResult.success && profileResult.profile) {
+            // Set the user profile in the Jotai atom
+            setUserProfile(profileResult.profile);
+          } else {
+            setUserProfile(null); // Ensure atom is null if profile fetch fails
           }
 
           // Load the selected product from localStorage if it exists
@@ -58,34 +71,38 @@ export default function RootLayout({
               } catch {
                 setSelectedProductId(storedProductId);
               }
-              console.log(
-                "Loaded selected product from localStorage:",
-                storedProductId
-              );
             }
           } catch (error) {
-            console.error("Error reading product from localStorage:", error);
+            console.log("error:", error);
           }
 
+          // Only set loading to false after session and profile are handled
           setIsLoading(false);
           setAuthError(null);
         } catch (error) {
-          console.error("Error refreshing session:", error);
+          console.log("error:", error);
+          setUserProfile(null);
           setAuthError(
-            "Failed to create a valid session. Please sign in again."
+            "Failed to create a valid session or load profile. Please sign in again."
           );
-          router.push("/auth/signin");
+          // Wait a bit before redirecting to allow user to see the error
+          setTimeout(() => {
+            router.push("/auth/signin");
+          }, 1500);
         }
       } else {
-        console.log("User is not authenticated");
-        // setAuthError("Please sign in to access this page");
+        // console.log("User is not authenticated");
+        // Clear profile on sign out detection
+        setUserProfile(null);
+        setIsLoading(false); // No user, not loading
+        setAuthError(null); // Clear any previous auth errors
         router.push("/auth/signin");
         router.refresh();
       }
     });
 
     return () => unsubscribe();
-  }, [router, setSelectedProductId, clientAuth]);
+  }, [router, setSelectedProductId, setUserProfile]);
 
   if (isLoading) {
     return (

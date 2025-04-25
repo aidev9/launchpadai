@@ -2,33 +2,33 @@
 
 import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+// import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { FirestoreAsset } from "./initialize-assets";
 import { Asset } from "@/app/(protected)/review_assets/data/assets";
 import { awardXpPoints } from "@/xp/server-actions";
 
 // Schema for asset validation
-const assetSchema = z.object({
-  id: z.string(),
-  phase: z.enum([
-    "Discover",
-    "Validate",
-    "Design",
-    "Build",
-    "Secure",
-    "Launch",
-    "Grow",
-  ]),
-  title: z.string(),
-  description: z.string(),
-  systemPrompt: z.string(),
-  tags: z.array(z.string()),
-  order: z.number(),
-  content: z.string().optional(),
-  last_updated: z.coerce.date().optional(),
-  created_at: z.coerce.date().optional(),
-});
+// const assetSchema = z.object({
+//   id: z.string(),
+//   phase: z.enum([
+//     "Discover",
+//     "Validate",
+//     "Design",
+//     "Build",
+//     "Secure",
+//     "Launch",
+//     "Grow",
+//   ]),
+//   title: z.string(),
+//   description: z.string(),
+//   systemPrompt: z.string(),
+//   tags: z.array(z.string()),
+//   order: z.number(),
+//   content: z.string().optional(),
+//   last_updated: z.coerce.date().optional(),
+//   created_at: z.coerce.date().optional(),
+// });
 
 // Get the assets reference for a specific user and product
 function getUserAssetRef(userId: string, productId: string) {
@@ -41,10 +41,12 @@ function getUserAssetRef(userId: string, productId: string) {
 }
 
 // Helper to convert Firestore timestamps to ISO strings
-function serializeFirestoreData(data: any): any {
+function serializeFirestoreData(
+  data: Record<string, FirebaseFirestore.FieldValue | any>
+): Record<string, any> {
   if (!data) return data;
 
-  const result: any = {};
+  const result: Record<string, any> = {};
 
   Object.keys(data).forEach((key) => {
     const value = data[key];
@@ -159,13 +161,19 @@ export async function getAsset(productId: string, assetId: string) {
     }
 
     // Serialize the asset document to handle timestamps
-    const data = assetDoc.data();
+    const data = assetDoc.data() as Record<string, any> | undefined;
+    if (!data) {
+      return {
+        success: false,
+        error: "Asset data is missing",
+      };
+    }
     return {
       success: true,
       asset: {
         id: assetDoc.id,
         ...serializeFirestoreData(data),
-      },
+      } as FirestoreAsset, // Assert the final type
     };
   } catch (error) {
     console.error(`Failed to fetch asset ${assetId}:`, error);

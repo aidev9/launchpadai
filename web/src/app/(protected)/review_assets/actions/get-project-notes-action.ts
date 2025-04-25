@@ -1,6 +1,6 @@
 "use server";
 
-import { z } from "zod";
+// import { z } from "zod";
 import { getProjectNotes } from "@/lib/firebase/notes";
 
 // Get all notes for a specific project (server action wrapper)

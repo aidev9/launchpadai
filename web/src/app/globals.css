@@ -36,6 +36,11 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    --toast-bottom: 1rem;
+    --toast-right: 1rem;
+    --toast-left: auto;
+    --toast-top: auto;
+    --toast-width: 356px;
   }
   .dark {
     --background: 222.2 84% 4.9%;

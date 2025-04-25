@@ -63,8 +63,6 @@ const formSchema = z.object({
 
 export function SignUpForm({ className, ...props }: SignUpFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
   // Initialize form with react-hook-form and zod resolver
@@ -85,16 +83,13 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
   });
 
   // Use next-safe-action hook
-  const { execute, status, result } = useAction(signupAction, {
+  const { execute, status } = useAction(signupAction, {
     onSuccess: async (data) => {
       if (data.data?.success) {
         // Attempt to sign in the user automatically with their credentials
         try {
           const { email, password } = form.getValues();
-          const userCredential = await handleEmailPasswordSignIn(
-            email,
-            password
-          );
+          await handleEmailPasswordSignIn(email, password);
 
           router.push("/ftux");
         } catch (error) {
@@ -108,7 +103,6 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
           }
         }
       } else if (data.data?.message) {
-        setErrorMessage(data.data.message);
       }
     },
   });
@@ -118,49 +112,27 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
     execute(data);
   }
 
-  // Update Google Sign In handler to properly handle errors
+  // Update Google Sign In handler to only authenticate and redirect
   async function handleGoogleSignIn(): Promise<void> {
     try {
       setIsLoading(true);
-      setErrorMessage(null);
 
-      const userCredential = await handleSocialSignIn("google");
+      console.log("[SignUpForm] Attempting Google sign-in...");
+      // Authenticate user and create session (handled within handleSocialSignIn)
+      await handleSocialSignIn("google");
 
-      const provider:
-        | "google"
-        | "email"
-        | "facebook"
-        | "twitter"
-        | "github"
-        | undefined = "google";
-
-      const data = {
-        uid: userCredential.user.uid,
-        email: userCredential.user.email ?? "",
-        name: userCredential.user.displayName ?? "",
-        photoURL: userCredential.user.photoURL ?? "",
-        provider,
-        password: "Password123!",
-        company: "",
-        phone: "",
-        role: "other",
-        interest: "other",
-      };
-
-      const result = await signupAction(data);
-      if (result?.data?.success) {
-        router.push("/ftux");
-      } else if (result?.data?.message) {
-        setErrorMessage(result.data.message);
-      }
-    } catch (error) {
-      console.error("Google sign-in error:", error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "An error occurred during Google sign-in. Please try again."
+      console.log(
+        "[SignUpForm] Google sign-in successful. Attempting redirect to /ftux..."
       );
+      // Redirect immediately after successful authentication and session creation
+      router.push("/ftux");
+      console.log("[SignUpForm] router.push('/ftux') called.");
+    } catch (error) {
+      console.error("[SignUpForm] Google sign-in error:", error);
     } finally {
+      console.log(
+        "[SignUpForm] Google sign-in attempt finished (finally block)."
+      );
       setIsLoading(false);
     }
   }
@@ -261,7 +233,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      disabled={status === "executing" || isSubmitting}
+                      disabled={status === "executing"}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -290,7 +262,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      disabled={status === "executing" || isSubmitting}
+                      disabled={status === "executing"}
                     >
                       <FormControl>
                         <SelectTrigger>

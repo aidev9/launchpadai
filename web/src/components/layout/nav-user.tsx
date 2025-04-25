@@ -25,12 +25,13 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { User } from "firebase/auth";
-import { signOutUser } from "@/lib/firebase/client";
+import { SignOutHelper } from "@/lib/firebase/client";
 import { useRouter } from "next/navigation";
 
 export function NavUser({ user }: { user: User | null }) {
   const { isMobile } = useSidebar();
   const router = useRouter();
+  const signOutAndClearProfile = SignOutHelper();
 
   function getInitials(displayName: string | null): import("react").ReactNode {
     // If displayName is null or empty, return a fallback
@@ -103,6 +104,7 @@ export function NavUser({ user }: { user: User | null }) {
                   Start Here
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <Sparkles className="mr-2 h-4 w-4" />
                 Upgrade to Pro
@@ -130,7 +132,15 @@ export function NavUser({ user }: { user: User | null }) {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOutUser(router)}>
+            <DropdownMenuItem
+              onClick={async () => {
+                try {
+                  await signOutAndClearProfile(router);
+                } catch (error) {
+                  console.error("Error signing out: ", error);
+                }
+              }}
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </DropdownMenuItem>

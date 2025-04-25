@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { signOut } from "firebase/auth";
-import { clientAuth } from "@/lib/firebase/client";
+import { SignOutHelper } from "@/lib/firebase/client";
 import { useRouter } from "next/navigation";
 
 interface SignOutButtonProps {
@@ -25,45 +24,18 @@ export default function SignOutButton({
 }: SignOutButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const signOutAndClearProfile = SignOutHelper();
 
   const handleSignOut = async () => {
     setIsLoading(true);
     try {
-      console.log("Starting sign-out process...");
+      console.log("Starting sign-out process via SignOutHelper...");
 
-      // 1. Clear the session cookie via API first
-      // This ensures even if Firebase sign-out fails, the session is cleared
-      const response = await fetch("/api/auth/signout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      await signOutAndClearProfile(router);
 
-      if (!response.ok) {
-        console.error("Failed to clear session cookie:", await response.text());
-        throw new Error("Failed to clear session");
-      }
-
-      console.log("Session cookie cleared successfully");
-
-      // 2. Sign out from Firebase client
-      // Even if this fails, the cookie is already cleared
-      await signOut(clientAuth);
-      console.log("Firebase sign-out completed");
-
-      // 3. Redirect to sign-in page
-      // Small delay to ensure all processes complete
-      setTimeout(() => {
-        console.log("Redirecting to sign-in page...");
-        router.push("/auth/signin");
-        router.refresh();
-      }, 500);
+      console.log("Sign-out process completed by SignOutHelper.");
     } catch (error) {
       console.error("Error during sign-out process:", error);
-      // Still try to redirect even if there's an error
-      router.push("/auth/signin");
-      router.refresh();
     } finally {
       setIsLoading(false);
     }

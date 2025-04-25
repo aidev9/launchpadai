@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/select";
 import { v4 as uuidv4 } from "uuid";
 import { atom, useSetAtom } from "jotai";
-import { useXp } from "@/xp/useXp";
 
 // Create an atom to store the newly created asset ID
 export const newlyCreatedAssetIdAtom = atom<string | null>(null);
@@ -41,7 +40,6 @@ export function AddAssetButton() {
   const [content, setContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const setNewlyCreatedAssetId = useSetAtom(newlyCreatedAssetIdAtom);
-  const { refreshXp } = useXp();
 
   const handleAddAsset = async () => {
     if (!selectedProductId || !title || !phase || !content) return;
@@ -54,7 +52,14 @@ export function AddAssetButton() {
         productId: selectedProductId,
         asset: {
           id: assetId,
-          phase: phase as any, // Cast to Asset["phase"]
+          phase: phase as
+            | "Discover"
+            | "Validate"
+            | "Design"
+            | "Build"
+            | "Secure"
+            | "Launch"
+            | "Grow",
           title: title,
           description: description || title,
           systemPrompt: "Custom asset created by user", // Default prompt
@@ -86,12 +91,6 @@ export function AddAssetButton() {
         title: "Asset added",
         description: "Your custom asset has been added successfully.",
       });
-
-      // Refresh XP
-      console.log("Asset added, refreshing XP...");
-      refreshXp().catch((err) =>
-        console.error("Failed to refresh XP after adding asset:", err)
-      );
     } catch (error) {
       console.error("Error adding asset:", error);
       toast({

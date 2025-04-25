@@ -9,11 +9,20 @@ import { AssetsDownloader } from "./components/assets-downloader";
 import { PhaseToolbar } from "./components/phase-toolbar";
 import { NextStepsHorizontal } from "./next-steps-horizontal";
 import { DownloadButton } from "./components/download-button";
+import { toast as showToast } from "@/hooks/use-toast";
+
+// Extract the options type directly from the imported toast function
+type ShowToastOptions = Parameters<typeof showToast>[0];
 
 // Force dynamic rendering since we use cookies
 export const dynamic = "force-dynamic";
 
 export default function DownloadAssets() {
+  // Handler function using the extracted type
+  const showToastHandler = (options: ShowToastOptions) => {
+    showToast(options);
+  };
+
   return (
     <Provider>
       <Header fixed>
@@ -42,7 +51,7 @@ export default function DownloadAssets() {
               <h2 className="text-2xl font-bold tracking-tight">
                 Download Assets
               </h2>
-              <DownloadButton />
+              <DownloadButton onShowToast={showToastHandler} />
             </div>
             <p className="text-muted-foreground">
               Download the assets generated for your startup.

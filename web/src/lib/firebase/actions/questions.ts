@@ -1,13 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { adminDb } from "../admin";
+// import { adminDb } from "../admin";
 import { getCurrentUserId } from "../adminAuth";
 import { getProductQuestionsRef } from "../questions";
 import { awardXpPoints } from "@/xp/server-actions"; // Import XP award function
 
 // Get reference to the questions collection
-const questionsCollection = adminDb.collection("questions");
+// const questionsCollection = adminDb.collection("questions");
 
 // Helper function for getting question reference (not exported)
 async function getProductQuestionsRefHelper(userId: string, productId: string) {
@@ -98,7 +98,7 @@ export async function getOrderedProductQuestions(productId: string) {
     // Get questions ordered by 'order' in ascending order
     const snapshot = await questionsRef.orderBy("order", "asc").get();
 
-    const questions = snapshot.docs.map((doc: any) => ({
+    const questions = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));

@@ -19,7 +19,6 @@ import {
   PackageOpen,
   Search,
   Edit,
-  Users,
   Bot,
   FileText,
   Image,
@@ -51,8 +50,12 @@ import {
 import { useAtom } from "jotai";
 
 export default function FTUXPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{
+    displayName?: string | null;
+    photoURL?: string | null;
+  } | null>(null);
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { xp, awardXp, error: xpError } = useXp();
   const [tasks, setTasks] = useState<
     Array<{ id: string; text: string; completed: boolean }>
@@ -63,11 +66,13 @@ export default function FTUXPage() {
     { id: "createproduct", text: "Create a product", completed: false },
     { id: "settings", text: "Customize settings", completed: false },
   ]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isProductWizardOpen, setIsProductWizardOpen] = useState(false);
   const [, setSelectedProduct] = useAtom(selectedProductAtom);
   const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
 
   // Handle product creation success
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleProductCreated = async (
     productId: string,
     productData?: Partial<Product>
@@ -137,8 +142,9 @@ export default function FTUXPage() {
         try {
           const parsedTasks = JSON.parse(savedTasks);
           // Make sure signup is always completed
-          const updatedTasks = parsedTasks.map((task: any) =>
-            task.id === "signup" ? { ...task, completed: true } : task
+          const updatedTasks = parsedTasks.map(
+            (task: { id: string; text: string; completed: boolean }) =>
+              task.id === "signup" ? { ...task, completed: true } : task
           );
           setTasks(updatedTasks);
         } catch (e) {
@@ -233,7 +239,7 @@ export default function FTUXPage() {
         {
           id: "image-creator",
           title: "Image Creator",
-          icon: <Image size={16} />,
+          icon: <Image size={16} aria-label="Image icon" />,
           link: "/tools/images",
         },
         {
@@ -343,7 +349,7 @@ export default function FTUXPage() {
             <Avatar className="h-16 w-16 border-2 border-primary">
               <AvatarImage
                 src={user?.photoURL || ""}
-                alt={user?.displayName || "User"}
+                alt={user?.displayName || "User profile"}
               />
               <AvatarFallback>{firstName.charAt(0)}</AvatarFallback>
             </Avatar>

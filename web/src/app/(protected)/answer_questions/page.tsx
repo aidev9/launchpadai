@@ -4,19 +4,23 @@ import { Main } from "@/components/layout/main";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { Provider } from "jotai";
-import { questionModalOpenAtom } from "@/lib/store/questions-store";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { useAtom } from "jotai";
+// import { questionModalOpenAtom } from "@/lib/store/questions-store";
+// import { Button } from "@/components/ui/button";
+// import { Plus } from "lucide-react";
+// import { useAtom } from "jotai";
 import { NextStepsHorizontal } from "./next-steps-horizontal";
 import { QuestionsReviewer } from "./components/questions-reviewer";
 import { PhaseToolbar } from "./components/phase-toolbar";
 import { QuestionWizard } from "./components/question-wizard";
 import { AddQuestionButton } from "./components/add-question-button";
+import { toast as showToast } from "@/hooks/use-toast";
+import React, { useCallback } from "react";
 
 // Force dynamic rendering since we use cookies
 export const dynamic = "force-dynamic";
+
+// Extract the options type directly from the imported toast function
+type ShowToastOptions = Parameters<typeof showToast>[0];
 
 // Client component for the button - REMOVED, we use the new AddQuestionButton component
 // function AddQuestionButton() {
@@ -36,20 +40,32 @@ export const dynamic = "force-dynamic";
 // }
 
 // Separate component to prevent rerenders of the entire page
-function QuestionModalProvider() {
-  return <QuestionWizard />;
-}
+// Using React.memo to prevent unnecessary re-renders
+const QuestionModalProvider = React.memo(
+  ({ onShowToast }: { onShowToast: (options: ShowToastOptions) => void }) => {
+    // Pass the handler down to the wizard
+    return <QuestionWizard onShowToast={onShowToast} />;
+  }
+);
+
+// Add display name for debugging
+QuestionModalProvider.displayName = "QuestionModalProvider";
 
 export default function AnswerQuestions() {
+  // Handler function to call the imported toast - memoized with useCallback
+  const showToastHandler = useCallback((options: ShowToastOptions) => {
+    showToast(options);
+  }, []);
+
   return (
-    <Provider>
-      {/* Modal is rendered at the top level but in a separate component */}
-      <QuestionModalProvider />
+    <>
+      {/* Pass the handler to the modal provider */}
+      <QuestionModalProvider onShowToast={showToastHandler} />
 
       <Header fixed>
         <div className="ml-auto flex items-center space-x-4">
           <ThemeSwitch />
-          <ProfileDropdown user={null} />
+          <ProfileDropdown />
         </div>
       </Header>
 
@@ -86,11 +102,12 @@ export default function AnswerQuestions() {
         </div>
 
         <div className="flex-1 overflow-auto px-1 py-1 lg:space-y-0">
-          <QuestionsReviewer />
+          {/* Pass the handler to the reviewer */}
+          <QuestionsReviewer onShowToast={showToastHandler} />
           {/* Horizontal Next Steps Navigation at bottom */}
           <NextStepsHorizontal />
         </div>
       </Main>
-    </Provider>
+    </>
   );
 }

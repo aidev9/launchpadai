@@ -21,7 +21,7 @@ export const xpActions: XpAction[] = [
   {
     id: "create_product",
     name: "Create Product",
-    description: "Create a new product",
+    description: "Created a new product or startup project.",
     points: 50,
   },
   {
@@ -59,6 +59,12 @@ export const xpActions: XpAction[] = [
     name: "Download Multiple Assets",
     description: "Download multiple assets at once",
     points: 10,
+  },
+  {
+    id: "add_question",
+    name: "Add Question",
+    description: "Added a new question to guide asset generation.",
+    points: 5,
   },
 ];
 

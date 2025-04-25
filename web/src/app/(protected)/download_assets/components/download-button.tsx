@@ -7,22 +7,28 @@ import { Button } from "@/components/ui/button";
 import { PackageOpen, AlertCircle, Download, Check } from "lucide-react";
 import { selectedPromptsAtom } from "./prompts-column";
 import { downloadAssets } from "../actions/download-assets";
-import { toast } from "@/components/ui/use-toast";
 import { selectedAssetsAtom } from "./assets-atoms";
 import { useXp } from "@/xp/useXp";
+import { toast as showToast } from "@/hooks/use-toast";
 
-export function DownloadButton() {
+type ShowToastOptions = Parameters<typeof showToast>[0];
+
+interface DownloadButtonProps {
+  onShowToast: (options: ShowToastOptions) => void;
+}
+
+export function DownloadButton({ onShowToast }: DownloadButtonProps) {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [selectedPrompts] = useAtom(selectedPromptsAtom);
   const [selectedAssets] = useAtom(selectedAssetsAtom);
-  const { refreshXp } = useXp();
+  const { awardXp } = useXp();
   const [downloadStatus, setDownloadStatus] = useState<
     "idle" | "downloading" | "success" | "error"
   >("idle");
 
   const handleDownload = async () => {
     if (!selectedProductId) {
-      toast({
+      onShowToast({
         title: "No product selected",
         description: "Please select a product first",
         variant: "destructive",
@@ -34,11 +40,13 @@ export function DownloadButton() {
     const assetIds = Object.entries(selectedAssets)
       .filter(([_, selected]) => selected)
       .map(([id]) => id);
+    const numSelected = assetIds.length + selectedPrompts.length;
 
-    if (assetIds.length === 0 && selectedPrompts.length === 0) {
-      toast({
-        title: "No assets selected",
-        description: "Please select at least one asset or guideline",
+    if (numSelected === 0) {
+      onShowToast({
+        title: "No items selected",
+        description:
+          "Please select at least one asset or guideline to download",
         variant: "destructive",
       });
       return;
@@ -54,31 +62,51 @@ export function DownloadButton() {
         promptIds: selectedPrompts,
       });
 
-      if (result.success) {
+      if (result.success && result.downloadUrl && result.fileName) {
         // Create a temporary link to trigger the download
         const link = document.createElement("a");
-        link.href = result.downloadUrl!;
-        link.download = result.fileName!;
+        link.href = result.downloadUrl;
+        link.download = result.fileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
 
         setDownloadStatus("success");
 
-        // Refresh XP after successful download
-        console.log("Assets downloaded, refreshing XP...");
-        refreshXp().catch((err) =>
-          console.error("Failed to refresh XP after downloading assets:", err)
-        );
+        // Determine which XP action based on number of items
+        const actionId =
+          numSelected > 1 ? "download_multiple_assets" : "download_asset";
+        // Get points from schedule (assuming 5 for single, 10 for multiple based on /qa route)
+        const pointsAwarded = numSelected > 1 ? 10 : 5;
+        let toastDescription = `Download successful (${result.fileName}).`;
 
+        try {
+          await awardXp(actionId);
+          toastDescription += ` You earned ${pointsAwarded} XP!`;
+        } catch (xpError) {
+          console.error(
+            `Failed to initiate XP award for ${actionId}:`,
+            xpError
+          );
+        }
+
+        onShowToast({
+          title: "Download Complete",
+          description: toastDescription,
+          duration: 5000,
+        });
+
+        // Reset status after a delay
         setTimeout(() => setDownloadStatus("idle"), 3000);
       } else {
-        throw new Error(result.error);
+        throw new Error(
+          result.error || "Download failed: URL or filename missing"
+        );
       }
     } catch (error) {
       console.error("Error downloading assets:", error);
       setDownloadStatus("error");
-      toast({
+      onShowToast({
         title: "Download error",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",

@@ -7,7 +7,6 @@ import {
   GanttChart,
   Building,
   Workflow,
-  MessageSquare,
   Stethoscope,
   Code,
   Headset,

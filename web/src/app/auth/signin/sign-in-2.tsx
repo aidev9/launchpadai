@@ -1,5 +1,6 @@
 import ViteLogo from "@/assets/vite.svg";
 import { UserAuthForm } from "./components/user-auth-form";
+import Image from "next/image";
 
 export default function SignIn2() {
   return (
@@ -22,12 +23,12 @@ export default function SignIn2() {
           Admin
         </div>
 
-        <img
+        <Image
           src={ViteLogo}
           className="relative m-auto"
           width={301}
           height={60}
-          alt="Vite"
+          alt="Vite Logo"
         />
 
         <div className="relative z-20 mt-auto">

@@ -13,9 +13,13 @@ import { clientDb } from "@/lib/firebase/client";
 import { doc, getDoc, Firestore } from "firebase/firestore";
 import { useAtom } from "jotai";
 import { getCurrentUserProfileAtom } from "@/lib/store/user-store";
+import { UserProfile } from "@/lib/store/user-store";
 
 // Custom hook to fetch product timeline from Firestore
-function useProductTimeline(productId: string | null, userProfile: any) {
+function useProductTimeline(
+  productId: string | null,
+  userProfile: UserProfile | null
+) {
   const [timeline, setTimeline] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -43,8 +47,9 @@ function useProductTimeline(productId: string | null, userProfile: any) {
             setLoading(false);
             return;
           }
-          const timelineQuestion = Object.values(questions).find((q: any) =>
-            q?.question?.toLowerCase?.().includes("timeline")
+          const timelineQuestion = Object.values(questions).find(
+            (q: { question?: string }) =>
+              q?.question?.toLowerCase?.().includes("timeline")
           );
           setTimeline(timelineQuestion?.answer || null);
         } else {
@@ -71,7 +76,7 @@ export default function MilestonesPage() {
   const [userProfile] = useAtom(getCurrentUserProfileAtom);
 
   // Use custom hook instead of React Query
-  const { timeline, loading: timelineLoading } = useProductTimeline(productId, userProfile);
+  const { timeline } = useProductTimeline(productId, userProfile);
 
   useEffect(() => {
     if (timeline) {
@@ -136,18 +141,18 @@ export default function MilestonesPage() {
   // Adjust duration based on timeline if available
   useEffect(() => {
     if (timeline) {
-      let timelineModifier = 1; // Default multiplier
+      // let timelineModifier = 1; // Default multiplier
 
       if (
         timeline.toLowerCase().includes("quick") ||
         timeline.toLowerCase().includes("fast")
       ) {
-        timelineModifier = 0.7; // Faster timeline
+        // timelineModifier = 0.7; // Faster timeline
       } else if (
         timeline.toLowerCase().includes("slow") ||
         timeline.toLowerCase().includes("long")
       ) {
-        timelineModifier = 1.5; // Slower timeline
+        // timelineModifier = 1.5; // Slower timeline
       }
 
       // Could update the milestones here based on the modifier

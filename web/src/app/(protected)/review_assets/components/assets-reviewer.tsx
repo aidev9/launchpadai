@@ -15,7 +15,6 @@ import {
   Trash2,
   Wand2,
   Download,
-  Circle,
   Check,
 } from "lucide-react";
 import {
@@ -27,7 +26,6 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/components/ui/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import { ErrorBoundary } from "react-error-boundary";
 import { newlyCreatedAssetIdAtom } from "./add-asset-button";
@@ -37,6 +35,10 @@ import {
   selectedAssetPhasesAtom,
 } from "@/lib/store/assets-store";
 import { useXp } from "@/xp/useXp";
+import { toast as showToast } from "@/hooks/use-toast";
+
+// Extract the options type directly from the imported toast function
+type ShowToastOptions = Parameters<typeof showToast>[0];
 
 // Interface definitions
 interface Note {
@@ -45,24 +47,29 @@ interface Note {
   last_modified: string;
 }
 
-// Loading skeleton component
-function AssetsReviewerSkeleton() {
-  return (
-    <div className="w-full p-4 space-y-4">
-      <div className="h-10 bg-gray-200 dark:bg-gray-800 rounded animate-pulse"></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Array(6)
-          .fill(0)
-          .map((_, i) => (
-            <div
-              key={i}
-              className="h-64 bg-gray-200 dark:bg-gray-800 rounded animate-pulse"
-            ></div>
-          ))}
-      </div>
-    </div>
-  );
+// Interface for AssetsReviewerContent props
+interface AssetsReviewerContentProps {
+  onShowToast: (options: ShowToastOptions) => void;
 }
+
+// Loading skeleton component
+// function AssetsReviewerSkeleton() {
+//   return (
+//     <div className="w-full p-4 space-y-4">
+//       <div className="h-10 bg-gray-200 dark:bg-gray-800 rounded animate-pulse"></div>
+//       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+//         {Array(6)
+//           .fill(0)
+//           .map((_, i) => (
+//             <div
+//               key={i}
+//               className="h-64 bg-gray-200 dark:bg-gray-800 rounded animate-pulse"
+//             ></div>
+//           ))}
+//       </div>
+//     </div>
+//   );
+// }
 
 // Error fallback component
 function ErrorFallback({ error }: { error: Error }) {
@@ -83,7 +90,7 @@ function ErrorFallback({ error }: { error: Error }) {
 }
 
 // Main component
-function AssetsReviewerContent() {
+function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [selectedPhases] = useAtom(selectedAssetPhasesAtom);
   const [selectedAssetId, setSelectedAssetId] = useState<string>("");
@@ -109,7 +116,7 @@ function AssetsReviewerContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [, setAllAssets] = useAtom(allAssetsAtom);
-  const { refreshXp } = useXp();
+  const { awardXp } = useXp();
 
   // Filter assets based on selected phases
   useEffect(() => {
@@ -147,22 +154,30 @@ function AssetsReviewerContent() {
 
       setIsLoading(true);
       try {
-        // Dynamically import server action to avoid bundling server code
         const { getProductAssetsAction } = await import(
           "../actions/get-product-assets-action"
         );
         const response = await getProductAssetsAction(selectedProductId);
 
-        if (response.success && "assets" in response && response.assets) {
-          // Create a map of asset ID to asset data
+        if (
+          response.success &&
+          "assets" in response &&
+          Array.isArray(response.assets)
+        ) {
           const assetMap: Record<string, FirestoreAsset> = {};
-          response.assets.forEach((asset: any) => {
-            assetMap[asset.id] = asset as FirestoreAsset;
+          response.assets.forEach((asset: FirestoreAsset) => {
+            assetMap[asset.id] = asset;
           });
           setFirestoreAssets(assetMap);
+        } else if (!response.success) {
+          console.error("Failed to fetch assets:", response.error);
+          onShowToast({
+            title: "Error loading assets",
+            description: response.error || "Failed to fetch assets",
+            variant: "destructive",
+          });
         }
 
-        // Load notes using server action
         const { getProjectNotesAction } = await import(
           "../actions/get-project-notes-action"
         );
@@ -173,7 +188,7 @@ function AssetsReviewerContent() {
         }
       } catch (error) {
         console.error("Error loading Firestore assets:", error);
-        toast({
+        onShowToast({
           title: "Error loading assets",
           description: error instanceof Error ? error.message : "Unknown error",
           variant: "destructive",
@@ -184,54 +199,33 @@ function AssetsReviewerContent() {
     }
 
     loadFirestoreAssets();
-  }, [selectedProductId]);
+  }, [selectedProductId, onShowToast]);
 
   // Use the newly created asset ID to trigger immediate refresh and selection
   useEffect(() => {
     if (!newlyCreatedAssetId) return;
 
-    console.log("New asset created, ID:", newlyCreatedAssetId);
-
-    // Refresh asset list from Firestore and select the new asset
     const refreshAssets = async () => {
       if (!selectedProductId) return;
-
       setIsLoading(true);
-
       try {
-        // First, directly select the ID to ensure UI responsiveness
         setSelectedAssetId(newlyCreatedAssetId);
-
-        // Dynamically import server action
         const { getProductAssetsAction } = await import(
           "../actions/get-product-assets-action"
         );
         const response = await getProductAssetsAction(selectedProductId);
 
-        if (response.success && "assets" in response && response.assets) {
-          console.log("Fetched assets:", response.assets.length);
-
-          // Create a map of asset ID to asset data
+        if (
+          response.success &&
+          "assets" in response &&
+          Array.isArray(response.assets)
+        ) {
           const assetMap: Record<string, FirestoreAsset> = {};
-          response.assets.forEach((asset: any) => {
-            assetMap[asset.id] = asset as FirestoreAsset;
+          response.assets.forEach((asset: FirestoreAsset) => {
+            assetMap[asset.id] = asset;
           });
-
-          // Find the newly created asset
-          const newAsset = response.assets.find(
-            (asset: any) => asset.id === newlyCreatedAssetId
-          );
-
-          if (newAsset) {
-            console.log("Found new asset in response:", newAsset.title);
-          } else {
-            console.log("New asset not found in response");
-          }
-
-          // Update Firestore assets
           setFirestoreAssets(assetMap);
 
-          // Update displayed assets based on current phase filter
           const assets = Object.values(assetMap);
           if (selectedPhases.includes("All")) {
             setDisplayedAssets(assets);
@@ -242,175 +236,120 @@ function AssetsReviewerContent() {
             setDisplayedAssets(filteredAssets);
           }
 
-          // Ensure the asset is selected
-          setSelectedAssetId(newlyCreatedAssetId);
-
-          // Load the content of the newly created asset
           if (newlyCreatedAssetId in assetMap) {
+            setSelectedAssetId(newlyCreatedAssetId);
             setAssetContent(
               assetMap[newlyCreatedAssetId].content || "# No content available"
             );
+          } else {
+            setSelectedAssetId("");
+            setAssetContent("");
           }
 
-          // Add a double-check to ensure selection persists
-          setTimeout(() => {
-            if (selectedAssetId !== newlyCreatedAssetId) {
-              console.log("Selection lost, reselecting asset");
-              setSelectedAssetId(newlyCreatedAssetId);
-            }
-          }, 200);
+          setNewlyCreatedAssetId(null);
+        } else if (!response.success) {
+          console.error("Failed to refresh assets:", response.error);
+          onShowToast({
+            title: "Error refreshing assets",
+            description:
+              response.error || "Failed to refresh assets after creation",
+            variant: "destructive",
+          });
         }
       } catch (error) {
         console.error("Error refreshing assets after creation:", error);
-        toast({
+        onShowToast({
           title: "Error refreshing assets",
-          description:
-            "Your asset was created but the list couldn't be refreshed.",
-          variant: "destructive",
-        });
-
-        // Even if there's an error, try to select the asset
-        setSelectedAssetId(newlyCreatedAssetId);
-      } finally {
-        setIsLoading(false);
-
-        // Always clear the newly created asset ID after processing
-        setTimeout(() => {
-          setNewlyCreatedAssetId(null);
-        }, 300);
-      }
-    };
-
-    // Execute the refresh
-    refreshAssets();
-  }, [
-    newlyCreatedAssetId,
-    selectedProductId,
-    setNewlyCreatedAssetId,
-    selectedPhases,
-  ]);
-
-  // Load asset content when selected
-  useEffect(() => {
-    async function loadAssetContent() {
-      if (!selectedAssetId || !selectedProductId) {
-        setAssetContent("");
-        return;
-      }
-
-      setIsLoading(true);
-
-      try {
-        // Check if we have the asset in Firestore
-        if (selectedAssetId in firestoreAssets) {
-          // Use content from Firestore
-          setAssetContent(
-            firestoreAssets[selectedAssetId].content || "# No content available"
-          );
-        } else {
-          // Attempt to load from Firestore using server action
-          const { getAssetAction } = await import(
-            "../actions/get-asset-action"
-          );
-          const response = await getAssetAction(
-            selectedProductId,
-            selectedAssetId
-          );
-
-          if (
-            response.success &&
-            "asset" in response &&
-            response.asset &&
-            "content" in response.asset
-          ) {
-            setAssetContent(response.asset.content as string);
-          } else {
-            // If not in Firestore, show placeholder
-            setAssetContent(
-              "# Content will be generated or loaded from storage"
-            );
-          }
-        }
-      } catch (error) {
-        console.error("Error loading asset content:", error);
-        setAssetContent("# Error loading content");
-        toast({
-          title: "Error loading content",
           description: error instanceof Error ? error.message : "Unknown error",
           variant: "destructive",
         });
       } finally {
         setIsLoading(false);
       }
+    };
 
-      setIsEditing(false);
-      setSaveStatus("idle");
+    refreshAssets();
+  }, [
+    newlyCreatedAssetId,
+    selectedProductId,
+    setNewlyCreatedAssetId,
+    selectedPhases,
+    onShowToast,
+  ]);
+
+  // Load asset content when selected
+  useEffect(() => {
+    async function loadAssetContent() {
+      if (!selectedAssetId) {
+        setAssetContent("");
+        return;
+      }
+      const selectedAssetData = firestoreAssets[selectedAssetId];
+      if (selectedAssetData) {
+        setAssetContent(selectedAssetData.content || "# No content available");
+      } else {
+        setAssetContent("# Asset details not loaded");
+        console.warn(`Asset ${selectedAssetId} not found in cache.`);
+      }
     }
 
     loadAssetContent();
-  }, [selectedAssetId, selectedProductId, firestoreAssets]);
+  }, [selectedAssetId, firestoreAssets]);
 
   const handleSave = async () => {
-    if (!selectedAssetId || !selectedProductId || !assetContent) return;
+    if (!selectedAssetId || !selectedProductId) return;
 
-    setIsSaving(true);
+    const selectedAsset = firestoreAssets[selectedAssetId];
+    if (!selectedAsset) {
+      onShowToast({
+        title: "Save Error",
+        description: "Cannot save, asset data not found.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaveStatus("saving");
-
+    setIsSaving(true);
     try {
-      // Get metadata for this asset from Firestore assets
-      const selectedAsset = firestoreAssets[selectedAssetId];
-      if (!selectedAsset) {
-        throw new Error("Asset metadata not found");
-      }
-
-      // Use server action
       const { saveAssetAction } = await import("../actions/asset-actions");
       const response = await saveAssetAction({
         productId: selectedProductId,
         asset: {
-          id: selectedAssetId,
-          phase: selectedAsset.phase,
-          title: selectedAsset.title,
-          description: selectedAsset.description,
-          systemPrompt: selectedAsset.systemPrompt,
-          tags: selectedAsset.tags,
-          order: selectedAsset.order,
-          content: assetContent,
-        },
-      });
-
-      if (!response.success) {
-        throw new Error(response.error);
-      }
-
-      // Update local state
-      setFirestoreAssets((prev) => ({
-        ...prev,
-        [selectedAssetId]: {
           ...selectedAsset,
           content: assetContent,
-          last_updated: new Date(),
         },
-      }));
-
-      setSaveStatus("success");
-      toast({
-        title: "Asset saved",
-        description: "Your changes have been saved successfully.",
       });
 
-      // Exit edit mode
-      setIsEditing(false);
+      if (response.success) {
+        setFirestoreAssets((prev) => ({
+          ...prev,
+          [selectedAssetId]: {
+            ...prev[selectedAssetId],
+            content: assetContent,
+          },
+        }));
+
+        setSaveStatus("success");
+        onShowToast({
+          title: "Asset Saved",
+          description: "Content updated successfully.",
+        });
+        setIsEditing(false);
+      } else {
+        throw new Error(response.error || "Failed to save content");
+      }
     } catch (error) {
-      console.error("Error saving asset:", error);
       setSaveStatus("error");
-      toast({
-        title: "Error saving asset",
-        description: error instanceof Error ? error.message : String(error),
+      console.error("Error saving asset content:", error);
+      onShowToast({
+        title: "Save Error",
+        description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
     } finally {
       setIsSaving(false);
+      setTimeout(() => setSaveStatus("idle"), 2000);
     }
   };
 
@@ -419,58 +358,56 @@ function AssetsReviewerContent() {
 
     const assetIdToPreserve = selectedAssetId;
     setIsGenerating(true);
-
     try {
-      // Use server action
       const { generateAsset } = await import("../actions/generate-asset");
       const response = await generateAsset({
         productId: selectedProductId,
         assetId: assetIdToPreserve,
       });
 
-      if (!response.success) {
-        throw new Error(response.error || "Failed to generate asset");
-      }
+      if (response.success && response.content) {
+        setAssetContent(response.content);
+        setIsEditing(true);
 
-      // Update the content with the generated content
-      setAssetContent(response.content || "");
-
-      // Ensure the asset remains selected
-      setSelectedAssetId(assetIdToPreserve);
-
-      // Update local Firestore assets cache
-      const selectedAsset = firestoreAssets[assetIdToPreserve];
-      if (selectedAsset) {
         setFirestoreAssets((prev) => ({
           ...prev,
           [assetIdToPreserve]: {
-            ...selectedAsset,
-            content: response.content || "",
-            last_updated: new Date(),
+            ...prev[assetIdToPreserve],
+            content: response.content,
           },
         }));
+
+        const actionId = "generate_asset";
+        const pointsAwarded = 5;
+        let toastDescription = "Content generated successfully.";
+
+        try {
+          await awardXp(actionId);
+          toastDescription += ` You earned ${pointsAwarded} XP!`;
+        } catch (xpError) {
+          console.error(
+            `Failed to initiate XP award for ${actionId}:`,
+            xpError
+          );
+        }
+
+        onShowToast({
+          title: "Content Generated",
+          description: toastDescription,
+          duration: 5000,
+        });
+      } else {
+        throw new Error(response.error || "Failed to generate content");
       }
-
-      toast({
-        title: "Content generated",
-        description: "Your asset content has been generated successfully.",
-      });
-
-      // Refresh XP
-      console.log("Asset generated, refreshing XP...");
-      refreshXp().catch((err) =>
-        console.error("Failed to refresh XP after generating asset:", err)
-      );
     } catch (error) {
-      console.error("Error generating asset:", error);
-      toast({
-        title: "Error generating content",
+      console.error("Error generating content:", error);
+      onShowToast({
+        title: "Generation Error",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
     } finally {
       setIsGenerating(false);
-      // Ensure the asset remains selected after generation completes
       setSelectedAssetId(assetIdToPreserve);
     }
   };
@@ -478,66 +415,58 @@ function AssetsReviewerContent() {
   const handleDownload = async () => {
     if (!selectedAssetId || !selectedProductId) return;
 
-    console.log(`Attempting download for asset: ${selectedAssetId}`);
-
     try {
-      // Use the new server action
       const { downloadSingleAssetAction } = await import(
         "../actions/asset-actions"
       );
-      const result = await downloadSingleAssetAction({
+      const response = await downloadSingleAssetAction({
         productId: selectedProductId,
         assetId: selectedAssetId,
       });
 
-      if (!result.success || !result.asset) {
-        throw new Error(
-          result.error || "Failed to get asset data for download"
-        );
+      if (response.success && response.asset) {
+        const { title, content } = response.asset;
+        const safeTitle = title
+          .replace(/[<>:"/\\|?*]/g, "-")
+          .replace(/\s+/g, " ")
+          .trim();
+        const fileName = `${safeTitle || "asset"}.md`;
+        const blob = new Blob([content], { type: "text/markdown" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+
+        const actionId = "download_asset";
+        const pointsAwarded = 5;
+        let toastDescription = `\"${fileName}\" downloaded successfully.`;
+
+        try {
+          await awardXp(actionId);
+          toastDescription += ` You earned ${pointsAwarded} XP!`;
+        } catch (xpError) {
+          console.error(
+            `Failed to initiate XP award for ${actionId}:`,
+            xpError
+          );
+        }
+
+        onShowToast({
+          title: "Download Successful",
+          description: toastDescription,
+          duration: 5000,
+        });
+      } else {
+        throw new Error(response.error || "Failed to prepare download");
       }
-
-      const { title, content } = result.asset;
-
-      // Create a safe filename from the asset title
-      const safeTitleForFilename = title
-        .replace(/[<>:"/\\|?*]/g, "-")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      // Generate filename with .md extension
-      const fileName = safeTitleForFilename.endsWith(".md")
-        ? safeTitleForFilename
-        : `${safeTitleForFilename}.md`;
-
-      // Create a blob with the markdown content returned from server
-      const blob = new Blob([content], { type: "text/markdown" });
-      const url = window.URL.createObjectURL(blob);
-
-      // Create a temporary link to trigger the download
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-
-      // Clean up
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      toast({
-        title: "Asset downloaded",
-        description: `${fileName} has been downloaded successfully.`,
-      });
-
-      // Refresh XP after successful download
-      console.log("Single asset downloaded, refreshing XP...");
-      refreshXp().catch((err) =>
-        console.error("Failed to refresh XP after single asset download:", err)
-      );
     } catch (error) {
-      console.error("Error downloading single asset:", error);
-      toast({
-        title: "Download failed",
+      console.error("Error downloading asset:", error);
+      onShowToast({
+        title: "Download Error",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
@@ -545,56 +474,90 @@ function AssetsReviewerContent() {
   };
 
   // Check if an asset exists in our Firestore cache
-  const assetExistsInFirestore = (assetId: string) => {
-    return assetId in firestoreAssets && !!firestoreAssets[assetId].content;
-  };
+  // const assetExistsInFirestore = (assetId: string) => {
+  //   return !!firestoreAssets[assetId];
+  // };
 
   const handleSaveNote = async () => {
-    if (!selectedProductId || !noteContent) return;
+    if (!selectedProductId || !noteContent.trim()) {
+      onShowToast({
+        title: "Save Error",
+        description: "Cannot save note without product selected or content.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSavingNote(true);
+    const noteId = uuidv4();
+    const note: Note = {
+      id: noteId,
+      note_body: noteContent,
+      last_modified: new Date().toISOString(),
+    };
 
     try {
-      // Use server action
+      const prevNotes = notes;
+      setNotes([note, ...notes]);
+      setNoteContent("");
+      setNoteDialogOpen(false);
+
       const { saveNoteAction } = await import("../actions/notes-actions");
       const response = await saveNoteAction({
         productId: selectedProductId,
         note: {
-          id: uuidv4(),
-          note_body: noteContent,
+          id: noteId,
+          note_body: note.note_body,
         },
       });
 
-      if (!response.success) {
-        throw new Error(response.error);
+      if (response.success) {
+        const actionId = "create_note";
+        const pointsAwarded = 5;
+        let toastDescription = "Note added successfully.";
+
+        try {
+          await awardXp(actionId);
+          toastDescription += ` You earned ${pointsAwarded} XP!`;
+        } catch (xpError) {
+          console.error(
+            `Failed to initiate XP award for ${actionId}:`,
+            xpError
+          );
+        }
+
+        onShowToast({
+          title: "Note Added",
+          description: toastDescription,
+          duration: 5000,
+        });
+
+        if (response.note) {
+          setNotes((currentNotes) =>
+            currentNotes.map((n) =>
+              n.id === noteId
+                ? {
+                    ...n,
+                    ...response.note,
+                    last_modified:
+                      response.note.last_modified?.toString() ||
+                      note.last_modified,
+                  }
+                : n
+            )
+          );
+        }
+      } else {
+        setNotes(prevNotes);
+        setNoteContent(note.note_body);
+        setNoteDialogOpen(true);
+        throw new Error(response.error || "Failed to save note");
       }
-
-      // Update local state
-      if (response.note) {
-        // Convert the Date object to a string if needed
-        const newNote = {
-          ...response.note,
-          last_modified:
-            typeof response.note.last_modified === "object"
-              ? response.note.last_modified.toISOString()
-              : response.note.last_modified,
-        } as Note;
-
-        setNotes((prev) => [...prev, newNote]);
-      }
-
-      // Close dialog and clear content
-      setNoteDialogOpen(false);
-      setNoteContent("");
-
-      toast({
-        title: "Note saved",
-        description: "Your note has been saved successfully.",
-      });
     } catch (error) {
       console.error("Error saving note:", error);
-      toast({
-        title: "Error saving note",
+      setNoteDialogOpen(true);
+      onShowToast({
+        title: "Error Saving Note",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
@@ -607,59 +570,82 @@ function AssetsReviewerContent() {
     if (!selectedAssetId || !selectedProductId) return;
 
     setIsDeleting(true);
+    const assetIdToDelete = selectedAssetId;
+    const deletedAssetTitle =
+      firestoreAssets[assetIdToDelete]?.title || "asset";
 
     try {
-      // Use server action to delete asset
+      const updatedAssets = { ...firestoreAssets };
+      delete updatedAssets[assetIdToDelete];
+      setFirestoreAssets(updatedAssets);
+      setAllAssets(Object.values(updatedAssets));
+
+      const currentIndex = displayedAssets.findIndex(
+        (asset) => asset.id === assetIdToDelete
+      );
+      setSelectedAssetId("");
+      setAssetContent("");
+      setDeleteDialogOpen(false);
+
       const { deleteAssetAction } = await import("../actions/asset-actions");
       const response = await deleteAssetAction({
         productId: selectedProductId,
-        assetId: selectedAssetId,
+        assetId: assetIdToDelete,
       });
 
-      if (!response.success) {
-        throw new Error(response.error);
-      }
+      if (response.success) {
+        onShowToast({
+          title: "Asset Deleted",
+          description: `\"${deletedAssetTitle}\" was deleted successfully.`,
+        });
 
-      // Remove from local state
-      setFirestoreAssets((prev) => {
-        const updated = { ...prev };
-        delete updated[selectedAssetId];
-        return updated;
-      });
-
-      // Update displayed assets
-      setDisplayedAssets((prev) =>
-        prev.filter((asset) => asset.id !== selectedAssetId)
-      );
-
-      // Close dialog
-      setDeleteDialogOpen(false);
-
-      // Select the first asset if available
-      const remainingAssets = displayedAssets.filter(
-        (asset) => asset.id !== selectedAssetId
-      );
-
-      if (remainingAssets.length > 0) {
-        setSelectedAssetId(remainingAssets[0].id);
+        const newDisplayedAssets = Object.values(updatedAssets).filter(
+          (asset) =>
+            selectedPhases.includes("All") ||
+            selectedPhases.includes(asset.phase)
+        );
+        if (newDisplayedAssets.length > 0) {
+          const newSelectionIndex = Math.min(
+            Math.max(0, currentIndex),
+            newDisplayedAssets.length - 1
+          );
+          setSelectedAssetId(newDisplayedAssets[newSelectionIndex].id);
+        }
       } else {
-        setSelectedAssetId("");
-        setAssetContent("");
+        const { getProductAssetsAction } = await import(
+          "../actions/get-product-assets-action"
+        );
+        const refreshResponse = await getProductAssetsAction(selectedProductId);
+        if (
+          refreshResponse.success &&
+          "assets" in refreshResponse &&
+          Array.isArray(refreshResponse.assets)
+        ) {
+          const assetMap: Record<string, FirestoreAsset> = {};
+          refreshResponse.assets.forEach((asset: FirestoreAsset) => {
+            assetMap[asset.id] = asset;
+          });
+          setFirestoreAssets(assetMap);
+          setAllAssets(refreshResponse.assets);
+          if (assetMap[assetIdToDelete]) {
+            setSelectedAssetId(assetIdToDelete);
+          }
+        }
+        throw new Error(response.error || "Failed to delete asset");
       }
-
-      toast({
-        title: "Asset deleted",
-        description: "The asset has been deleted successfully.",
-      });
     } catch (error) {
       console.error("Error deleting asset:", error);
-      toast({
-        title: "Error deleting asset",
-        description: error instanceof Error ? error.message : String(error),
+      onShowToast({
+        title: "Delete Error",
+        description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
+      if (firestoreAssets[assetIdToDelete]) {
+        setSelectedAssetId(assetIdToDelete);
+      }
     } finally {
       setIsDeleting(false);
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -831,7 +817,6 @@ function AssetsReviewerContent() {
                       <Button
                         onClick={() => {
                           setIsEditing(false);
-                          // Reload the original content from Firestore to discard changes
                           if (
                             selectedAssetId &&
                             selectedAssetId in firestoreAssets
@@ -998,11 +983,16 @@ function AssetsReviewerContent() {
   );
 }
 
+// Define props for the wrapper component
+interface AssetsReviewerProps {
+  onShowToast: (options: ShowToastOptions) => void;
+}
+
 // Export the component with error boundary
-export default function AssetsReviewer() {
+export default function AssetsReviewer({ onShowToast }: AssetsReviewerProps) {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <AssetsReviewerContent />
+      <AssetsReviewerContent onShowToast={onShowToast} />
     </ErrorBoundary>
   );
 }

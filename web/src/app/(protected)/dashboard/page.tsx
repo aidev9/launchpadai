@@ -39,6 +39,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { deleteProduct } from "@/lib/firebase/products";
+import { toast as showToast } from "@/hooks/use-toast";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -46,7 +47,6 @@ export const dynamic = "force-dynamic";
 export default function Dashboard() {
   const {
     products,
-    hasProducts,
     isLoading,
     fetchProducts,
     selectedProduct,
@@ -103,19 +103,35 @@ export default function Dashboard() {
     try {
       const result = await deleteProduct(productToDelete.id);
       if (result.success) {
-        // If we're deleting the currently selected product, clear the selection
+        showToast({
+          title: "Product Deleted",
+          description: `Successfully deleted "${productToDelete.name}".`,
+          variant: "default",
+        });
+
         if (productToDelete.id === selectedProduct?.id) {
           clearProductSelection();
         }
-
-        // Refresh products list
         await fetchProducts(true);
         setOpenConfirmDialog(false);
       } else {
         console.error("Failed to delete product:", result.error);
+        showToast({
+          title: "Error Deleting Product",
+          description: result.error || "Could not delete the product.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error deleting product:", error);
+      showToast({
+        title: "Error Deleting Product",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred.",
+        variant: "destructive",
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -149,7 +165,7 @@ export default function Dashboard() {
           <Search />
           <div className="ml-auto flex items-center space-x-4">
             <ThemeSwitch />
-            <ProfileDropdown user={null} />
+            <ProfileDropdown />
           </div>
         </Header>
 
@@ -172,7 +188,7 @@ export default function Dashboard() {
           <Search />
           <div className="ml-auto flex items-center space-x-4">
             <ThemeSwitch />
-            <ProfileDropdown user={null} />
+            <ProfileDropdown />
           </div>
         </Header>
 
@@ -214,7 +230,7 @@ export default function Dashboard() {
         <Search />
         <div className="ml-auto flex items-center space-x-4">
           <ThemeSwitch />
-          <ProfileDropdown user={null} />
+          <ProfileDropdown />
         </div>
       </Header>
 
@@ -334,30 +350,3 @@ export default function Dashboard() {
     </Provider>
   );
 }
-
-const topNav = [
-  {
-    title: "Overview",
-    href: "dashboard/overview",
-    isActive: true,
-    disabled: false,
-  },
-  {
-    title: "Customers",
-    href: "dashboard/customers",
-    isActive: false,
-    disabled: true,
-  },
-  {
-    title: "Products",
-    href: "dashboard/products",
-    isActive: false,
-    disabled: true,
-  },
-  {
-    title: "Settings",
-    href: "dashboard/settings",
-    isActive: false,
-    disabled: true,
-  },
-];

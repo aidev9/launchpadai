@@ -19,19 +19,19 @@ export default function ProductPage() {
         // Load product data
         const productData = await getProduct(productId);
         if (productData.success) {
-          setProduct(productData.product);
+          setProduct(productData.product as Product | null);
         }
 
         // Load questions to find timeline question
         const questionsData = await getProductQuestionsNew(productId);
         if (questionsData.success && questionsData.questions) {
           // Find the timeline question
-          const timeline = questionsData.questions.find((q: any) =>
-            q.question?.toLowerCase().includes("timeline")
+          const timeline = (questionsData.questions as Question[]).find(
+            (q: Question) => q.question?.toLowerCase().includes("timeline")
           );
 
           if (timeline) {
-            setTimelineQuestion(timeline);
+            setTimelineQuestion(timeline as Question | null);
           }
         }
       } catch (error) {

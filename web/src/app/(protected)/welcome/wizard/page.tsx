@@ -51,7 +51,6 @@ import {
 } from "@/lib/store/product-store";
 import { useAtom } from "jotai";
 import { CountrySelect } from "@/components/ui/country-select";
-import { set } from "nprogress";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useXp } from "@/xp/useXp";
 
@@ -106,19 +105,17 @@ export default function ProductWizard() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
 
   // Use Jotai to sync with global state
   const [, setSelectedProduct] = useAtom(selectedProductAtom);
   const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
+  const { awardXp } = useXp();
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const templateId = searchParams.get("template");
   const templateType = searchParams.get("type");
   const editProductId = searchParams.get("edit");
-
-  const { refreshXp } = useXp();
 
   // Initialize form with default values
   const form = useForm<ProductFormValues>({
@@ -132,7 +129,8 @@ export default function ProductWizard() {
       website: "",
       country: "US",
       template_id: templateId || "",
-      template_type: (templateType as any) || "blank",
+      template_type:
+        (templateType as "app" | "agent" | "integration" | "blank") || "blank",
     },
   });
 
@@ -153,13 +151,25 @@ export default function ProductWizard() {
             form.reset({
               name: productData.name || "",
               description: productData.description || "",
-              stage: productData.stage as any,
+              stage: productData.stage as
+                | "Discover"
+                | "Validate"
+                | "Design"
+                | "Build"
+                | "Secure"
+                | "Launch"
+                | "Grow",
               problem: productData.problem || "",
               team: productData.team || "",
               website: productData.website || "",
               country: productData.country || "US",
               template_id: productData.template_id || "",
-              template_type: (productData.template_type as any) || "blank",
+              template_type:
+                (productData.template_type as
+                  | "app"
+                  | "agent"
+                  | "integration"
+                  | "blank") || "blank",
             });
 
             // If it has a template, try to set the selected template
@@ -240,12 +250,18 @@ export default function ProductWizard() {
           setSelectedProductId(result.id);
           setSelectedProduct(updatedProduct);
 
-          // Refresh XP after successful product creation/update
+          // Award XP for creating a new product
           if (!isEditMode) {
-            console.log("Product created, refreshing XP...");
-            refreshXp().catch((err) =>
-              console.error("Failed to refresh XP after product creation:", err)
+            const createProductActionId = "create_product"; // Define action ID
+            console.log(
+              `Product created. Awarding XP for action: ${createProductActionId}`
             );
+            try {
+              await awardXp(createProductActionId);
+            } catch (error) {
+              // Non-critical, don't block navigation
+              console.log("error:", error);
+            }
           }
 
           // Add a small delay before navigation to ensure state is updated
@@ -324,7 +340,7 @@ export default function ProductWizard() {
           <Search />
           <div className="ml-auto flex items-center space-x-4">
             <ThemeSwitch />
-            <ProfileDropdown user={null} />
+            <ProfileDropdown />
           </div>
         </Header>
 
@@ -347,7 +363,7 @@ export default function ProductWizard() {
         <Search />
         <div className="ml-auto flex items-center space-x-4">
           <ThemeSwitch />
-          <ProfileDropdown user={null} />
+          <ProfileDropdown />
         </div>
       </Header>
 

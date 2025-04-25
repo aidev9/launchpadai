@@ -4,11 +4,7 @@ import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
-import {
-  productQuestionSchema,
-  productQuestionInputSchema,
-  ProductQuestionInput,
-} from "./schema";
+import { productQuestionInputSchema, ProductQuestionInput } from "./schema";
 
 // Root questions collection reference
 const questionsCollection = adminDb.collection("questions");
@@ -248,32 +244,6 @@ export async function getQuestion(id: string) {
   }
 }
 
-interface QuestionRecord {
-  id: string;
-  questionId: string;
-  productId: string;
-  answer: string;
-  phase: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Get all questions for a given product - Legacy method, use getProductQuestionsNew instead
-export async function getProductQuestions(productId: string) {
-  try {
-    console.warn(
-      "getProductQuestions is deprecated, use getProductQuestionsNew instead"
-    );
-    return await getProductQuestionsNew(productId);
-  } catch (error) {
-    console.error("Error getting questions:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
 // Get all questions (admin function)
 export async function getAllQuestionsAdmin() {
   try {
@@ -283,7 +253,7 @@ export async function getAllQuestionsAdmin() {
       return { success: true, questions: [] };
     }
 
-    const questions = questionsSnapshot.docs.map((doc: any) => ({
+    const questions = questionsSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
@@ -291,76 +261,6 @@ export async function getAllQuestionsAdmin() {
     return { success: true, questions };
   } catch (error) {
     console.error("Error getting questions:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-// Save a question answer - Legacy method, use saveProductQuestionAnswer instead
-export async function saveQuestionAnswer(
-  productId: string,
-  questionId: string,
-  answer: string,
-  phase: string = ""
-) {
-  try {
-    console.warn(
-      "saveQuestionAnswer is deprecated, use saveProductQuestionAnswer instead"
-    );
-    // Redirect to the new function
-    return await saveProductQuestionAnswer(productId, questionId, answer);
-  } catch (error) {
-    console.error("Error saving question answer:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-// Delete a question - Admin function
-export async function deleteQuestionAdmin(questionId: string) {
-  try {
-    await adminDb.collection("questions").doc(questionId).delete();
-    return { success: true };
-  } catch (error) {
-    console.error("Error deleting question:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-/**
- * Get all questions for a product
- */
-export async function getProductQuestionsNew(productId: string) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return {
-        success: false,
-        error: "User not authenticated",
-      };
-    }
-
-    const questionsRef = await getProductQuestionsRef(userId, productId);
-    const snapshot = await questionsRef.get();
-
-    const questions = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    return {
-      success: true,
-      questions,
-    };
-  } catch (error) {
-    console.error(`Failed to fetch questions for product ${productId}:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -432,6 +332,29 @@ export async function saveProductQuestionAnswer(
     };
   } catch (error) {
     console.error(`Failed to save answer for question ${questionId}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Save a question answer - Legacy method, use saveProductQuestionAnswer instead
+ */
+export async function saveQuestionAnswer(
+  productId: string,
+  questionId: string,
+  answer: string
+) {
+  try {
+    console.warn(
+      "saveQuestionAnswer is deprecated, use saveProductQuestionAnswer instead"
+    );
+    // Redirect to the new function
+    return await saveProductQuestionAnswer(productId, questionId, answer);
+  } catch (error) {
+    console.error("Error saving question answer:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -521,6 +444,40 @@ export async function deleteProductQuestion(
     await questionRef.delete();
 
     revalidatePath("/answer_questions");
+
+    return {
+      success: true,
+      id: questionId,
+    };
+  } catch (error) {
+    console.error(`Failed to delete question ${questionId}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+// Delete a question - Admin function
+export async function deleteQuestionAdmin(questionId: string) {
+  try {
+    const userId = await getCurrentUserId();
+    const questionsRef = getUserQuestionsRef(userId);
+
+    // Check if question exists
+    const questionDoc = await questionsRef.doc(questionId).get();
+    if (!questionDoc.exists) {
+      return {
+        success: false,
+        error: "Question not found",
+      };
+    }
+
+    // Delete the question
+    await questionsRef.doc(questionId).delete();
+
+    // Revalidate the questions page
+    revalidatePath("/questions");
 
     return {
       success: true,

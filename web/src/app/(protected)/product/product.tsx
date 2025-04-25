@@ -120,7 +120,6 @@ export function ProductDashboard() {
   // All hooks must be called at the top level and in the same order for every render
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [renderCount, setRenderCount] = useState(0);
   const router = useRouter();
 
   // Use Jotai atoms and the optimized hook
@@ -146,13 +145,9 @@ export function ProductDashboard() {
 
   // Track render count for debugging - no conditional rules
   useEffect(() => {
-    setRenderCount((prev) => {
-      const newCount = prev + 1;
-      console.log(
-        `[ProductDashboard] Render #${newCount}, time since mount: ${Date.now() - mountTime.current}ms`
-      );
-      return newCount;
-    });
+    console.log(
+      `[ProductDashboard] Render time since mount: ${Date.now() - mountTime.current}ms`
+    );
 
     return () => {
       console.log("[ProductDashboard] Component unmounting");

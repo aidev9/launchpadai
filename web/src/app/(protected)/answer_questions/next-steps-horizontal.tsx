@@ -1,13 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  FileSearch,
-  Download,
-  ChevronRight,
-  ChevronLeft,
-  MessageSquare,
-} from "lucide-react";
+import { FileSearch, ChevronRight, ChevronLeft } from "lucide-react";
 import { IconCube } from "@tabler/icons-react";
 
 export function NextStepsHorizontal() {

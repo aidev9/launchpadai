@@ -5,7 +5,6 @@ import {
   IconChecklist,
   IconError404,
   IconHelp,
-  IconLayoutDashboard,
   IconLock,
   IconLockAccess,
   IconMessages,

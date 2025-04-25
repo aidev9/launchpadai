@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { migrateAllProductQuestions } from "@/lib/firebase/products";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     // Check if user is authenticated
     try {
@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
         );
       }
     } catch (authError) {
+      console.error("Authentication error during migration:", authError);
       return NextResponse.json(
         { error: "Unauthorized", message: "Authentication failed" },
         { status: 401 }

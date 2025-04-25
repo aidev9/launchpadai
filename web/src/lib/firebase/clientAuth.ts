@@ -18,8 +18,6 @@ export async function createUserSession(user: User) {
     // Get the ID token with force refresh to ensure we have the latest token
     const idToken = await user.getIdToken(true);
 
-    console.log("Setting session cookie");
-
     // Set the session cookie via the API
     const response = await fetch("/api/auth/session", {
       method: "POST",
@@ -30,17 +28,16 @@ export async function createUserSession(user: User) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Session API error:", response.status, errorData);
+      await response.json().catch(() => ({}));
+      // console.error("Session API error:", response.status, errorData);
       throw new Error(`Failed to create session: ${response.statusText}`);
     }
 
     const result = await response.json();
-    console.log("Session created successfully:", result);
 
     return result;
   } catch (error) {
-    console.error("Failed to create session:", error);
+    // console.error("Failed to create session:", error);
     throw error;
   }
 }
