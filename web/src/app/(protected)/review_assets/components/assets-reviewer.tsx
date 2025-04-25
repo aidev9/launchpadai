@@ -165,8 +165,8 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
           Array.isArray(response.assets)
         ) {
           const assetMap: Record<string, FirestoreAsset> = {};
-          response.assets.forEach((asset: FirestoreAsset) => {
-            assetMap[asset.id] = asset;
+          response.assets.forEach((asset) => {
+            assetMap[asset.id] = asset as FirestoreAsset;
           });
           setFirestoreAssets(assetMap);
         } else if (!response.success) {
@@ -221,8 +221,8 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
           Array.isArray(response.assets)
         ) {
           const assetMap: Record<string, FirestoreAsset> = {};
-          response.assets.forEach((asset: FirestoreAsset) => {
-            assetMap[asset.id] = asset;
+          response.assets.forEach((asset) => {
+            assetMap[asset.id] = asset as FirestoreAsset;
           });
           setFirestoreAssets(assetMap);
 
@@ -622,11 +622,11 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
           Array.isArray(refreshResponse.assets)
         ) {
           const assetMap: Record<string, FirestoreAsset> = {};
-          refreshResponse.assets.forEach((asset: FirestoreAsset) => {
-            assetMap[asset.id] = asset;
+          refreshResponse.assets.forEach((asset) => {
+            assetMap[asset.id] = asset as FirestoreAsset;
           });
           setFirestoreAssets(assetMap);
-          setAllAssets(refreshResponse.assets);
+          setAllAssets(refreshResponse.assets as FirestoreAsset[]);
           if (assetMap[assetIdToDelete]) {
             setSelectedAssetId(assetIdToDelete);
           }

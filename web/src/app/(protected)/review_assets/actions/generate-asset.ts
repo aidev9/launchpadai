@@ -12,18 +12,26 @@ import { getProjectNotes } from "@/lib/firebase/notes";
 import { awardXpPoints } from "@/xp/server-actions"; // Import XP award function
 
 // Dynamic import AI utils to avoid bundling them in the client
-// const generateAIContent = async (params: any) => {
 const generateAIContent = async (params: {
   systemPrompt: string;
   document: string;
   product: Product;
-  questionAnswers: any[]; // Replace with QuestionAnswer type if available
-  notes: any[]; // Replace with Note type if available
+  questionAnswers: Array<{
+    id: string;
+    question: string;
+    answer: string;
+    questionId: string;
+  }>; // Use QuestionAnswer interface structure
+  notes: Array<{
+    id: string;
+    note_body: string;
+    last_modified: string;
+  }>; // Use Note structure
   asset: {
     title: string;
-    description?: string | null;
-    phase?: string;
-    systemPrompt?: string;
+    description: string;
+    phase: string;
+    systemPrompt: string;
   };
 }) => {
   // Import the AI module only on the server
@@ -31,16 +39,6 @@ const generateAIContent = async (params: {
   return generateAssetContentWithLangGraph(params);
 };
 
-// Schema for the input
-// const assetGenerationSchema = z.object({
-//   productId: z.string(),
-//   assetId: z.string(),
-// });
-
-// Define the action handler
-// async function handleAssetGeneration(
-//   data: z.infer<typeof assetGenerationSchema>
-// ): Promise<{ success: boolean; content?: string; error?: string }> {
 async function handleAssetGeneration(data: {
   productId: string;
   assetId: string;
@@ -89,20 +87,27 @@ async function handleAssetGeneration(data: {
 
     // Get notes for the product
     const notesResponse = await getProjectNotes(productId);
-    const notes = notesResponse.success ? notesResponse.notes || [] : [];
+    // Ensure notes have the correct structure with all required fields
+    const notes = notesResponse.success 
+      ? (notesResponse.notes || []).map((note: any) => ({
+          id: note.id || "",
+          note_body: note.note_body || "",
+          last_modified: note.last_modified || new Date().toISOString()
+        }))
+      : [];
 
     // Generate the content using our AI module with LangGraph
     const generatedContent: string = await generateAIContent({
-      systemPrompt: asset.systemPrompt,
+      systemPrompt: asset.systemPrompt ?? "",
       document: asset.title, // Use title instead of document
       product,
       questionAnswers,
       notes,
       asset: {
         title: asset.title,
-        description: asset.description || "",
-        phase: asset.phase,
-        systemPrompt: asset.systemPrompt,
+        description: asset.description ?? "",
+        phase: asset.phase ?? "",
+        systemPrompt: asset.systemPrompt ?? "",
       },
     });
 
