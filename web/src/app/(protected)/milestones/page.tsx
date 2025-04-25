@@ -174,16 +174,7 @@ export default function MilestonesPage() {
               Answer the timeline question in your product details to unlock the
               Milestones feature and earn 5 XP!
             </p>
-            <Button
-              onClick={() => {
-                if (productId) {
-                  window.location.href = `/products/${productId}`;
-                } else {
-                  window.location.href = "/welcome";
-                }
-              }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white"
-            >
+            <Button className="bg-yellow-500 hover:bg-yellow-600 text-white">
               Go to Product Details
             </Button>
           </CardContent>
