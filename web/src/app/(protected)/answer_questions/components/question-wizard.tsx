@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAtom } from "jotai";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,19 +23,20 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { addProductQuestionAction } from "@/lib/firebase/actions/questions";
 import { MultiSelect } from "@/components/ui/multi-select";
 import {
-  allQuestionsAtom,
   questionModalOpenAtom,
+  allQuestionsAtom,
   Question,
 } from "@/lib/store/questions-store";
+import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { toast } from "@/components/ui/use-toast";
+import {
+  addProductQuestionAction,
+  updateProductQuestionAction,
+} from "@/lib/firebase/actions/questions";
 import { useXp } from "@/xp/useXp";
 import { toast as showToast } from "@/hooks/use-toast";
 
@@ -186,30 +190,50 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
     setIsSubmitting(true);
     try {
       if (isEditing && editingQuestionId) {
-        // Update existing question
-        // TODO: Add an update question function to your Firebase actions
-        // For now, we'll just update it in the local state
-        setAllQuestions((prev) =>
-          prev.map((q) =>
-            q.id === editingQuestionId
-              ? {
-                  ...q,
-                  question: data.text,
-                  answer: data.answer || null,
-                  tags: data.phases.map((phase) => phase.toLowerCase()),
-                  phase: data.phases[0], // Use the first phase as the primary one
-                  last_modified: new Date(),
-                }
-              : q
-          )
+        // Update existing question using the new updateProductQuestionAction function
+        const response = await updateProductQuestionAction(
+          selectedProductId,
+          editingQuestionId,
+          {
+            question: data.text,
+            answer: data.answer || null,
+            tags: data.phases.map((phase) => phase.toLowerCase()),
+            phase: data.phases[0], // Use the first phase as the primary one
+          }
         );
 
-        // Use callback for update success toast
-        onShowToast({
-          title: "Success",
-          description: "Question updated successfully",
-          duration: 5000, // Add duration
-        });
+        if (response.success) {
+          // Update the question in local state
+          setAllQuestions((prev) =>
+            prev.map((q) =>
+              q.id === editingQuestionId
+                ? {
+                    ...q,
+                    question: data.text,
+                    answer: data.answer || null,
+                    tags: data.phases.map((phase) => phase.toLowerCase()),
+                    phase: data.phases[0],
+                    last_modified: new Date(),
+                  }
+                : q
+            )
+          );
+
+          // Use callback for update success toast
+          onShowToast({
+            title: "Success",
+            description: "Question updated successfully",
+            duration: 5000,
+          });
+        } else {
+          // Show error if update fails
+          onShowToast({
+            title: "Error updating question",
+            description: response.error || "Failed to update question",
+            variant: "destructive",
+          });
+          throw new Error(response.error || "Failed to update question");
+        }
       } else {
         // Create new question using server action
         console.log("Submitting question data:", {

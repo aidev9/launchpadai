@@ -1,7 +1,5 @@
-"use client";
-
+import { atom, useAtom } from "jotai";
 import { useState, useEffect } from "react";
-import { useAtom } from "jotai";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,6 +44,7 @@ import { phaseOptions } from "../data/data";
 import {
   addProductQuestionAction,
   deleteQuestionAction,
+  updateProductQuestionAction,
 } from "@/lib/firebase/actions/questions";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Question } from "../data/schema";
@@ -161,11 +160,23 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
         phase: data.phase,
       };
 
-      // Add or update question
-      const response = await addProductQuestionAction(
-        selectedProductId,
-        questionData
-      );
+      let response;
+
+      // Use different functions for add vs edit
+      if (editModalOpen && selectedQuestion) {
+        // Update existing question
+        response = await updateProductQuestionAction(
+          selectedProductId,
+          selectedQuestion.id,
+          questionData
+        );
+      } else {
+        // Add new question
+        response = await addProductQuestionAction(
+          selectedProductId,
+          questionData
+        );
+      }
 
       if (response.success) {
         const isAdding = !editModalOpen;

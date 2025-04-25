@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
 import { ProductDashboard } from "./product";
@@ -24,36 +24,11 @@ export default function ProductPage() {
   const [loadAttempts, setLoadAttempts] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  const renderCount = useRef(0);
-  const mountTime = useRef(Date.now());
-
-  // Debug performance
-  useEffect(() => {
-    renderCount.current += 1;
-    console.log(
-      `[ProductPage] Render #${renderCount.current}, time since mount: ${Date.now() - mountTime.current}ms`
-    );
-    console.log(
-      `[ProductPage] Current product: ${selectedProduct?.name || "none"}`
-    );
-    console.log(
-      `[ProductPage] Current product ID: ${selectedProductId || "none"}`
-    );
-
-    return () => {
-      console.log("[ProductPage] Page unmounting");
-    };
-  }, [selectedProduct, selectedProductId]);
-
   // Improved logic to handle product initialization
   useEffect(() => {
     const initializeProduct = async () => {
       // Skip if product is already loaded
       if (selectedProduct) {
-        console.log(
-          "[ProductPage] Product already loaded:",
-          selectedProduct.name
-        );
         return;
       }
 
@@ -65,9 +40,6 @@ export default function ProductPage() {
       // If we have an ID but no product data, try to load it
       if (selectedProductId) {
         setIsLoading(true);
-        console.log(
-          `[ProductPage] Initializing from localStorage ID: ${selectedProductId}`
-        );
 
         try {
           // Try to load the product from the ID
@@ -75,9 +47,6 @@ export default function ProductPage() {
 
           // If we still don't have a product after attempting to load, redirect to dashboard
           if (!selectedProduct && loadAttempts >= 2) {
-            console.log(
-              "[ProductPage] Failed to load product, redirecting to dashboard"
-            );
             router.push("/dashboard");
           }
         } catch (error) {
@@ -90,9 +59,6 @@ export default function ProductPage() {
         }
       } else {
         // No product ID available, redirect to dashboard
-        console.log(
-          "[ProductPage] No product ID in localStorage, redirecting to dashboard"
-        );
         router.push("/dashboard");
       }
     };
