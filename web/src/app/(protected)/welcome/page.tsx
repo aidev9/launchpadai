@@ -1,11 +1,6 @@
 "use client";
 
-import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
-import { ProfileDropdown } from "@/components/profile-dropdown";
-import { Search } from "@/components/search";
-import { ThemeSwitch } from "@/components/theme-switch";
-import { Provider } from "jotai";
 import { useEffect, useState } from "react";
 import {
   Card,
@@ -105,121 +100,110 @@ export default function Welcome() {
   };
 
   return (
-    <Provider>
-      <Header fixed>
-        <Search />
-        <div className="ml-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown />
+    <Main>
+      <div className="flex flex-col gap-8">
+        {/* Breadcrumbs */}
+        <div className="mb-2">
+          <Breadcrumbs
+            items={[
+              { label: "Products", href: "/dashboard" },
+              { label: "Welcome", href: "/welcome", isCurrentPage: true },
+            ]}
+          />
         </div>
-      </Header>
 
-      <Main>
-        <div className="flex flex-col gap-8">
-          {/* Breadcrumbs */}
-          <div className="mb-2">
-            <Breadcrumbs
-              items={[
-                { label: "Products", href: "/dashboard" },
-                { label: "Welcome", href: "/welcome", isCurrentPage: true },
-              ]}
+        {/* Welcome Header */}
+        <div className="flex flex-col items-center text-center space-y-4 mb-4">
+          <h1 className="text-4xl font-bold tracking-tight">
+            Welcome to LaunchpadAI
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-3xl">
+            Congratulations on taking the first step in your entrepreneurial
+            journey! Let's help you
+            <span className="font-semibold text-primary">
+              {" "}
+              create your startup or product in 60 seconds or less
+            </span>
+            .
+          </p>
+        </div>
+
+        {/* Pills and Filter Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-3xl mx-auto mb-4">
+          <div className="flex flex-wrap gap-2">
+            {pillOptions.map((pill) => (
+              <button
+                key={pill.value}
+                type="button"
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-medium border transition-colors",
+                  selectedTypes.includes(pill.value)
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary text-secondary-foreground border-transparent hover:bg-secondary/80"
+                )}
+                onClick={() => handlePillClick(pill.value)}
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative flex-1 max-w-xs ml-auto">
+            <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Filter templates..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+        </div>
 
-          {/* Welcome Header */}
-          <div className="flex flex-col items-center text-center space-y-4 mb-4">
-            <h1 className="text-4xl font-bold tracking-tight">
-              Welcome to LaunchpadAI
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-3xl">
-              Congratulations on taking the first step in your entrepreneurial
-              journey! Let's help you
-              <span className="font-semibold text-primary">
-                {" "}
-                create your startup or product in 60 seconds or less
-              </span>
-              .
-            </p>
-          </div>
-
-          {/* Pills and Filter Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-3xl mx-auto mb-4">
-            <div className="flex flex-wrap gap-2">
-              {pillOptions.map((pill) => (
-                <button
-                  key={pill.value}
-                  type="button"
-                  className={cn(
-                    "px-4 py-2 rounded-full text-sm font-medium border transition-colors",
-                    selectedTypes.includes(pill.value)
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-secondary text-secondary-foreground border-transparent hover:bg-secondary/80"
-                  )}
-                  onClick={() => handlePillClick(pill.value)}
-                >
-                  {pill.label}
-                </button>
-              ))}
-            </div>
-            <div className="relative flex-1 max-w-xs ml-auto">
-              <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Filter templates..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Templates Section */}
-          <div className="space-y-6">
-            <h2 className="text-2xl font-semibold">
-              {selectedTypes.includes("all")
-                ? "All Templates"
-                : pillOptions
-                    .filter(
-                      (p) =>
-                        p.value !== "all" && selectedTypes.includes(p.value)
-                    )
-                    .map((p) => p.label)
-                    .join(", ") + " Templates"}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredTemplates.length > 0 ? (
-                filteredTemplates.map((template) => (
-                  <TemplateCard
-                    key={template.id}
-                    template={template}
-                    onSelect={() => handleTemplateSelect(template)}
-                  />
-                ))
-              ) : (
-                <p className="col-span-3 text-center text-muted-foreground py-8">
-                  No templates found matching your search.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Start Blank Section */}
-          <div className="flex flex-col items-center mt-8 pb-12">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-semibold">Start From Scratch</h2>
-              <p className="text-muted-foreground mt-2">
-                Begin with a clean slate and build your product exactly how you
-                want it.
+        {/* Templates Section */}
+        <div className="space-y-6">
+          <h2 className="text-2xl font-semibold">
+            {selectedTypes.includes("all")
+              ? "All Templates"
+              : pillOptions
+                  .filter(
+                    (p) => p.value !== "all" && selectedTypes.includes(p.value)
+                  )
+                  .map((p) => p.label)
+                  .join(", ") + " Templates"}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredTemplates.length > 0 ? (
+              filteredTemplates.map((template) => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  onSelect={() => handleTemplateSelect(template)}
+                />
+              ))
+            ) : (
+              <p className="col-span-3 text-center text-muted-foreground py-8">
+                No templates found matching your search.
               </p>
-            </div>
-            <Button size="lg" onClick={handleStartBlank}>
-              <PlusCircle className="mr-2 h-5 w-5" />
-              Start Blank
-            </Button>
+            )}
           </div>
         </div>
-      </Main>
-    </Provider>
+
+        {/* Start Blank Section */}
+        <div className="flex flex-col items-center mt-8 pb-12">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-semibold">Start From Scratch</h2>
+            <p className="text-muted-foreground mt-2">
+              Begin with a clean slate and build your product exactly how you
+              want it.
+            </p>
+          </div>
+          <Button size="lg" onClick={handleStartBlank}>
+            <PlusCircle className="mr-2 h-5 w-5" />
+            Start Blank
+          </Button>
+        </div>
+      </div>
+    </Main>
   );
 }
 

@@ -1,10 +1,6 @@
 "use client";
-import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
-import { ProfileDropdown } from "@/components/profile-dropdown";
-import { ThemeSwitch } from "@/components/theme-switch";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { Provider } from "jotai";
 import { AssetsDownloader } from "./components/assets-downloader";
 import { PhaseToolbar } from "./components/phase-toolbar";
 import { NextStepsHorizontal } from "./next-steps-horizontal";
@@ -24,51 +20,42 @@ export default function DownloadAssets() {
   };
 
   return (
-    <Provider>
-      <Header fixed>
-        <div className="ml-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown user={null} />
-        </div>
-      </Header>
+    <Main>
+      <div className="mb-6">
+        <div className="flex-1">
+          <Breadcrumbs
+            items={[
+              { label: "Home", href: "/dashboard" },
+              { label: "Products", href: "/dashboard" },
+              { label: "Product", href: "/product" },
+              {
+                label: "Download Assets",
+                href: "/download_assets",
+                isCurrentPage: true,
+              },
+            ]}
+          />
+          <div className="flex justify-between items-center mt-4">
+            <h2 className="text-2xl font-bold tracking-tight">
+              Download Assets
+            </h2>
+            <DownloadButton onShowToast={showToastHandler} />
+          </div>
+          <p className="text-muted-foreground">
+            Download the assets generated for your startup.
+          </p>
 
-      <Main className="py-24 px-4">
-        <div className="mb-6">
-          <div className="flex-1">
-            <Breadcrumbs
-              items={[
-                { label: "Home", href: "/dashboard" },
-                { label: "Products", href: "/dashboard" },
-                { label: "Product", href: "/product" },
-                {
-                  label: "Download Assets",
-                  href: "/download_assets",
-                  isCurrentPage: true,
-                },
-              ]}
-            />
-            <div className="flex justify-between items-center mt-4">
-              <h2 className="text-2xl font-bold tracking-tight">
-                Download Assets
-              </h2>
-              <DownloadButton onShowToast={showToastHandler} />
-            </div>
-            <p className="text-muted-foreground">
-              Download the assets generated for your startup.
-            </p>
-
-            <div className="mt-6">
-              <PhaseToolbar />
-            </div>
+          <div className="mt-6">
+            <PhaseToolbar />
           </div>
         </div>
+      </div>
 
-        <div className="flex-1 overflow-auto px-1 py-1 lg:space-y-0">
-          <AssetsDownloader />
-          {/* Horizontal Next Steps Navigation at bottom */}
-          <NextStepsHorizontal />
-        </div>
-      </Main>
-    </Provider>
+      <div className="flex-1 overflow-auto px-1 py-1 lg:space-y-0">
+        <AssetsDownloader />
+        {/* Horizontal Next Steps Navigation at bottom */}
+        <NextStepsHorizontal />
+      </div>
+    </Main>
   );
 }

@@ -39,15 +39,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-
 import { useXp } from "@/xp/useXp";
-
-import {
-  selectedProductAtom,
-  selectedProductIdAtom,
-  Product,
-} from "@/lib/store/product-store";
-import { useAtom } from "jotai";
+import { Main } from "@/components/layout/main";
 
 export default function FTUXPage() {
   const [user, setUser] = useState<{
@@ -56,7 +49,7 @@ export default function FTUXPage() {
   } | null>(null);
   const router = useRouter();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { xp, awardXp, error: xpError } = useXp();
+  const { xp, error: xpError } = useXp();
   const [tasks, setTasks] = useState<
     Array<{ id: string; text: string; completed: boolean }>
   >([
@@ -66,63 +59,6 @@ export default function FTUXPage() {
     { id: "createproduct", text: "Create a product", completed: false },
     { id: "settings", text: "Customize settings", completed: false },
   ]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isProductWizardOpen, setIsProductWizardOpen] = useState(false);
-  const [, setSelectedProduct] = useAtom(selectedProductAtom);
-  const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
-
-  // Handle product creation success
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleProductCreated = async (
-    productId: string,
-    productData?: Partial<Product>
-  ) => {
-    try {
-      // Mark the task as completed
-      setTasks(
-        tasks.map((task) =>
-          task.id === "createproduct" ? { ...task, completed: true } : task
-        )
-      );
-
-      // Close the modal
-      setIsProductWizardOpen(false);
-
-      // Set the product ID in localStorage for persistence
-      localStorage.setItem("selectedProductId", productId);
-
-      // Create a product object with the data we have
-      const product: Product = {
-        id: productId,
-        name: productData?.name || "New Product",
-        stage: productData?.stage || "Discover",
-        ...productData,
-      };
-
-      // Set the product in the atoms
-      setSelectedProductId(productId);
-      setSelectedProduct(product);
-
-      // Add a small delay to ensure state updates
-      // await new Promise((resolve) => setTimeout(resolve, 800));
-
-      // Try to navigate to the product page first, with fallback to dashboard
-      try {
-        // First try to navigate to the product page, which is what we really want
-        router.push("/product");
-      } catch (navError) {
-        console.warn(
-          "Navigation to /product failed, falling back to dashboard:",
-          navError
-        );
-        // Fallback to dashboard if there are issues
-        router.push("/dashboard");
-      }
-    } catch (error) {
-      console.error("Error in product creation flow:", error);
-      router.push("/dashboard");
-    }
-  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(clientAuth, (user) => {
@@ -341,7 +277,7 @@ export default function FTUXPage() {
   ];
 
   return (
-    <main className="container mx-auto p-6 max-w-7xl">
+    <Main>
       <div className="grid md:grid-cols-2 gap-8 relative">
         {/* Left side - Greeting */}
         <div className="flex flex-col justify-top mt-6">
@@ -579,7 +515,7 @@ export default function FTUXPage() {
       </div>
       {/* Add empty space */}
       <div className="h-96" />
-    </main>
+    </Main>
   );
 }
 

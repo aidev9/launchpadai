@@ -1,10 +1,5 @@
 "use client";
-import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
-import { ProfileDropdown } from "@/components/profile-dropdown";
-import { Search } from "@/components/search";
-import { ThemeSwitch } from "@/components/theme-switch";
-import { Provider } from "jotai";
 import { columns } from "./components/qa-columns";
 import { QADialogs } from "./components/qa-dialogs";
 import { QAPrimaryButtons } from "./components/qa-primary-buttons";
@@ -52,7 +47,20 @@ export default function QA() {
             "QA Page: Fetch success, questions count:",
             response.questions.length
           );
-          setAllQuestions(response.questions);
+          setAllQuestions(
+            response.questions.map((q: any) => ({
+              id: q.id,
+              question: q.question ?? "",
+              tags: q.tags ?? [],
+              answer: q.answer ?? null,
+              phase: q.phase,
+              last_modified: q.last_modified
+                ? new Date(q.last_modified)
+                : undefined,
+              createdAt: q.createdAt ? new Date(q.createdAt) : undefined,
+              order: q.order,
+            }))
+          );
         } else {
           console.error("QA Page: Fetch error:", response.error);
           showToast({
@@ -96,16 +104,8 @@ export default function QA() {
   const breadcrumbItems = [{ label: "Q&A" }];
 
   return (
-    <Provider>
-      <Header fixed>
-        <Search />
-        <div className="ml-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
-      </Header>
-
-      <Main className="container mx-auto py-6 mt-14">
+    <>
+      <Main>
         <Breadcrumbs items={breadcrumbItems} className="mb-4" />
         <>
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -137,6 +137,6 @@ export default function QA() {
         onSuccess={() => loadQuestions(true)}
         onShowToast={showToastHandler}
       />
-    </Provider>
+    </>
   );
 }

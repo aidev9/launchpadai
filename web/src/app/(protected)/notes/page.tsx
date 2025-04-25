@@ -1,10 +1,6 @@
 "use client";
-import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
-import { ProfileDropdown } from "@/components/profile-dropdown";
-import { Search } from "@/components/search";
-import { ThemeSwitch } from "@/components/theme-switch";
-import { Provider, createStore } from "jotai";
+import { createStore } from "jotai";
 import { useEffect, useState, useCallback } from "react";
 import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
@@ -244,16 +240,8 @@ export default function NotesPage() {
   const productName = selectedProduct?.name || "Notes";
 
   return (
-    <Provider store={store}>
-      <Header fixed>
-        <div className="flex items-center space-x-4">
-          <Search />
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
-      </Header>
-
-      <Main className="py-24 px-4">
+    <>
+      <Main>
         {selectedProductId ? (
           <>
             <div className="mb-6 flex flex-col md:flex-row gap-6 justify-between">
@@ -317,6 +305,6 @@ export default function NotesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Provider>
+    </>
   );
 }

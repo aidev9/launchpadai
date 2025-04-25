@@ -1,10 +1,6 @@
 "use client";
 
-import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
-import { ProfileDropdown } from "@/components/profile-dropdown";
-import { Search } from "@/components/search";
-import { ThemeSwitch } from "@/components/theme-switch";
 import { columns } from "./components/columns";
 import { DataTable } from "./components/data-table";
 import { TasksDialogs } from "./components/tasks-dialogs";
@@ -15,14 +11,6 @@ import { tasks } from "./data/tasks";
 export default function Tasks() {
   return (
     <TasksProvider>
-      <Header fixed>
-        <Search />
-        <div className="ml-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown user={null} />
-        </div>
-      </Header>
-
       <Main>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 space-y-2">
           <div>

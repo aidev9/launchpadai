@@ -1,13 +1,6 @@
 "use client";
-import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
-import { ProfileDropdown } from "@/components/profile-dropdown";
-import { ThemeSwitch } from "@/components/theme-switch";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-// import { questionModalOpenAtom } from "@/lib/store/questions-store";
-// import { Button } from "@/components/ui/button";
-// import { Plus } from "lucide-react";
-// import { useAtom } from "jotai";
 import { NextStepsHorizontal } from "./next-steps-horizontal";
 import { QuestionsReviewer } from "./components/questions-reviewer";
 import { PhaseToolbar } from "./components/phase-toolbar";
@@ -43,14 +36,7 @@ export default function AnswerQuestions() {
       {/* Pass the handler to the modal provider */}
       <QuestionModalProvider onShowToast={showToastHandler} />
 
-      <Header fixed>
-        <div className="ml-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
-      </Header>
-
-      <Main className="py-24 px-4">
+      <Main>
         <div className="mb-6 flex flex-col md:flex-row gap-6 justify-between">
           <div className="flex-1">
             <Breadcrumbs

@@ -4,11 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
-import { ProfileDropdown } from "@/components/profile-dropdown";
-import { Search } from "@/components/search";
-import { ThemeSwitch } from "@/components/theme-switch";
 import { useAtom } from "jotai";
 import { productFilterAtom } from "@/lib/store/product-store";
 import {
@@ -19,7 +15,6 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
-import { Provider } from "jotai";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useProducts } from "@/hooks/useProducts";
@@ -160,53 +155,33 @@ export default function Dashboard() {
   // Loading state
   if (isLoading && products.length === 0) {
     return (
-      <Provider>
-        <Header fixed>
-          <Search />
-          <div className="ml-auto flex items-center space-x-4">
-            <ThemeSwitch />
-            <ProfileDropdown />
-          </div>
-        </Header>
-
-        <Main>
-          <div className="flex flex-col gap-4 animate-pulse p-6">
-            <div className="h-8 w-2/3 bg-muted rounded"></div>
-            <div className="h-4 w-1/2 bg-muted rounded"></div>
-            <div className="h-32 w-full bg-muted rounded mt-4"></div>
-          </div>
-        </Main>
-      </Provider>
+      <Main>
+        <div className="flex flex-col gap-4 animate-pulse p-6">
+          <div className="h-8 w-2/3 bg-muted rounded"></div>
+          <div className="h-4 w-1/2 bg-muted rounded"></div>
+          <div className="h-32 w-full bg-muted rounded mt-4"></div>
+        </div>
+      </Main>
     );
   }
 
   // No products at all - show welcome screen
   if (products.length === 0) {
     return (
-      <Provider>
-        <Header fixed>
-          <Search />
-          <div className="ml-auto flex items-center space-x-4">
-            <ThemeSwitch />
-            <ProfileDropdown />
+      <Main>
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="text-center max-w-md">
+            <Building className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-2xl font-bold mb-2">
+              Welcome to Your Dashboard
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              Create a new product to get started.
+            </p>
+            <Button onClick={handleCreateProduct}>Create New Product</Button>
           </div>
-        </Header>
-
-        <Main>
-          <div className="flex flex-col items-center justify-center h-full">
-            <div className="text-center max-w-md">
-              <Building className="mx-auto h-12 w-12 text-primary mb-4" />
-              <h2 className="text-2xl font-bold mb-2">
-                Welcome to Your Dashboard
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                Create a new product to get started.
-              </p>
-              <Button onClick={handleCreateProduct}>Create New Product</Button>
-            </div>
-          </div>
-        </Main>
-      </Provider>
+        </div>
+      </Main>
     );
   }
 
@@ -225,128 +200,118 @@ export default function Dashboard() {
 
   // Products list
   return (
-    <Provider>
-      <Header fixed>
-        <Search />
-        <div className="ml-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown />
+    <Main>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+          <h1 className="text-3xl font-bold tracking-tight">Your Products</h1>
+          <Button onClick={handleCreateProduct} className="w-full md:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Create New Product
+          </Button>
         </div>
-      </Header>
 
-      <Main>
-        <div className="space-y-6">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">Your Products</h1>
-            <Button onClick={handleCreateProduct} className="w-full md:w-auto">
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Product
-            </Button>
-          </div>
+        <div className="relative w-full max-w-sm">
+          <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter products..."
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
 
-          <div className="relative w-full max-w-sm">
-            <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Filter products..."
-              value={filterQuery}
-              onChange={(e) => setFilterQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProducts.map((product) => (
-              <Card
-                key={product.id}
-                className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden"
-                onClick={() => handleSelectProduct(product)}
-              >
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-xl truncate pr-2">
-                      {product.name}
-                    </h3>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        asChild
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => handleEditProduct(e, product)}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={(e) => handleDeleteClick(e, product)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  {product.description && (
-                    <p className="text-muted-foreground text-sm line-clamp-2 mb-3">
-                      {product.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge
-                      variant="outline"
-                      className={getStageColor(product.stage)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredProducts.map((product) => (
+            <Card
+              key={product.id}
+              className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden"
+              onClick={() => handleSelectProduct(product)}
+            >
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-xl truncate pr-2">
+                    {product.name}
+                  </h3>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      asChild
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {product.stage}
-                    </Badge>
-                    {product.template_type &&
-                      product.template_type !== "blank" && (
-                        <Badge variant="outline">
-                          {product.template_type.charAt(0).toUpperCase() +
-                            product.template_type.slice(1)}
-                        </Badge>
-                      )}
-                  </div>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Open menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => handleEditProduct(e, product)}
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={(e) => handleDeleteClick(e, product)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              </Card>
-            ))}
-          </div>
-
-          {/* Delete Confirmation Dialog */}
-          <Dialog open={openConfirmDialog} onOpenChange={setOpenConfirmDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete Product</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete "{productToDelete?.name}"?
-                  This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setOpenConfirmDialog(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteProduct}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                {product.description && (
+                  <p className="text-muted-foreground text-sm line-clamp-2 mb-3">
+                    {product.description}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge
+                    variant="outline"
+                    className={getStageColor(product.stage)}
+                  >
+                    {product.stage}
+                  </Badge>
+                  {product.template_type &&
+                    product.template_type !== "blank" && (
+                      <Badge variant="outline">
+                        {product.template_type.charAt(0).toUpperCase() +
+                          product.template_type.slice(1)}
+                      </Badge>
+                    )}
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
-      </Main>
-    </Provider>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={openConfirmDialog} onOpenChange={setOpenConfirmDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Product</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete "{productToDelete?.name}"? This
+                action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setOpenConfirmDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteProduct}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </Main>
   );
 }

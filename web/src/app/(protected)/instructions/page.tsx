@@ -1,10 +1,6 @@
 "use client";
-import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
-import { ProfileDropdown } from "@/components/profile-dropdown";
-import { ThemeSwitch } from "@/components/theme-switch";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { Provider } from "jotai";
 import { NextStepsHorizontal } from "@/app/(protected)/instructions/next-steps-horizontal";
 import {
   Download,
@@ -84,91 +80,82 @@ const instructionSteps = [
 
 export default function Instructions() {
   return (
-    <Provider>
-      <Header fixed>
-        <div className="ml-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown user={null} />
-        </div>
-      </Header>
-
-      <Main className="py-24 px-4">
-        <div className="mb-8">
-          <div className="flex-1">
-            <Breadcrumbs
-              items={[
-                { label: "Home", href: "/dashboard" },
-                { label: "Products", href: "/dashboard" },
-                { label: "Product", href: "/product" },
-                {
-                  label: "Instructions",
-                  href: "/instructions",
-                  isCurrentPage: true,
-                },
-              ]}
-            />
-            <div className="flex justify-between items-center mt-4">
-              <h2 className="text-3xl font-bold tracking-tight">
-                Setup Instructions
-              </h2>
-            </div>
-            <p className="text-muted-foreground text-lg mt-2">
-              Follow these steps to set up and use your downloaded assets
-            </p>
+    <Main>
+      <div className="mb-8">
+        <div className="flex-1">
+          <Breadcrumbs
+            items={[
+              { label: "Home", href: "/dashboard" },
+              { label: "Products", href: "/dashboard" },
+              { label: "Product", href: "/product" },
+              {
+                label: "Instructions",
+                href: "/instructions",
+                isCurrentPage: true,
+              },
+            ]}
+          />
+          <div className="flex justify-between items-center mt-4">
+            <h2 className="text-3xl font-bold tracking-tight">
+              Setup Instructions
+            </h2>
           </div>
+          <p className="text-muted-foreground text-lg mt-2">
+            Follow these steps to set up and use your downloaded assets
+          </p>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20 relative">
-          {instructionSteps.map((step) => (
-            <Card
-              key={step.number}
-              className="hover:shadow-md transition-all duration-300 border-t-4 min-h-[200px] relative"
-              style={{
-                borderTopColor: step.iconColor.includes("blue")
-                  ? "#3b82f6"
-                  : step.iconColor.includes("purple")
-                    ? "#9333ea"
-                    : step.iconColor.includes("green")
-                      ? "#10b981"
-                      : step.iconColor.includes("amber")
-                        ? "#f59e0b"
-                        : step.iconColor.includes("red")
-                          ? "#ef4444"
-                          : "#6366f1",
-              }}
-            >
-              <div className="absolute top-3 right-3 z-10">
-                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
-                  {step.number}
-                </span>
-              </div>
-              <CardHeader className="pt-8 pb-0">
-                <div className="flex items-start gap-4">
-                  <div
-                    className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${step.iconBackground} shadow-sm`}
-                  >
-                    <step.icon className={`h-7 w-7 ${step.iconColor}`} />
-                  </div>
-                  <div className="pr-8">
-                    <CardTitle className="text-xl leading-tight">
-                      {step.title}
-                    </CardTitle>
-                    <CardDescription className="text-sm text-muted-foreground mt-2">
-                      {step.description}
-                    </CardDescription>
-                  </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20 relative">
+        {instructionSteps.map((step) => (
+          <Card
+            key={step.number}
+            className="hover:shadow-md transition-all duration-300 border-t-4 min-h-[200px] relative"
+            style={{
+              borderTopColor: step.iconColor.includes("blue")
+                ? "#3b82f6"
+                : step.iconColor.includes("purple")
+                  ? "#9333ea"
+                  : step.iconColor.includes("green")
+                    ? "#10b981"
+                    : step.iconColor.includes("amber")
+                      ? "#f59e0b"
+                      : step.iconColor.includes("red")
+                        ? "#ef4444"
+                        : "#6366f1",
+            }}
+          >
+            <div className="absolute top-3 right-3 z-10">
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
+                {step.number}
+              </span>
+            </div>
+            <CardHeader className="pt-8 pb-0">
+              <div className="flex items-start gap-4">
+                <div
+                  className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${step.iconBackground} shadow-sm`}
+                >
+                  <step.icon className={`h-7 w-7 ${step.iconColor}`} />
                 </div>
-              </CardHeader>
-              <CardContent className="pt-4 pb-6"></CardContent>
-            </Card>
-          ))}
-        </div>
+                <div className="pr-8">
+                  <CardTitle className="text-xl leading-tight">
+                    {step.title}
+                  </CardTitle>
+                  <CardDescription className="text-sm text-muted-foreground mt-2">
+                    {step.description}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 pb-6"></CardContent>
+          </Card>
+        ))}
+      </div>
 
-        <div className="flex-1 overflow-auto px-1 py-1 lg:space-y-0">
-          {/* Horizontal Next Steps Navigation at bottom */}
-          <NextStepsHorizontal />
-        </div>
-      </Main>
-    </Provider>
+      <div className="flex-1 overflow-auto px-1 py-1 lg:space-y-0">
+        {/* Horizontal Next Steps Navigation at bottom */}
+        <NextStepsHorizontal />
+      </div>
+    </Main>
   );
 }

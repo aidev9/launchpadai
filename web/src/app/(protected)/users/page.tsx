@@ -17,14 +17,6 @@ export default function Users() {
 
   return (
     <UsersProvider>
-      <Header fixed>
-        <Search />
-        <div className="ml-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown user={null} />
-        </div>
-      </Header>
-
       <Main>
         <div className="mb-2 flex flex-wrap items-center justify-between space-y-2">
           <div>
