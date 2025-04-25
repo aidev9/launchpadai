@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { format } from "date-fns";
 import { useForm } from "react-hook-form";
+import { useState, useEffect } from "react";
 import { CalendarIcon, CaretSortIcon, CheckIcon } from "@radix-ui/react-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { TimezoneSelectField } from "@/components/ui/tz-select";
+import {
+  AccountUpdateData,
+  getAccountAction,
+  updateAccountAction,
+} from "./actions";
 
 const languages = [
   { label: "English", value: "en" },
@@ -53,19 +60,19 @@ const accountFormSchema = z.object({
     .max(30, {
       message: "Name must not be longer than 30 characters.",
     }),
-  dob: z.date({
-    required_error: "A date of birth is required.",
-  }),
-  language: z.string({
-    required_error: "Please select a language.",
+  dob: z.date().optional(),
+  language: z.string().optional(),
+  timezone: z.string({
+    required_error: "Please select a time zone.",
   }),
 });
 
 type AccountFormValues = z.infer<typeof accountFormSchema>;
 
-// This can come from your database or API.
+// Missing default values for the form
 const defaultValues: Partial<AccountFormValues> = {
   name: "",
+  timezone: "",
 };
 
 export function AccountForm() {
@@ -74,15 +81,77 @@ export function AccountForm() {
     defaultValues,
   });
 
-  function onSubmit(data: AccountFormValues) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch account data when the component mounts
+  useEffect(() => {
+    const fetchAccountData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getAccountAction();
+
+        if (response.success && response.account) {
+          // Set form values from the response
+          form.reset({
+            name: response.account.name,
+            timezone: response.account.timezone,
+            language: response.account.language || undefined,
+            dob: response.account.dob,
+          });
+        } else {
+          toast({
+            title: "Error loading account data",
+            description:
+              response.error || "Failed to load your account information",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching account data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load your account information",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAccountData();
+  }, [form]);
+
+  // Handle form submission
+  async function onSubmit(data: AccountFormValues) {
+    try {
+      setIsSubmitting(true);
+
+      // Submit the form data to the server action
+      const response = await updateAccountAction(data as AccountUpdateData);
+
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Your account settings have been updated",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to update account settings",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating account:", error);
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -105,7 +174,7 @@ export function AccountForm() {
             </FormItem>
           )}
         />
-        <FormField
+        {/* <FormField
           control={form.control}
           name="dob"
           render={({ field }) => (
@@ -147,8 +216,8 @@ export function AccountForm() {
               <FormMessage />
             </FormItem>
           )}
-        />
-        <FormField
+        /> */}
+        {/* <FormField
           control={form.control}
           name="language"
           render={({ field }) => (
@@ -210,8 +279,29 @@ export function AccountForm() {
               <FormMessage />
             </FormItem>
           )}
+        /> */}
+        <FormField
+          control={form.control}
+          name="timezone"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>Time Zone</FormLabel>
+              <TimezoneSelectField
+                value={field.value}
+                onChange={field.onChange}
+                className="w-[300px]"
+              />
+              <FormDescription>
+                Select your local time zone for accurate scheduling.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        <Button type="submit">Update account</Button>
+        <Button type="submit" disabled={isSubmitting || isLoading}>
+          {isSubmitting ? "Updating..." : "Update account"}
+        </Button>
+        <div className="h-4" />
       </form>
     </Form>
   );

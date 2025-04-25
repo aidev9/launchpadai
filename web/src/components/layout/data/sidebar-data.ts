@@ -132,21 +132,21 @@ export const sidebarData: SidebarData = {
               url: "/settings/account",
               icon: IconTool,
             },
-            {
-              title: "Appearance",
-              url: "/settings/appearance",
-              icon: IconPalette,
-            },
-            {
-              title: "Notifications",
-              url: "/settings/notifications",
-              icon: IconNotification,
-            },
-            {
-              title: "Display",
-              url: "/settings/display",
-              icon: IconBrowserCheck,
-            },
+            // {
+            //   title: "Appearance",
+            //   url: "/settings/appearance",
+            //   icon: IconPalette,
+            // },
+            // {
+            //   title: "Notifications",
+            //   url: "/settings/notifications",
+            //   icon: IconNotification,
+            // },
+            // {
+            //   title: "Display",
+            //   url: "/settings/display",
+            //   icon: IconBrowserCheck,
+            // },
           ],
         },
         {

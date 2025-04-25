@@ -21,21 +21,27 @@ const sidebarNavItems = [
     href: "/settings/account",
     icon: <WrenchIcon className="h-4 w-4" />,
   },
+  // Empty placeholder for future settings
   {
-    title: "Appearance",
-    href: "/settings/appearance",
-    icon: <PaletteIcon className="h-4 w-4" />,
+    title: "",
+    href: "/settings",
   },
-  {
-    title: "Notifications",
-    href: "/settings/notifications",
-    icon: <BellIcon className="h-4 w-4" />,
-  },
-  {
-    title: "Display",
-    href: "/settings/display",
-    icon: <MonitorIcon className="h-4 w-4" />,
-  },
+
+  // {
+  //   title: "Appearance",
+  //   href: "/settings/appearance",
+  //   icon: <PaletteIcon className="h-4 w-4" />,
+  // },
+  // {
+  //   title: "Notifications",
+  //   href: "/settings/notifications",
+  //   icon: <BellIcon className="h-4 w-4" />,
+  // },
+  // {
+  //   title: "Display",
+  //   href: "/settings/display",
+  //   icon: <MonitorIcon className="h-4 w-4" />,
+  // },
 ];
 
 export default function SettingsLayout({

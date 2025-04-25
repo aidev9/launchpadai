@@ -1,5 +1,6 @@
 "use client";
 import { z } from "zod";
+import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { cn } from "@/lib/utils";
@@ -23,15 +24,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  updateProfileAction,
+  getProfileAction,
+  ProfileUpdateData,
+} from "./actions";
 
 const profileFormSchema = z.object({
-  username: z
+  displayName: z
     .string()
     .min(2, {
-      message: "Username must be at least 2 characters.",
+      message: "Display name must be at least 2 characters.",
     })
     .max(30, {
-      message: "Username must not be longer than 30 characters.",
+      message: "Display name must not be longer than 30 characters.",
     }),
   email: z
     .string({
@@ -50,19 +56,18 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-// This can come from your database or API.
-const defaultValues: Partial<ProfileFormValues> = {
-  bio: "I own a computer.",
-  urls: [
-    { value: "https://shadcn.com" },
-    { value: "http://twitter.com/shadcn" },
-  ],
-};
-
 export default function ProfileForm() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Set up the form with validation
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues,
+    defaultValues: {
+      displayName: "",
+      email: "",
+      bio: "",
+      urls: [],
+    },
     mode: "onChange",
   });
 
@@ -71,23 +76,84 @@ export default function ProfileForm() {
     control: form.control,
   });
 
-  function onSubmit(data: ProfileFormValues) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
+  // Fetch current user profile data when component mounts
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        setIsLoading(true);
+        const result = await getProfileAction();
+
+        if (result.success && result.profile) {
+          // Reset form with the user's actual profile data
+          form.reset({
+            displayName: result.profile.displayName,
+            email: result.profile.email,
+            bio: result.profile.bio || "I own a computer.",
+            urls: result.profile.urls || [{ value: "" }],
+          });
+        } else {
+          throw new Error(result.error || "Failed to load profile data");
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load profile",
+          description: "Please try refreshing the page.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [form]);
+
+  async function onSubmit(data: ProfileFormValues) {
+    setIsLoading(true);
+    try {
+      // Only send necessary data to server action
+      const profileData: ProfileUpdateData = {
+        displayName: data.displayName,
+        bio: data.bio,
+        urls: data.urls,
+      };
+
+      const result = await updateProfileAction(profileData);
+
+      if (result.success) {
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully.",
+        });
+      } else {
+        throw new Error(result.error || "Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to update profile",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form
+        action={async (formData) => {
+          // This triggers the React Hook Form submission handler
+          await form.handleSubmit(onSubmit)();
+        }}
+        className="space-y-8"
+      >
         <FormField
           control={form.control}
-          name="username"
+          name="displayName"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Display name</FormLabel>
@@ -180,10 +246,10 @@ export default function ProfileForm() {
             Add Link
           </Button>
         </div>
-        <Button type="button" variant="default">
-          Update profile
+        <Button type="submit" variant="default" disabled={isLoading}>
+          {isLoading ? "Updating..." : "Update profile"}
         </Button>
-        <span className="text-xs text-muted-foreground"></span>
+        <div className="h-4" />
       </form>
     </Form>
   );
