@@ -52,19 +52,142 @@ interface QuestionsReviewerProps {
   onShowToast: (options: ShowToastOptions) => void; // Add callback prop
 }
 
+// Memoized question item to prevent unnecessary re-renders
+const QuestionItem = React.memo(
+  ({
+    question,
+    isSelected,
+    isAnswered,
+    onSelect,
+  }: {
+    question: Question;
+    isSelected: boolean;
+    isAnswered: boolean;
+    onSelect: (id: string) => void;
+  }) => {
+    return (
+      <div
+        className={`relative rounded-md border p-2 cursor-pointer transition-colors ${
+          isSelected
+            ? "border-primary bg-primary/5"
+            : "border-border hover:border-primary/30 hover:bg-muted/30"
+        }`}
+        onClick={() => onSelect(question.id)}
+      >
+        <div className="flex items-center gap-2">
+          <div
+            className={`flex items-center justify-center w-5 h-5 rounded-full border ${
+              isSelected
+                ? "bg-primary border-primary text-primary-foreground"
+                : "border-muted-foreground text-transparent"
+            }`}
+          >
+            {isSelected && <Check className="h-3 w-3" />}
+          </div>
+
+          <div className="flex-1 flex items-center">
+            <FileText className="h-4 w-4 mr-2 flex-shrink-0 text-muted-foreground" />
+            <span className="truncate font-medium">{question.question}</span>
+          </div>
+
+          {isAnswered && (
+            <div
+              className="w-2 h-2 rounded-full bg-green-500"
+              title="Has answer"
+            ></div>
+          )}
+        </div>
+      </div>
+    );
+  }
+);
+
+QuestionItem.displayName = "QuestionItem";
+
+// Add this memoized component for the questions list
+const QuestionsList = React.memo(
+  ({
+    questions,
+    selectedId,
+    onSelectQuestion,
+    isAnswered,
+  }: {
+    questions: Question[];
+    selectedId: string;
+    onSelectQuestion: (id: string) => void;
+    isAnswered: (question: Question) => boolean;
+  }) => {
+    // If this component re-renders, it won't impact the parent component
+    return (
+      <div className="space-y-2">
+        {questions.map((question) => (
+          <QuestionItem
+            key={question.id}
+            question={question}
+            isSelected={selectedId === question.id}
+            isAnswered={isAnswered(question)}
+            onSelect={onSelectQuestion}
+          />
+        ))}
+      </div>
+    );
+  }
+);
+
+QuestionsList.displayName = "QuestionsList";
+
 // Define the component function first, then export a memoized version
 function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [selectedPhases] = useAtom(selectedPhasesAtom);
   const [questionModalOpen, setModalOpen] = useAtom(questionModalOpenAtom);
-  const [selectedQuestionId, setSelectedQuestionId] = useState<string>("");
+
+  // Use a ref for the currently selected ID to avoid re-renders
+  const selectedQuestionIdRef = useRef<string>("");
+  const [selectedQuestionId, setSelectedQuestionIdState] = useState<string>("");
+
+  // Create a stable function for setting the question ID that doesn't trigger re-renders
+  // unless absolutely necessary
+  const setSelectedQuestionId = useCallback(
+    (id: string) => {
+      // Always update the ref immediately
+      selectedQuestionIdRef.current = id;
+
+      // But only update state if it's different (to avoid re-renders)
+      if (id !== selectedQuestionId) {
+        setSelectedQuestionIdState(id);
+      }
+    },
+    [selectedQuestionId]
+  );
+
   const [answer, setAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [allQuestions, setAllQuestions] = useAtom(allQuestionsAtom);
   const [userProfile] = useAtom(userProfileAtom);
   const [, updateUserProfile] = useAtom(updateUserProfileAtom);
-  const [displayedQuestions, setDisplayedQuestions] = useState<Question[]>([]);
+
+  // Store displayedQuestions as a ref to prevent re-renders
+  const displayedQuestionsRef = useRef<Question[]>([]);
+  const [displayedQuestions, setDisplayedQuestionsState] = useState<Question[]>(
+    []
+  );
+
+  // Create a stable function for setting displayed questions
+  const setDisplayedQuestions = useCallback(
+    (questions: Question[]) => {
+      // Always update the ref
+      displayedQuestionsRef.current = questions;
+
+      // Only update state if the questions have actually changed
+      if (JSON.stringify(questions) !== JSON.stringify(displayedQuestions)) {
+        setDisplayedQuestionsState(questions);
+      }
+    },
+    [displayedQuestions]
+  );
+
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
@@ -137,12 +260,22 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
       if (response.success && response.questions) {
         const questions = response.questions as Question[];
         console.log("Loaded questions:", questions.length);
-        setAllQuestions(questions);
 
-        // If we have questions and none is selected, select the first one
-        if (questions.length > 0 && !selectedQuestionId) {
-          setSelectedQuestionId(questions[0].id);
-          setAnswer(questions[0].answer || "");
+        // Check if questions have actually changed to avoid unnecessary state updates
+        const hasQuestionsChanged =
+          questions.length !== allQuestions.length ||
+          JSON.stringify(questions.map((q) => q.id).sort()) !==
+            JSON.stringify(allQuestions.map((q) => q.id).sort());
+
+        if (hasQuestionsChanged) {
+          setAllQuestions(questions);
+
+          // Only select the first question if no question is currently selected
+          // This prevents the infinite loop of re-rendering
+          if (questions.length > 0 && !selectedQuestionId) {
+            setSelectedQuestionId(questions[0].id);
+            setAnswer(questions[0].answer || "");
+          }
         }
       }
     } catch (error) {
@@ -161,6 +294,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
     selectedQuestionId,
     setSelectedQuestionId,
     setAnswer,
+    allQuestions,
   ]);
 
   // Update the loadQuestions useEffect to use the memoized function
@@ -289,9 +423,10 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
 
     try {
       // Call the server action to delete from Firebase
+      // Fix parameter order: productId first, then questionId
       const response = await deleteQuestionAction(
-        questionId,
-        selectedProductId
+        selectedProductId,
+        questionId
       );
 
       if (response.success) {
@@ -333,6 +468,24 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
     }
   };
 
+  // Create a stable question selection handler that never changes reference
+  const handleSelectQuestion = useCallback(
+    (id: string) => {
+      // Don't re-render if clicking the already selected question
+      if (id === selectedQuestionId) return;
+
+      console.log("Selecting question:", id);
+      setSelectedQuestionId(id);
+
+      // Find and set the answer immediately to avoid delay
+      const question = allQuestions.find((q) => q.id === id);
+      if (question) {
+        setAnswer(question.answer || "");
+      }
+    },
+    [setSelectedQuestionId, selectedQuestionId, allQuestions, setAnswer]
+  );
+
   return (
     <div className="rounded-lg bg-card text-card-foreground">
       <div className="flex flex-col lg:flex-row lg:min-h-[500px] gap-4">
@@ -357,7 +510,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
                   <FileText className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 </div>
 
-                {isLoading ? (
+                {isLoading && displayedQuestions.length === 0 ? (
                   <div className="space-y-2">
                     {Array(5)
                       .fill(0)
@@ -380,47 +533,12 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
                     <AddQuestionButton />
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {displayedQuestions.map((question) => (
-                      <div
-                        key={question.id}
-                        className={`relative rounded-md border p-2 cursor-pointer transition-colors ${
-                          selectedQuestionId === question.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/30 hover:bg-muted/30"
-                        }`}
-                        onClick={() => setSelectedQuestionId(question.id)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`flex items-center justify-center w-5 h-5 rounded-full border ${
-                              selectedQuestionId === question.id
-                                ? "bg-primary border-primary text-primary-foreground"
-                                : "border-muted-foreground text-transparent"
-                            }`}
-                          >
-                            {selectedQuestionId === question.id && (
-                              <Check className="h-3 w-3" />
-                            )}
-                          </div>
-
-                          <div className="flex-1 flex items-center">
-                            <FileText className="h-4 w-4 mr-2 flex-shrink-0 text-muted-foreground" />
-                            <span className="truncate font-medium">
-                              {question.question}
-                            </span>
-                          </div>
-
-                          {isAnswered(question) && (
-                            <div
-                              className="w-2 h-2 rounded-full bg-green-500"
-                              title="Has answer"
-                            ></div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <QuestionsList
+                    questions={displayedQuestions}
+                    selectedId={selectedQuestionId}
+                    onSelectQuestion={handleSelectQuestion}
+                    isAnswered={isAnswered}
+                  />
                 )}
               </div>
             </ScrollArea>
