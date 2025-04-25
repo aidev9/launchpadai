@@ -14,6 +14,7 @@ import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useXp } from "@/xp/useXp";
 
 interface NotesDialogsProps {
   onSuccess: () => void;
@@ -29,6 +30,7 @@ export function NotesDialogs({
   const [tagsInput, setTagsInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const { refreshXp } = useXp();
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -82,6 +84,11 @@ export function NotesDialogs({
 
       if (result.success) {
         toast({ title: "Note added" });
+        // Refresh XP after successful note creation
+        console.log("Note created, refreshing XP...");
+        refreshXp().catch((err) =>
+          console.error("Failed to refresh XP after note creation:", err)
+        );
       } else {
         // If server save fails, show error and reopen the dialog with previous values
         toast({

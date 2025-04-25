@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { FirestoreAsset } from "./initialize-assets";
 import { Asset } from "@/app/(protected)/review_assets/data/assets";
+import { awardXpPoints } from "@/xp/server-actions";
 
 // Schema for asset validation
 const assetSchema = z.object({
@@ -185,6 +186,11 @@ export async function saveAsset(
   try {
     const userId = await getCurrentUserId();
     const assetsRef = getUserAssetRef(userId, productId);
+    const assetDocRef = assetsRef.doc(assetData.id);
+
+    // Check if the asset already exists before saving
+    const docSnapshot = await assetDocRef.get();
+    const isNewAsset = !docSnapshot.exists;
 
     const now = new Date();
     const assetWithTimestamp = {
@@ -193,7 +199,20 @@ export async function saveAsset(
       created_at: assetData.created_at || now,
     };
 
-    await assetsRef.doc(assetData.id).set(assetWithTimestamp, { merge: true });
+    await assetDocRef.set(assetWithTimestamp, { merge: true });
+
+    // Award XP if it's a new asset
+    if (isNewAsset) {
+      try {
+        await awardXpPoints("add_asset", userId);
+        console.log(
+          `Awarded XP to user ${userId} for adding asset ${assetData.id}`
+        );
+      } catch (xpError) {
+        console.error("Failed to award XP for adding asset:", xpError);
+        // Non-critical, continue
+      }
+    }
 
     // Revalidate the assets page
     revalidatePath("/review_assets");

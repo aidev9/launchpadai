@@ -36,6 +36,30 @@ export const xpActions: XpAction[] = [
     description: "Create a new note",
     points: 5,
   },
+  {
+    id: "add_asset",
+    name: "Add Asset",
+    description: "Add a new asset to a product",
+    points: 10,
+  },
+  {
+    id: "generate_asset",
+    name: "Generate Asset Content",
+    description: "Generate content for an asset using AI",
+    points: 5,
+  },
+  {
+    id: "download_asset",
+    name: "Download Asset",
+    description: "Download a single asset",
+    points: 5,
+  },
+  {
+    id: "download_multiple_assets",
+    name: "Download Multiple Assets",
+    description: "Download multiple assets at once",
+    points: 10,
+  },
 ];
 
 export default xpActions;

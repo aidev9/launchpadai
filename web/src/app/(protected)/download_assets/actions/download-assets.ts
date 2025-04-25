@@ -8,6 +8,7 @@ import { getAsset } from "@/lib/firebase/assets";
 import JSZip from "jszip";
 import { writeFile } from "fs/promises";
 import { v4 as uuidv4 } from "uuid";
+import { awardXpPoints } from "@/xp/server-actions";
 
 // Schema for download assets parameters
 const downloadAssetsSchema = z.object({
@@ -103,6 +104,22 @@ export async function downloadAssets(data: {
     // Generate the zip file
     const zipContent = await zip.generateAsync({ type: "nodebuffer" });
     await writeFile(zipPath, zipContent);
+
+    // Award XP based on number of assets downloaded
+    const numAssets = data.assetIds.length;
+    if (numAssets > 0) {
+      const actionId =
+        numAssets === 1 ? "download_asset" : "download_multiple_assets";
+      try {
+        await awardXpPoints(actionId, userId);
+        console.log(
+          `Awarded XP to user ${userId} for downloading ${numAssets} asset(s)`
+        );
+      } catch (xpError) {
+        console.error("Failed to award XP for downloading assets:", xpError);
+        // Non-critical, continue
+      }
+    }
 
     // Return the download URL or path
     return {

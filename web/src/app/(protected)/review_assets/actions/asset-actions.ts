@@ -3,8 +3,9 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { saveAsset as saveAssetToFirebase } from "@/lib/firebase/assets";
-import { Asset } from "../data/assets";
-import { FirestoreAsset } from "@/lib/firebase/initialize-assets";
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
+import { getAsset } from "@/lib/firebase/assets";
+import { awardXpPoints } from "@/xp/server-actions";
 
 // Schema for saving assets
 const saveAssetSchema = z.object({
@@ -83,6 +84,64 @@ export async function deleteAssetAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+// --- Add the new action below ---
+
+/**
+ * Server action to download a single asset's content and award XP
+ */
+const downloadSingleAssetSchema = z.object({
+  productId: z.string(),
+  assetId: z.string(),
+});
+
+export async function downloadSingleAssetAction(
+  data: z.infer<typeof downloadSingleAssetSchema>
+) {
+  try {
+    const { productId, assetId } = data;
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return { success: false, error: "User not authenticated" };
+    }
+
+    // Fetch the asset
+    const result = await getAsset(productId, assetId);
+    if (!result.success || !result.asset) {
+      return { success: false, error: result.error || "Asset not found" };
+    }
+
+    // Award XP for downloading this asset
+    try {
+      await awardXpPoints("download_asset", userId);
+      console.log(
+        `Awarded XP to user ${userId} for downloading asset ${assetId}`
+      );
+    } catch (xpError) {
+      console.error(
+        "Failed to award XP for downloading single asset:",
+        xpError
+      );
+      // Non-critical, continue
+    }
+
+    // Return the necessary asset details for client-side download
+    return {
+      success: true,
+      asset: {
+        id: result.asset.id,
+        title: result.asset.title || "asset",
+        content: result.asset.content || "", // Ensure content is always a string
+      },
+    };
+  } catch (error) {
+    console.error("Error in downloadSingleAssetAction:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
     };
   }
 }

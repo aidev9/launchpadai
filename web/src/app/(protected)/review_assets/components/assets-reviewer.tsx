@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -37,6 +36,7 @@ import {
   allAssetsAtom,
   selectedAssetPhasesAtom,
 } from "@/lib/store/assets-store";
+import { useXp } from "@/xp/useXp";
 
 // Interface definitions
 interface Note {
@@ -109,6 +109,7 @@ function AssetsReviewerContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [, setAllAssets] = useAtom(allAssetsAtom);
+  const { refreshXp } = useXp();
 
   // Filter assets based on selected phases
   useEffect(() => {
@@ -454,6 +455,12 @@ function AssetsReviewerContent() {
         title: "Content generated",
         description: "Your asset content has been generated successfully.",
       });
+
+      // Refresh XP
+      console.log("Asset generated, refreshing XP...");
+      refreshXp().catch((err) =>
+        console.error("Failed to refresh XP after generating asset:", err)
+      );
     } catch (error) {
       console.error("Error generating asset:", error);
       toast({
@@ -468,44 +475,73 @@ function AssetsReviewerContent() {
     }
   };
 
-  const handleDownload = () => {
-    if (!selectedAssetId || !assetContent.trim()) return;
+  const handleDownload = async () => {
+    if (!selectedAssetId || !selectedProductId) return;
 
-    // Get the asset title for the filename
-    const asset = firestoreAssets[selectedAssetId];
-    if (!asset) return;
+    console.log(`Attempting download for asset: ${selectedAssetId}`);
 
-    // Create a safe filename from the asset title
-    const title = asset.title || "asset";
-    const safeTitleForFilename = title
-      .replace(/[<>:"/\\|?*]/g, "-") // Replace invalid filename characters
-      .replace(/\s+/g, " ") // Normalize whitespace
-      .trim();
+    try {
+      // Use the new server action
+      const { downloadSingleAssetAction } = await import(
+        "../actions/asset-actions"
+      );
+      const result = await downloadSingleAssetAction({
+        productId: selectedProductId,
+        assetId: selectedAssetId,
+      });
 
-    // Generate filename with .md extension
-    const fileName = safeTitleForFilename.endsWith(".md")
-      ? safeTitleForFilename
-      : `${safeTitleForFilename}.md`;
+      if (!result.success || !result.asset) {
+        throw new Error(
+          result.error || "Failed to get asset data for download"
+        );
+      }
 
-    // Create a blob with the markdown content
-    const blob = new Blob([assetContent], { type: "text/markdown" });
-    const url = window.URL.createObjectURL(blob);
+      const { title, content } = result.asset;
 
-    // Create a temporary link to trigger the download
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
+      // Create a safe filename from the asset title
+      const safeTitleForFilename = title
+        .replace(/[<>:"/\\|?*]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim();
 
-    // Clean up
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+      // Generate filename with .md extension
+      const fileName = safeTitleForFilename.endsWith(".md")
+        ? safeTitleForFilename
+        : `${safeTitleForFilename}.md`;
 
-    toast({
-      title: "Asset downloaded",
-      description: `${fileName} has been downloaded successfully.`,
-    });
+      // Create a blob with the markdown content returned from server
+      const blob = new Blob([content], { type: "text/markdown" });
+      const url = window.URL.createObjectURL(blob);
+
+      // Create a temporary link to trigger the download
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Asset downloaded",
+        description: `${fileName} has been downloaded successfully.`,
+      });
+
+      // Refresh XP after successful download
+      console.log("Single asset downloaded, refreshing XP...");
+      refreshXp().catch((err) =>
+        console.error("Failed to refresh XP after single asset download:", err)
+      );
+    } catch (error) {
+      console.error("Error downloading single asset:", error);
+      toast({
+        title: "Download failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
   };
 
   // Check if an asset exists in our Firestore cache

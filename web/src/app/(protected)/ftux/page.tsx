@@ -83,13 +83,6 @@ export default function FTUXPage() {
       // Close the modal
       setIsProductWizardOpen(false);
 
-      // Award XP for creating product
-      try {
-        await awardXp("create_product");
-      } catch (xpError) {
-        console.warn("Failed to award XP, but continuing:", xpError);
-      }
-
       // Set the product ID in localStorage for persistence
       localStorage.setItem("selectedProductId", productId);
 

@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { allTemplates, Template } from "../data/templates";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -53,6 +53,7 @@ import { useAtom } from "jotai";
 import { CountrySelect } from "@/components/ui/country-select";
 import { set } from "nprogress";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { useXp } from "@/xp/useXp";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -105,6 +106,7 @@ export default function ProductWizard() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
 
   // Use Jotai to sync with global state
   const [, setSelectedProduct] = useAtom(selectedProductAtom);
@@ -115,6 +117,8 @@ export default function ProductWizard() {
   const templateId = searchParams.get("template");
   const templateType = searchParams.get("type");
   const editProductId = searchParams.get("edit");
+
+  const { refreshXp } = useXp();
 
   // Initialize form with default values
   const form = useForm<ProductFormValues>({
@@ -235,6 +239,14 @@ export default function ProductWizard() {
           // Then update the atoms
           setSelectedProductId(result.id);
           setSelectedProduct(updatedProduct);
+
+          // Refresh XP after successful product creation/update
+          if (!isEditMode) {
+            console.log("Product created, refreshing XP...");
+            refreshXp().catch((err) =>
+              console.error("Failed to refresh XP after product creation:", err)
+            );
+          }
 
           // Add a small delay before navigation to ensure state is updated
           // This is especially important for mobile browsers

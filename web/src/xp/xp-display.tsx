@@ -10,6 +10,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAtom } from "jotai";
+import { userProfileAtom } from "@/lib/store/user-store";
 
 interface XpDisplayProps {
   className?: string;
@@ -17,78 +19,105 @@ interface XpDisplayProps {
 
 export function XpDisplay({ className }: XpDisplayProps) {
   const { xp, isLoading, error, refreshXp } = useXp();
+  const [userProfile] = useAtom(userProfileAtom);
+  const userId = userProfile?.uid;
   const [displayXp, setDisplayXp] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [localLoading, setLocalLoading] = useState(false);
+  const [localLoading, setLocalLoading] = useState(true);
 
-  // Set initial XP value and refresh only once on mount
   useEffect(() => {
-    // Set initial display value
     setDisplayXp(xp);
+  }, [xp]);
 
-    // Only refresh data on initial mount - don't set up repeating calls
+  useEffect(() => {
+    let isMounted = true;
+    let loadingTimeoutId: NodeJS.Timeout | null = null;
+
     const refreshData = async () => {
+      if (!userId) {
+        setLocalLoading(false);
+        return;
+      }
+
+      console.log("User ID available, attempting XP refresh...");
+      setLocalLoading(true);
+
+      loadingTimeoutId = setTimeout(() => {
+        if (isMounted && localLoading) {
+          setLocalLoading(false);
+          console.warn(
+            "Loading timeout triggered - forcing loading state to false"
+          );
+        }
+      }, 8000);
+
       try {
-        setLocalLoading(true);
-        // Only refresh if xp is 0, to prevent unnecessary refreshes
-        if (xp === 0) {
-          await refreshXp();
-          console.log("Initial XP refresh completed");
+        await refreshXp();
+        if (isMounted) {
+          console.log("XP refresh completed via userId effect");
         }
       } catch (err) {
-        console.error("Error refreshing XP on mount:", err);
+        if (isMounted) {
+          console.error("Error refreshing XP via userId effect:", err);
+        }
       } finally {
-        setLocalLoading(false);
+        if (isMounted) {
+          setLocalLoading(false);
+          if (loadingTimeoutId) {
+            clearTimeout(loadingTimeoutId);
+          }
+        }
       }
     };
 
-    // Only refresh on mount if needed
     refreshData();
 
-    // Set a loading timeout to prevent eternal loading state
-    const loadingTimeoutId = setTimeout(() => {
-      if (localLoading) {
-        setLocalLoading(false);
-        console.warn(
-          "Loading timeout triggered - forcing loading state to false"
-        );
-      }
-    }, 5000); // 5 second timeout for loading
-
     return () => {
-      clearTimeout(loadingTimeoutId);
+      isMounted = false;
+      if (loadingTimeoutId) {
+        clearTimeout(loadingTimeoutId);
+      }
     };
-  }, [xp, refreshXp]);
+  }, [userId, refreshXp]);
 
-  // Update display when XP changes
   useEffect(() => {
-    if (xp > displayXp) {
-      setIsAnimating(true);
-      // Animate the XP value
-      const diff = xp - displayXp;
-      const duration = Math.min(Math.max(diff * 100, 500), 2000); // Between 500ms and 2000ms
-      const increment = Math.ceil(diff / 20);
-      let current = displayXp;
+    if (xp !== displayXp) {
+      console.log(`XP changed: displayXp=${displayXp}, new hook xp=${xp}`);
+      if (xp > displayXp) {
+        setIsAnimating(true);
+        const diff = xp - displayXp;
+        const duration = Math.min(Math.max(diff * 50, 500), 2000);
+        const stepTime = 25;
+        const steps = duration / stepTime;
+        const increment = Math.max(1, Math.ceil(diff / steps));
+        let current = displayXp;
+        console.log(
+          `Animating XP: diff=${diff}, duration=${duration}, increment=${increment}`
+        );
 
-      const timer = setInterval(() => {
-        current += increment;
-        if (current >= xp) {
-          current = xp;
-          clearInterval(timer);
-          setTimeout(() => setIsAnimating(false), 1000);
-        }
-        setDisplayXp(current);
-      }, duration / 20);
+        const timer = setInterval(() => {
+          current += increment;
+          if (current >= xp) {
+            current = xp;
+            clearInterval(timer);
+            console.log("Animation finished");
+            setTimeout(() => setIsAnimating(false), 500);
+          }
+          setDisplayXp(current);
+        }, stepTime);
 
-      return () => clearInterval(timer);
-    } else if (xp !== displayXp) {
-      // Handle case where XP decreases or is set to a different value
-      setDisplayXp(xp);
+        return () => clearInterval(timer);
+      } else {
+        console.log(
+          "XP decreased or changed non-sequentially, updating directly."
+        );
+        setDisplayXp(xp);
+        setIsAnimating(false);
+      }
     }
-  }, [xp, displayXp]);
+  }, [xp]);
 
-  // Show loading state - but only briefly
-  if ((isLoading || localLoading) && !error && displayXp === 0) {
+  if ((isLoading || localLoading) && displayXp === 0 && !error) {
     return (
       <div
         className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-muted/30 ${className}`}
@@ -99,7 +128,6 @@ export function XpDisplay({ className }: XpDisplayProps) {
     );
   }
 
-  // Handle offline/error state
   const isOffline = error?.includes("offline");
 
   return (
@@ -150,14 +178,17 @@ export function XpDisplay({ className }: XpDisplayProps) {
         ) : (
           <>
             <Sparkles
-              className={`h-4 w-4 ${
-                isAnimating ? "text-yellow-500" : "text-muted-foreground"
+              className={`h-4 w-4 transition-colors duration-300 ${
+                isAnimating
+                  ? "text-yellow-500 animate-pulse"
+                  : "text-muted-foreground"
               }`}
             />
             <motion.span
               key={displayXp}
-              initial={isAnimating ? { y: -20, opacity: 0 } : {}}
+              initial={isAnimating ? { y: -10, opacity: 0.5 } : {}}
               animate={{ y: 0, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
               className="font-medium"
             >
               {displayXp} XP

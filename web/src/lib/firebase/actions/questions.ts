@@ -4,8 +4,6 @@ import { revalidatePath } from "next/cache";
 import { adminDb } from "../admin";
 import { getCurrentUserId } from "../adminAuth";
 import { getProductQuestionsRef } from "../questions";
-import { ProductQuestionInput } from "@/lib/firebase/schema";
-import { z } from "zod";
 import { awardXpPoints } from "@/xp/server-actions"; // Import XP award function
 
 // Get reference to the questions collection
@@ -271,6 +269,10 @@ export async function answerProductQuestionAction(
       };
     }
 
+    // Check if the answer is actually new before awarding XP
+    const existingAnswer = questionDoc.data()?.answer;
+    const isNewAnswer = !existingAnswer;
+
     // Update the answer in Firestore
     const now = new Date().toISOString();
     await questionsRef.doc(questionId).update({
@@ -278,15 +280,17 @@ export async function answerProductQuestionAction(
       last_modified: now,
     });
 
-    // Award XP for answering a question
-    try {
-      await awardXpPoints("answer_question", userId);
-      console.log(
-        `Awarded XP to user ${userId} for answering question ${questionId}`
-      );
-    } catch (xpError) {
-      console.error(`Failed to award XP for answering question:`, xpError);
-      // Continue even if XP awarding fails
+    // Award XP only for answering a question for the first time
+    if (isNewAnswer) {
+      try {
+        await awardXpPoints("answer_question", userId);
+        console.log(
+          `Awarded XP to user ${userId} for answering question ${questionId}`
+        );
+      } catch (xpError) {
+        console.error(`Failed to award XP for answering question:`, xpError);
+        // Continue even if XP awarding fails
+      }
     }
 
     // Revalidate relevant paths

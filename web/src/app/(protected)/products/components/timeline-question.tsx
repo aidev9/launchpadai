@@ -15,6 +15,7 @@ import { answerProductQuestionAction } from "@/lib/firebase/actions/questions";
 import { Lock, Unlock, Sparkles } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import { useXp } from "@/xp/useXp";
 
 interface TimelineQuestionProps {
   productId: string;
@@ -35,6 +36,7 @@ export function TimelineQuestion({
   const [inputValue, setInputValue] = useState(answer || "");
   const [isUnlocked, setIsUnlocked] = useState(!!answer);
   const router = useRouter();
+  const { refreshXp } = useXp();
 
   const handleSubmit = async () => {
     if (!inputValue.trim()) {
@@ -58,6 +60,12 @@ export function TimelineQuestion({
 
       if (result.success) {
         setIsUnlocked(true);
+
+        // Refresh XP
+        console.log("Timeline answer saved, refreshing XP...");
+        refreshXp().catch((err) =>
+          console.error("Failed to refresh XP after timeline answer:", err)
+        );
 
         // Show success toast
         toast({

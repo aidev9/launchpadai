@@ -7,11 +7,9 @@ import { getProduct } from "@/lib/firebase/products";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { saveAsset, getAsset } from "@/lib/firebase/assets";
 import { type Product } from "@/lib/store/product-store";
-import {
-  getAllQuestionAnswers,
-  type QuestionAnswer,
-} from "@/lib/firebase/question-answers";
+import { getAllQuestionAnswers } from "@/lib/firebase/question-answers";
 import { getProjectNotes } from "@/lib/firebase/notes";
+import { awardXpPoints } from "@/xp/server-actions"; // Import XP award function
 
 // Dynamic import AI utils to avoid bundling them in the client
 const generateAIContent = async (params: any) => {
@@ -90,6 +88,17 @@ async function handleAssetGeneration(
         systemPrompt: asset.systemPrompt,
       },
     });
+
+    // Award XP for successful generation *before* saving
+    try {
+      await awardXpPoints("generate_asset", userId);
+      console.log(
+        `Awarded XP to user ${userId} for generating asset ${assetId}`
+      );
+    } catch (xpError) {
+      console.error("Failed to award XP for generating asset:", xpError);
+      // Non-critical, continue
+    }
 
     // Save the generated content to Firestore
     const saveResponse = await saveAsset(productId, {

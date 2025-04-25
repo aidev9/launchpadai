@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { saveAsset } from "@/lib/firebase/assets";
 import { saveAssetAction } from "../actions/asset-actions";
 import { toast } from "@/components/ui/use-toast";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { v4 as uuidv4 } from "uuid";
 import { atom, useSetAtom } from "jotai";
+import { useXp } from "@/xp/useXp";
 
 // Create an atom to store the newly created asset ID
 export const newlyCreatedAssetIdAtom = atom<string | null>(null);
@@ -41,6 +41,7 @@ export function AddAssetButton() {
   const [content, setContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const setNewlyCreatedAssetId = useSetAtom(newlyCreatedAssetIdAtom);
+  const { refreshXp } = useXp();
 
   const handleAddAsset = async () => {
     if (!selectedProductId || !title || !phase || !content) return;
@@ -85,6 +86,12 @@ export function AddAssetButton() {
         title: "Asset added",
         description: "Your custom asset has been added successfully.",
       });
+
+      // Refresh XP
+      console.log("Asset added, refreshing XP...");
+      refreshXp().catch((err) =>
+        console.error("Failed to refresh XP after adding asset:", err)
+      );
     } catch (error) {
       console.error("Error adding asset:", error);
       toast({

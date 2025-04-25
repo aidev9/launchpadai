@@ -9,11 +9,13 @@ import { selectedPromptsAtom } from "./prompts-column";
 import { downloadAssets } from "../actions/download-assets";
 import { toast } from "@/components/ui/use-toast";
 import { selectedAssetsAtom } from "./assets-atoms";
+import { useXp } from "@/xp/useXp";
 
 export function DownloadButton() {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [selectedPrompts] = useAtom(selectedPromptsAtom);
   const [selectedAssets] = useAtom(selectedAssetsAtom);
+  const { refreshXp } = useXp();
   const [downloadStatus, setDownloadStatus] = useState<
     "idle" | "downloading" | "success" | "error"
   >("idle");
@@ -62,6 +64,13 @@ export function DownloadButton() {
         document.body.removeChild(link);
 
         setDownloadStatus("success");
+
+        // Refresh XP after successful download
+        console.log("Assets downloaded, refreshing XP...");
+        refreshXp().catch((err) =>
+          console.error("Failed to refresh XP after downloading assets:", err)
+        );
+
         setTimeout(() => setDownloadStatus("idle"), 3000);
       } else {
         throw new Error(result.error);
