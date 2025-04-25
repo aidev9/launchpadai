@@ -1,4 +1,5 @@
 "use client";
+
 import "@/app/globals.css";
 import Providers from "@/app/providers";
 import { useRouter } from "next/navigation";
@@ -15,6 +16,7 @@ import { TopNav } from "@/components/layout/top-nav";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
+import { motion } from "framer-motion";
 
 const DebugAtoms = () => {
   useAtomsDebugValue();
@@ -47,6 +49,56 @@ const topNav = [
     disabled: true,
   },
 ];
+
+const DIGIT_COUNT = 10;
+
+function getRandomDigits() {
+  return Array.from({ length: DIGIT_COUNT }, () =>
+    Math.floor(Math.random() * 10)
+  );
+}
+
+const AnimatedCode = () => {
+  const [digits, setDigits] = useState(getRandomDigits());
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // Only run client-side
+  useEffect(() => {
+    setIsMounted(true);
+    const interval = setInterval(() => {
+      setDigits(getRandomDigits());
+    }, 120);
+
+    return () => clearInterval(interval);
+  }, []);
+  
+  // If not mounted yet (i.e., during server-side rendering), show static digits
+  if (!isMounted) {
+    return (
+      <div className="flex space-x-1 font-mono text-2xl text-gray-400">
+        {Array(DIGIT_COUNT).fill(0).map((_, idx) => (
+          <span key={idx}>0</span>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex space-x-1 font-mono text-2xl text-gray-400">
+      {digits.map((digit, idx) => (
+        <motion.span
+          key={idx + "-" + digit}
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 20, opacity: 0 }}
+          transition={{ duration: 0.18 }}
+        >
+          {digit}
+        </motion.span>
+      ))}
+    </div>
+  );
+};
 
 export default function RootLayout({
   children,
@@ -123,7 +175,6 @@ export default function RootLayout({
           }, 1500);
         }
       } else {
-        // console.log("User is not authenticated");
         // Clear profile on sign out detection
         setUserProfile(null);
         setIsLoading(false); // No user, not loading
@@ -139,7 +190,35 @@ export default function RootLayout({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        Loading authentication...
+        <div className="flex flex-col items-center space-y-4">
+          {/* <span className="sr-only">Loading the lauch codes...</span>
+          <div className="w-8 h-8">
+            <svg
+              className="animate-spin text-gray-500"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+              />
+            </svg>
+          </div> */}
+
+          <AnimatedCode />
+          <span className="text-sm text-muted-foreground">
+            Loading the lauch sequence...
+          </span>
+        </div>
       </div>
     );
   }

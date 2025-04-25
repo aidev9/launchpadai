@@ -150,7 +150,7 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs text-muted-foreground">
-              Your Products
+              My Products
             </DropdownMenuLabel>
             {products.map((product) => (
               <DropdownMenuItem

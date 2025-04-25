@@ -43,8 +43,8 @@ export default function AInamingAssistant() {
           </div>
 
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold tracking-tight">
-              AI Startup Naming Assistant
+            <h1 className="text-2xl font-bold tracking-tight">
+              Naming Assistant
             </h1>
           </div>
 

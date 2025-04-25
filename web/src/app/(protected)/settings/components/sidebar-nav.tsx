@@ -9,6 +9,7 @@ interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
   items: {
     href: string;
     title: string;
+    icon?: React.ReactNode;
   }[];
 }
 
@@ -18,7 +19,7 @@ export function SidebarNav({ className, items, ...props }: SidebarNavProps) {
   return (
     <nav
       className={cn(
-        "flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1",
+        "flex space-x-2 lg:flex-col lg:space-x-10 lg:space-y-1",
         className
       )}
       {...props}
@@ -35,6 +36,7 @@ export function SidebarNav({ className, items, ...props }: SidebarNavProps) {
             "justify-start"
           )}
         >
+          {item.icon}
           {item.title}
         </Link>
       ))}

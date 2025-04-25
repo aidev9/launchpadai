@@ -203,7 +203,7 @@ export default function Dashboard() {
     <Main>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">Your Products</h1>
+          <h1 className="text-2xl font-bold tracking-tight">My Products</h1>
           <Button onClick={handleCreateProduct} className="w-full md:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Create New Product
