@@ -161,7 +161,7 @@ export default function MilestonesPage() {
 
   if (isLocked) {
     return (
-      <div className="container mx-auto py-12 px-4">
+      <div className="container mx-auto py-12 px-2">
         <Card className="max-w-3xl mx-auto shadow-lg border-2 border-yellow-300">
           <CardHeader className="bg-yellow-50 dark:bg-yellow-900/20">
             <CardTitle className="flex items-center gap-2">

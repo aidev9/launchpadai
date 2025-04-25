@@ -2,7 +2,6 @@
 import { z } from "zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -91,9 +90,9 @@ export default function ProfileForm() {
           name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Username</FormLabel>
+              <FormLabel>Display name</FormLabel>
               <FormControl>
-                <Input placeholder="shadcn" {...field} />
+                <Input placeholder="This is what others will see" {...field} />
               </FormControl>
               <FormDescription>
                 This is your public display name. It can be your real name or a
@@ -103,7 +102,7 @@ export default function ProfileForm() {
             </FormItem>
           )}
         />
-        <FormField
+        {/* <FormField
           control={form.control}
           name="email"
           render={({ field }) => (
@@ -128,7 +127,7 @@ export default function ProfileForm() {
               <FormMessage />
             </FormItem>
           )}
-        />
+        /> */}
         <FormField
           control={form.control}
           name="bio"
@@ -138,7 +137,6 @@ export default function ProfileForm() {
               <FormControl>
                 <Textarea
                   placeholder="Tell us a little bit about yourself"
-                  className="resize-none"
                   {...field}
                 />
               </FormControl>
@@ -159,7 +157,7 @@ export default function ProfileForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className={cn(index !== 0 && "sr-only")}>
-                    URLs
+                    Links
                   </FormLabel>
                   <FormDescription className={cn(index !== 0 && "sr-only")}>
                     Add links to your website, blog, or social media profiles.
@@ -179,10 +177,13 @@ export default function ProfileForm() {
             className="mt-2"
             onClick={() => append({ value: "" })}
           >
-            Add URL
+            Add Link
           </Button>
         </div>
-        <Button type="submit">Update profile</Button>
+        <Button type="button" variant="default">
+          Update profile
+        </Button>
+        <span className="text-xs text-muted-foreground"></span>
       </form>
     </Form>
   );

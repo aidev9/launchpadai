@@ -61,7 +61,7 @@ function getRandomDigits() {
 const AnimatedCode = () => {
   const [digits, setDigits] = useState(getRandomDigits());
   const [isMounted, setIsMounted] = useState(false);
-  
+
   // Only run client-side
   useEffect(() => {
     setIsMounted(true);
@@ -71,14 +71,16 @@ const AnimatedCode = () => {
 
     return () => clearInterval(interval);
   }, []);
-  
+
   // If not mounted yet (i.e., during server-side rendering), show static digits
   if (!isMounted) {
     return (
       <div className="flex space-x-1 font-mono text-2xl text-gray-400">
-        {Array(DIGIT_COUNT).fill(0).map((_, idx) => (
-          <span key={idx}>0</span>
-        ))}
+        {Array(DIGIT_COUNT)
+          .fill(0)
+          .map((_, idx) => (
+            <span key={idx}>0</span>
+          ))}
       </div>
     );
   }
@@ -241,8 +243,7 @@ export default function RootLayout({
 
   return (
     <Providers>
-      <DebugAtoms />
-      {/* ===== Top Heading ===== */}
+      {/* <DebugAtoms /> */}
       <Header>
         <TopNav links={topNav} />
         <div className="ml-auto flex items-center space-x-4">

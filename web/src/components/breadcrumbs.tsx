@@ -1,15 +1,7 @@
 "use client";
 
 import Link from "next/link";
-// import { usePathname } from "next/navigation";
-import {
-  // Breadcrumb,
-  BreadcrumbItem,
-  // BreadcrumbLink,
-  // BreadcrumbList,
-  // BreadcrumbPage,
-  // BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+import { BreadcrumbItem } from "@/components/ui/breadcrumb";
 import { ChevronRight, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,32 +14,9 @@ export interface BreadcrumbItem {
 interface BreadcrumbsProps {
   items: BreadcrumbItem[];
   className?: string;
-  // productName?: string;
 }
 
-/**
- * A reusable breadcrumbs component that shows the navigation hierarchy.
- *
- * Usage:
- * ```tsx
- * // Basic usage with auto-detection of current page
- * <Breadcrumbs />
- *
- * // With custom items
- * <Breadcrumbs
- *   items={[
- *     { label: "Dashboard", href: "/dashboard" },
- *     { label: "Products", href: "/products" },
- *     { label: "Product Name", href: "/product/123", isCurrentPage: true },
- *   ]}
- * />
- * ```
- */
-export function Breadcrumbs({
-  items,
-  className,
-  // productName,
-}: BreadcrumbsProps) {
+export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
   return (
     <nav
       aria-label="Breadcrumb"
