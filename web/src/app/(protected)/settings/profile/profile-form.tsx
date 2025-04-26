@@ -24,11 +24,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  updateProfileAction,
-  getProfileAction,
-  ProfileUpdateData,
-} from "./actions";
+import { updateProfileAction, ProfileUpdateData } from "./actions";
+import { useAtom } from "jotai";
+import { userProfileAtom, updateUserProfileAtom } from "@/lib/store/user-store";
 
 const profileFormSchema = z.object({
   displayName: z
@@ -58,15 +56,20 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export default function ProfileForm() {
   const [isLoading, setIsLoading] = useState(false);
+  const [userProfile] = useAtom(userProfileAtom);
+  const [, updateUserProfile] = useAtom(updateUserProfileAtom);
 
   // Set up the form with validation
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      displayName: "",
-      email: "",
-      bio: "",
-      urls: [],
+      displayName: userProfile?.displayName || "",
+      email: userProfile?.email || "",
+      bio: userProfile?.bio || "I own a computer.",
+      urls:
+        userProfile?.urls && userProfile.urls.length > 0
+          ? userProfile.urls
+          : [{ value: "" }],
     },
     mode: "onChange",
   });
@@ -76,57 +79,31 @@ export default function ProfileForm() {
     control: form.control,
   });
 
-  // Fetch current user profile data when component mounts
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        setIsLoading(true);
-        const result = await getProfileAction();
-
-        if (result.success && result.profile) {
-          // Reset form with the user's actual profile data
-          form.reset({
-            displayName: result.profile.displayName,
-            email: result.profile.email,
-            bio: result.profile.bio || "I own a computer.",
-            urls: result.profile.urls || [{ value: "" }],
-          });
-        } else {
-          throw new Error(result.error || "Failed to load profile data");
-        }
-      } catch (error) {
-        console.error("Failed to fetch user profile:", error);
-        toast({
-          variant: "destructive",
-          title: "Failed to load profile",
-          description: "Please try refreshing the page.",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUserProfile();
-  }, [form]);
-
   async function onSubmit(data: ProfileFormValues) {
     setIsLoading(true);
+    const prevProfile = { ...userProfile };
     try {
+      // Optimistically update the atom
+      updateUserProfile({
+        displayName: data.displayName,
+        bio: data.bio,
+        urls: data.urls,
+      });
       // Only send necessary data to server action
       const profileData: ProfileUpdateData = {
         displayName: data.displayName,
         bio: data.bio,
         urls: data.urls,
       };
-
       const result = await updateProfileAction(profileData);
-
       if (result.success) {
         toast({
           title: "Profile updated",
           description: "Your profile has been updated successfully.",
         });
       } else {
+        // Revert atom if server update fails
+        updateUserProfile(prevProfile);
         throw new Error(result.error || "Failed to update profile");
       }
     } catch (error) {
@@ -144,13 +121,7 @@ export default function ProfileForm() {
 
   return (
     <Form {...form}>
-      <form
-        action={async (formData) => {
-          // This triggers the React Hook Form submission handler
-          await form.handleSubmit(onSubmit)();
-        }}
-        className="space-y-8"
-      >
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
           name="displayName"

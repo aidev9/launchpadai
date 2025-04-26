@@ -218,7 +218,7 @@ export default function RootLayout({
 
           <AnimatedCode />
           <span className="text-sm text-muted-foreground">
-            Loading the lauch sequence...
+            Loading lauch sequences...
           </span>
         </div>
       </div>

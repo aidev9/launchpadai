@@ -38,6 +38,8 @@ import {
   getAccountAction,
   updateAccountAction,
 } from "./actions";
+import { useAtom } from "jotai";
+import { accountAtom, updateAccountAtom, setAccountAtom } from "@/lib/store/user-store";
 
 const languages = [
   { label: "English", value: "en" },
@@ -76,57 +78,27 @@ const defaultValues: Partial<AccountFormValues> = {
 };
 
 export function AccountForm() {
+  const [account] = useAtom(accountAtom);
+  const [, updateAccount] = useAtom(updateAccountAtom);
+  const [, setAccount] = useAtom(setAccountAtom);
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
-    defaultValues,
+    defaultValues: {
+      name: account?.name || "",
+      timezone: account?.timezone || "",
+      language: account?.language || undefined,
+      dob: account?.dob,
+    },
   });
-
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch account data when the component mounts
-  useEffect(() => {
-    const fetchAccountData = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getAccountAction();
-
-        if (response.success && response.account) {
-          // Set form values from the response
-          form.reset({
-            name: response.account.name,
-            timezone: response.account.timezone,
-            language: response.account.language || undefined,
-            dob: response.account.dob,
-          });
-        } else {
-          toast({
-            title: "Error loading account data",
-            description:
-              response.error || "Failed to load your account information",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching account data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load your account information",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchAccountData();
-  }, [form]);
-
-  // Handle form submission
   async function onSubmit(data: AccountFormValues) {
     try {
       setIsSubmitting(true);
-
+      const prevAccount = { ...account };
+      // Optimistically update atom
+      updateAccount(data);
       // Submit the form data to the server action
       const response = await updateAccountAction(data as AccountUpdateData);
 
@@ -136,6 +108,7 @@ export function AccountForm() {
           description: "Your account settings have been updated",
         });
       } else {
+        if (prevAccount) updateAccount(prevAccount);
         toast({
           title: "Error",
           description: response.error || "Failed to update account settings",
@@ -143,6 +116,7 @@ export function AccountForm() {
         });
       }
     } catch (error) {
+      if (account) updateAccount(account);
       console.error("Error updating account:", error);
       toast({
         title: "Error",
@@ -153,6 +127,22 @@ export function AccountForm() {
       setIsSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    if (!account) {
+      getAccountAction().then((result) => {
+        if (result.success && result.account) {
+          setAccount(result.account);
+          form.reset({
+            name: result.account.name || "",
+            timezone: result.account.timezone || "",
+            language: result.account.language || undefined,
+            dob: result.account.dob,
+          });
+        }
+      });
+    }
+  }, [account, setAccount, form]);
 
   return (
     <Form {...form}>

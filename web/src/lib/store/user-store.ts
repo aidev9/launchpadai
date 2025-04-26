@@ -17,6 +17,8 @@ export interface UserProfile {
   hasCompletedOnboarding?: boolean;
   lastLogin?: string;
   completedQuests?: string[];
+  bio?: string;
+  urls?: { value: string }[];
   // Add other fields as needed based on your app
 }
 
@@ -54,4 +56,31 @@ export const updateUserProfileAtom = atom(
 // Atom to clear user profile (for logout)
 export const clearUserProfileAtom = atom(null, (_, set) => {
   set(userProfileAtom, null);
+});
+
+// Account settings atom and update atom
+export interface AccountSettings {
+  name: string;
+  timezone: string;
+  language?: string;
+  dob?: Date;
+}
+
+export const accountAtom = atomWithStorage<AccountSettings | null>(
+  "accountSettings",
+  null
+);
+
+export const updateAccountAtom = atom(
+  null,
+  (get, set, updates: Partial<AccountSettings>) => {
+    const current = get(accountAtom);
+    if (current) {
+      set(accountAtom, { ...current, ...updates });
+    }
+  }
+);
+
+export const setAccountAtom = atom(null, (_, set, account: AccountSettings | null) => {
+  set(accountAtom, account);
 });
