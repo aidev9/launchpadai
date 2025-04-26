@@ -80,8 +80,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get the existing user data first to preserve important fields
+    const userRef = adminDb.collection("users").doc(userId);
+    const userSnapshot = await userRef.get();
+    const userExists = userSnapshot.exists;
+    const existingUserData = userExists ? userSnapshot.data() || {} : {};
+
     // Use userData if provided directly, helpful during social sign-in
     const userData = requestData.userData || {};
+
+    // Only set default values if the user doesn't exist yet
+    if (!userExists) {
+      // Add userType and subscription if not already set
+      if (!userData.userType) {
+        userData.userType = "user"; // Default user type
+      }
+
+      if (!userData.subscription) {
+        userData.subscription = "free"; // Default subscription
+      }
+    }
 
     // Only proceed if we're in production or explicitly requested
     // This helps prevent Firestore errors in development
@@ -93,55 +111,45 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check if user already exists in Firestore
-    const userRef = adminDb.collection("users").doc(userId);
-    const userDoc = await userRef.get();
-    const userExists = userDoc.exists;
-
-    try {
-      // If userData is provided, merge it with the data from Auth
-      if (Object.keys(userData).length > 0) {
-        await userRef.set(
-          {
-            ...userData,
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: true }
-        );
-        console.log("User data directly updated:", userId);
-
-        return NextResponse.json({
-          success: true,
-          message: userExists
-            ? "User record updated with provided data"
-            : "User record created with provided data",
-          existed: userExists,
-        });
-      } else {
-        // Otherwise use the standard sync function
-        const result = await syncUserWithFirestore(userId);
-        return NextResponse.json({
-          success: true,
-          message: "User record synced with Auth data",
-          existed: userExists,
-          result,
-        });
-      }
-    } catch (firestoreError) {
-      // Return success but note the error
-      console.error("Firestore error:", firestoreError);
+    // If user exists and we're not forcing an update, return success
+    if (userExists && !requestData.force) {
       return NextResponse.json({
         success: true,
-        message: "User authenticated but Firestore record creation failed",
-        error: "Firestore operation failed",
+        message: "User record already exists",
+        existed: true,
       });
     }
+
+    // Create or update the user record in Firestore
+    const newUserData: Record<string, any> = {
+      // Start with the existing data to preserve fields like userType
+      ...existingUserData,
+      // Add new data from request
+      ...userData,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (!userExists) {
+      // Add creation timestamp for new users
+      newUserData.createdAt = new Date().toISOString();
+    }
+
+    // Write to Firestore
+    await userRef.set(newUserData, { merge: true });
+
+    return NextResponse.json({
+      success: true,
+      message: userExists
+        ? "User record updated successfully"
+        : "User record created successfully",
+      existed: userExists,
+    });
   } catch (error) {
     console.error("Error ensuring user record:", error);
     return NextResponse.json(
       {
         success: false,
-        error: "Internal server error",
+        error: error instanceof Error ? error.message : "Unknown server error",
       },
       { status: 500 }
     );

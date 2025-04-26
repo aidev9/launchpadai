@@ -7,6 +7,7 @@ import {
   LogOut,
   Sparkles,
   Compass,
+  ShieldCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -27,11 +28,15 @@ import {
 import { User } from "firebase/auth";
 import { SignOutHelper } from "@/lib/firebase/client";
 import { useRouter } from "next/navigation";
+import { useAtom } from "jotai";
+import { isAdminAtom, userProfileAtom } from "@/lib/store/user-store";
 
 export function NavUser({ user }: { user: User | null }) {
   const { isMobile } = useSidebar();
   const router = useRouter();
   const signOutAndClearProfile = SignOutHelper();
+  const [isAdmin] = useAtom(isAdminAtom);
+  const [userProfile] = useAtom(userProfileAtom);
 
   function getInitials(displayName: string | null): import("react").ReactNode {
     // If displayName is null or empty, return a fallback
@@ -104,11 +109,25 @@ export function NavUser({ user }: { user: User | null }) {
                   Start Here
                 </Link>
               </DropdownMenuItem>
+
+              {/* Admin link - only shown to admin users */}
+              {isAdmin && (
+                <DropdownMenuItem asChild>
+                  <Link href="/admin">
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Admin Portal
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Upgrade to Pro
-              </DropdownMenuItem>
+              {userProfile?.subscription !== "pro" &&
+                userProfile?.subscription !== "enterprise" && (
+                  <DropdownMenuItem>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Upgrade to Pro
+                  </DropdownMenuItem>
+                )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>

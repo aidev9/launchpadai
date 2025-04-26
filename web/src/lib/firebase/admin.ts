@@ -14,10 +14,11 @@ function getFirebaseAdminApp() {
     !process.env.FIREBASE_PROJECT_ID ||
     !process.env.FIREBASE_CLIENT_EMAIL ||
     !process.env.FIREBASE_PRIVATE_KEY ||
-    !process.env.FIRESTORE_DATABASE_NAME
+    !process.env.FIRESTORE_DATABASE_NAME ||
+    !process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
   ) {
     throw new Error(
-      "Firebase admin credentials are not configured properly. Please set the FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY environment variables."
+      "Firebase admin credentials are not configured properly. Please set the FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIRESTORE_DATABASE_NAME, and NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variables."
     );
   }
 
@@ -29,6 +30,7 @@ function getFirebaseAdminApp() {
       privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
     }),
     databaseURL: `https://${process.env.FIRESTORE_DATABASE_NAME}.firebaseio.com/`,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });
 }
 

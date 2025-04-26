@@ -25,6 +25,7 @@ export type NavItem = NavLink | NavCollapsible;
 export interface NavGroup {
   title: string;
   items: NavItem[];
+  adminOnly?: boolean;
 }
 
 export type LinkProps = Omit<NextLinkProps, "href"> & {

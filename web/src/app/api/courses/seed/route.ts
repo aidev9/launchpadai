@@ -1,22 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { addSampleCourses } from "@/lib/firebase/courses";
 
-export async function POST(_request: NextRequest) {
+export async function POST() {
   try {
-    // Add sample courses to Firestore
     const result = await addSampleCourses();
 
     if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 }
-      );
+      throw new Error(result.error || "Failed to seed courses");
     }
 
-    // Return success
     return NextResponse.json({
       success: true,
-      message: result.message,
+      message: result.message || "Sample courses added successfully",
     });
   } catch (error) {
     console.error("Error seeding courses:", error);

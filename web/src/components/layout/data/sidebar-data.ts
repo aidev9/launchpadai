@@ -23,6 +23,10 @@ import {
   IconHome2,
   IconMap,
   IconBook,
+  IconDashboard,
+  IconUserShield,
+  IconSchool,
+  IconReportAnalytics,
 } from "@tabler/icons-react";
 import { AudioWaveform, Command, GalleryVerticalEnd } from "lucide-react";
 import { type SidebarData } from "../types";
@@ -117,6 +121,33 @@ export const sidebarData: SidebarData = {
           title: "Academy",
           url: "/academy",
           icon: IconBook,
+        },
+      ],
+    },
+    // Admin section - only shown to admin users
+    {
+      title: "Admin",
+      adminOnly: true,
+      items: [
+        {
+          title: "Dashboard",
+          url: "/admin",
+          icon: IconDashboard,
+        },
+        {
+          title: "Users Management",
+          url: "/admin/users",
+          icon: IconUserShield,
+        },
+        {
+          title: "Courses",
+          url: "/admin/courses",
+          icon: IconSchool,
+        },
+        {
+          title: "Analytics",
+          url: "/admin/analytics",
+          icon: IconReportAnalytics,
         },
       ],
     },

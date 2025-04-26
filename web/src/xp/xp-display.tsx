@@ -3,11 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
-import {} from // Tooltip,
-// TooltipContent,
-// TooltipProvider,
-// TooltipTrigger,
-"@/components/ui/tooltip";
 import { useAtom } from "jotai";
 import { userProfileAtom } from "@/lib/store/user-store";
 

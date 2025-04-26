@@ -23,27 +23,34 @@ export async function syncUserWithFirestore(userId: string) {
       JSON.stringify(existingData)
     );
 
-    // Prepare user data for Firestore, preserving existing XP and level
+    // Prepare user data for Firestore, preserving existing XP, level, and especially userType
     const userData = {
-      // Fields from Auth
+      // IMPORTANT: Start with existing data to preserve userType, subscription, etc.
+      ...existingData,
+      // Fields from Auth - these will overwrite existing data with the same keys
       uid: user.uid,
       email: user.email || "",
       name: user.displayName || "",
       phoneNumber: user.phoneNumber || "",
       photoURL: user.photoURL || "",
+      emailVerified: user.emailVerified,
+      providerData: user.providerData,
       createdAt: user.metadata.creationTime || new Date().toISOString(),
       lastLoginAt: user.metadata.lastSignInTime || new Date().toISOString(),
       // Include profile data from custom claims if available
       ...(user.customClaims?.profile || {}),
-      // Preserve existing XP and level, defaulting if not present
-      xp: existingData?.xp ?? 0, // Preserve existing XP or default to 0
-      level: existingData?.level ?? 1, // Preserve existing level or default to 1
       // Always update the 'updatedAt' timestamp
       updatedAt: new Date().toISOString(),
     };
 
-    // Use set with merge: true to update or create the document
-    // merge: true ensures existing fields not specified in userData are kept
+    console.log(
+      `[syncUserWithFirestore] Auth user email: ${user.email || "(not set)"}`
+    );
+    console.log(
+      `[syncUserWithFirestore] Auth user displayName: ${
+        user.displayName || "(not set)"
+      }`
+    );
     console.log(
       `[syncUserWithFirestore] Auth user photoURL: ${user.photoURL || "(not set)"}`
     );
@@ -76,8 +83,7 @@ export async function checkEmailExists(email: string): Promise<boolean> {
     const snapshot = await usersRef.where("email", "==", email).limit(1).get();
     return !snapshot.empty;
   } catch (error) {
-    console.error("Error checking email existence:", error);
-    // Consider how to handle errors - returning false might mask issues
+    console.error("Error checking if email exists:", error);
     return false;
   }
 }

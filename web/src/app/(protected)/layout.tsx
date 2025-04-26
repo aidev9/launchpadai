@@ -16,6 +16,7 @@ import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { motion } from "framer-motion";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 
 const topNav = [
   {
@@ -106,6 +107,7 @@ export default function RootLayout({
   const [authError, setAuthError] = useState<string | null>(null);
   const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
   const setUserProfile = useSetAtom(setUserProfileAtom);
+  const [redirectedToAdmin, setRedirectedToAdmin] = useState(false);
 
   useEffect(() => {
     // Initialize auth state
@@ -137,6 +139,22 @@ export default function RootLayout({
           if (profileResult.success && profileResult.profile) {
             // Set the user profile in the Jotai atom
             setUserProfile(profileResult.profile);
+
+            // Check if user is admin and redirect if needed
+            const isAdmin =
+              profileResult.profile.userType === "admin" ||
+              profileResult.profile.userType === "superadmin";
+
+            // Only redirect once to avoid infinite loops
+            if (
+              isAdmin &&
+              !redirectedToAdmin &&
+              !window.location.pathname.startsWith("/admin")
+            ) {
+              setRedirectedToAdmin(true);
+              router.push("/admin");
+              return;
+            }
           } else {
             setUserProfile(null); // Ensure atom is null if profile fetch fails
           }
@@ -191,7 +209,7 @@ export default function RootLayout({
     });
 
     return () => unsubscribe();
-  }, [router, setSelectedProductId, setUserProfile]);
+  }, [router, setSelectedProductId, setUserProfile, redirectedToAdmin]);
 
   if (isLoading) {
     return (
@@ -248,15 +266,22 @@ export default function RootLayout({
   return (
     <Providers>
       {/* <DebugAtoms /> */}
-      <Header>
-        <TopNav links={topNav} />
-        <div className="ml-auto flex items-center space-x-4">
-          <Search />
-          <ThemeSwitch />
-          <ProfileDropdown />
+      <div className="flex h-screen">
+        <AppSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header>
+            <TopNav links={topNav} />
+            <div className="ml-auto flex items-center space-x-4">
+              <Search />
+              <ThemeSwitch />
+              <ProfileDropdown />
+            </div>
+          </Header>
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
         </div>
-      </Header>
-      {children}
+      </div>
     </Providers>
   );
 }

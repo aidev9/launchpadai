@@ -4,8 +4,11 @@ import type { NextRequest } from "next/server";
 // Define authentication paths
 const authPaths = ["/auth/signin", "/auth/signup", "/auth/forgot-password"];
 
+// Define admin paths
+const adminPaths = ["/admin"];
+
 // This function can be marked `async` if using `await` inside
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Get the session cookie
@@ -22,6 +25,39 @@ export function middleware(request: NextRequest) {
   // If at root path and user is authenticated, redirect to home
   if (pathname === "/" && isAuthenticated) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Check if accessing admin routes
+  const isAdminPath = adminPaths.some((path) => pathname.startsWith(path));
+  if (isAdminPath) {
+    // If not authenticated at all, redirect to login
+    if (!isAuthenticated) {
+      return NextResponse.redirect(new URL("/auth/signin", request.url));
+    }
+
+    try {
+      // Call our auth verification API instead of using Firebase Admin directly in the middleware
+      const verifyResponse = await fetch(
+        new URL("/api/auth/verify-admin", request.url),
+        {
+          headers: {
+            Cookie: `session=${sessionCookie}`,
+          },
+        }
+      );
+
+      if (!verifyResponse.ok) {
+        // User is not an admin or verification failed
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
+
+      // If verification succeeds, allow access to admin routes
+      return NextResponse.next();
+    } catch (error) {
+      // If verification fails, redirect to login
+      console.error("Admin verification error:", error);
+      return NextResponse.redirect(new URL("/auth/signin", request.url));
+    }
   }
 
   // For all other cases, continue to the requested page

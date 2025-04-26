@@ -48,8 +48,7 @@ export default function FTUXPage() {
     photoURL?: string | null;
   } | null>(null);
   const router = useRouter();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { xp, error: xpError } = useXp();
+  const { xp, error: _xpError } = useXp();
   const [tasks, setTasks] = useState<
     Array<{ id: string; text: string; completed: boolean }>
   >([

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,12 +19,12 @@ import { setSelectedCourseAtom } from "@/lib/store/course-store";
 
 interface CourseCardsProps {
   heading?: string;
-  demoUrl?: string;
+  _demoUrl?: string;
 }
 
 const CourseCards = ({
   heading = "Featured Courses",
-  demoUrl = "https://www.shadcnblocks.com",
+  _demoUrl = "https://www.shadcnblocks.com",
 }: CourseCardsProps) => {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [canScrollPrev, setCanScrollPrev] = useState(false);
@@ -62,9 +63,27 @@ const CourseCards = ({
   };
 
   // Handle course click
-  const handleCourseClick = (course: any) => {
-    // Store the selected course in the global atom
-    setSelectedCourse(course);
+  const handleCourseClick = (course: {
+    id: string;
+    title: string;
+    imageUrl: string;
+    level: string;
+    summary: string;
+  }) => {
+    // Validate the level value
+    let validLevel: "beginner" | "intermediate" | "advanced" = "intermediate"; // default
+    const normalizedLevel = course.level.toLowerCase();
+    if (["beginner", "intermediate", "advanced"].includes(normalizedLevel)) {
+      validLevel = normalizedLevel as "beginner" | "intermediate" | "advanced";
+    }
+
+    // Store the selected course in the global atom with required properties
+    setSelectedCourse({
+      ...course,
+      level: validLevel, // Use the validated level
+      url: "", // Add empty url if not provided
+      tags: [], // Add empty tags array if not provided
+    });
     // Navigate to the course detail page
     router.push("/academy/course");
   };
@@ -140,9 +159,11 @@ const CourseCards = ({
                       <div className="flex aspect-[3/2] overflow-clip rounded-xl">
                         <div className="flex-1">
                           <div className="relative h-full w-full origin-bottom transition duration-300 group-hover:scale-105">
-                            <img
+                            <Image
                               src={course.imageUrl}
                               alt={course.title}
+                              width={500}
+                              height={300}
                               className="h-full w-full object-cover object-center"
                             />
                             <div className="absolute top-2 right-2">

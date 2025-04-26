@@ -11,6 +11,8 @@ export interface UserProfile {
   photoURL?: string | null;
   isEmailVerified?: boolean;
   createdAt?: string;
+  userType?: "user" | "admin" | "superadmin";
+  subscription?: "free" | "pro" | "enterprise";
   xp?: number;
   level?: number;
   hasAnsweredTimelineQuestion?: boolean;
@@ -30,6 +32,14 @@ export const userProfileAtom = atomWithStorage<UserProfile | null>(
 
 // Create a derived atom to check if user is authenticated
 export const isAuthenticatedAtom = atom((get) => !!get(userProfileAtom));
+
+// Create a derived atom to check if user is an admin
+export const isAdminAtom = atom((get) => {
+  const userProfile = get(userProfileAtom);
+  return (
+    userProfile?.userType === "admin" || userProfile?.userType === "superadmin"
+  );
+});
 
 // Create an atom to get the current user profile
 export const getCurrentUserProfileAtom = atom((get) => get(userProfileAtom));
@@ -81,6 +91,9 @@ export const updateAccountAtom = atom(
   }
 );
 
-export const setAccountAtom = atom(null, (_, set, account: AccountSettings | null) => {
-  set(accountAtom, account);
-});
+export const setAccountAtom = atom(
+  null,
+  (_, set, account: AccountSettings | null) => {
+    set(accountAtom, account);
+  }
+);

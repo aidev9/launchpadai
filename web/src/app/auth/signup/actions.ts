@@ -27,6 +27,8 @@ const signupSchema = z.object({
   provider: z
     .enum(["email", "google", "facebook", "twitter", "github"])
     .optional(),
+  userType: z.enum(["user", "admin", "superadmin"]).optional(),
+  subscription: z.enum(["free", "pro", "enterprise"]).optional(),
 });
 
 export type SignupFormData = z.infer<typeof signupSchema>;
@@ -46,6 +48,8 @@ export const signupAction = actionClient
         phone,
         photoURL,
         provider,
+        userType,
+        subscription,
       },
     }: {
       parsedInput: SignupFormData;
@@ -65,21 +69,27 @@ export const signupAction = actionClient
         // Create a Firestore document for the user
         try {
           console.log("[RSA] Creating user in Firestore", uid);
-          await adminDb.collection("users").doc(uid).set(
-            {
-              name,
-              email,
-              company,
-              role,
-              interest,
-              phone,
-              provider,
-              photoURL,
-              xp: 0, // Initialize XP field
-              createdAt: new Date().toISOString(),
-            },
-            { merge: true }
-          ); // Add merge option for safety
+          await adminDb
+            .collection("users")
+            .doc(uid)
+            .set(
+              {
+                name,
+                email,
+                company,
+                role,
+                interest,
+                phone,
+                provider,
+                photoURL,
+                // Set default user type and subscription if not provided
+                userType: userType || "user",
+                subscription: subscription || "free",
+                xp: 0, // Initialize XP field
+                createdAt: new Date().toISOString(),
+              },
+              { merge: true }
+            ); // Add merge option for safety
 
           // Award XP for signing up
           await awardXpPoints("signup", uid);
