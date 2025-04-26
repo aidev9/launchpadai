@@ -1,9 +1,17 @@
 {
     "servers": {
-      "Context7": {
+      // "Context7": {
+      //   "type": "stdio",
+      //   "command": "npx",
+      //   "args": ["-y", "@upstash/context7-mcp@latest"]
+      // },
+      "context7-copilot": {
         "type": "stdio",
         "command": "npx",
-        "args": ["-y", "@upstash/context7-mcp@latest"]
+        "args": [
+          "-y",
+          "@upstash/context7-mcp@latest"
+        ]
       }
     }
   }

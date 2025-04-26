@@ -35,7 +35,7 @@ export function XpDisplay({ className }: XpDisplayProps) {
 
     if (userProfile && !hasInitiallyLoaded) {
       // Initial load: Set displayXp directly, no animation needed yet
-      console.log(`Initial load: Setting displayXp to ${currentActualXp}`);
+
       setDisplayXp(currentActualXp);
       targetXpRef.current = currentActualXp;
       setHasInitiallyLoaded(true);

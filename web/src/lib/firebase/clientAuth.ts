@@ -167,8 +167,6 @@ async function ensureUserInFirestore(
   provider: "google" | "facebook" | "twitter" | "github"
 ) {
   try {
-    console.log(`Ensuring user record exists for ${user.uid}`);
-
     // Get the ID token from the authenticated user
     const idToken = await user.getIdToken();
 
@@ -195,7 +193,6 @@ async function ensureUserInFirestore(
 
     if (response.ok) {
       const result = await response.json();
-      console.log("User record ensured:", result);
 
       // If the user was just created (didn't previously exist), award XP points
       if (!result.existed) {
@@ -212,7 +209,7 @@ async function ensureUserInFirestore(
           });
 
           if (xpResponse.ok) {
-            console.log("Successfully awarded XP points for signup");
+            // Do nothing, XP points awarded successfully
           } else {
             console.warn("Failed to award XP points:", await xpResponse.text());
           }

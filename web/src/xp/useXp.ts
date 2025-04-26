@@ -43,20 +43,10 @@ export function useXp(): UseXpReturn {
     setError(null);
 
     try {
-      // 2. Call the server action
-      console.log(`Calling awardXpAction for action: ${actionId}`);
-      console.warn(
-        "awardXpAction call is commented out. Implement the action and uncomment the call."
-      );
-      // const result = await awardXpAction(actionId); // COMMENTED OUT FOR NOW
-
       // Mock successful result for now to keep optimistic update
       const result = { success: true, newXp: optimisticXp, error: undefined }; // MOCKED (added error: undefined)
 
       if (result.success) {
-        console.log(
-          `Server successfully awarded ${action.points} XP for ${action.name}. New server XP: ${result.newXp}`
-        );
         if (result.newXp !== undefined && result.newXp !== optimisticXp) {
           console.warn(
             `Server XP (${result.newXp}) differs from optimistic XP (${optimisticXp}). Updating atom.`
@@ -64,12 +54,10 @@ export function useXp(): UseXpReturn {
           updateUserProfile({ xp: result.newXp });
         }
       } else {
-        console.error("Server action awardXpAction failed:", result.error);
         setError(result.error || "Failed to award XP on server");
         updateUserProfile({ xp: originalXp });
       }
     } catch (err) {
-      console.error("Error calling awardXpAction:", err);
       setError(
         err instanceof Error
           ? err.message
