@@ -22,6 +22,7 @@ import {
   IconCube,
   IconHome2,
   IconMap,
+  IconBook,
 } from "@tabler/icons-react";
 import { AudioWaveform, Command, GalleryVerticalEnd } from "lucide-react";
 import { type SidebarData } from "../types";
@@ -111,6 +112,11 @@ export const sidebarData: SidebarData = {
           title: "Questions",
           url: "/qa",
           icon: IconHelpCircle,
+        },
+        {
+          title: "Academy",
+          url: "/academy",
+          icon: IconBook,
         },
       ],
     },
