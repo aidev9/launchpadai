@@ -10,18 +10,12 @@ import { useAtom, useSetAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { setUserProfileAtom } from "@/lib/store/user-store";
 import { fetchUserProfile } from "@/lib/firebase/actions/profile";
-import { useAtomsDebugValue } from "jotai-devtools/utils";
 import { Header } from "@/components/layout/header";
 import { TopNav } from "@/components/layout/top-nav";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { motion } from "framer-motion";
-
-const DebugAtoms = () => {
-  useAtomsDebugValue();
-  return null;
-};
 
 const topNav = [
   {
@@ -177,7 +171,17 @@ export default function RootLayout({
           }, 1500);
         }
       } else {
+        console.log("User is signed out");
+        // User is signed out, clear the selected product ID
         // Clear profile on sign out detection
+        // Call server action to delete the session cookie
+        await fetch("/api/auth/session", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        setSelectedProductId(null);
         setUserProfile(null);
         setIsLoading(false); // No user, not loading
         setAuthError(null); // Clear any previous auth errors

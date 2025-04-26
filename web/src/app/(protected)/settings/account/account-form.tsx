@@ -37,9 +37,25 @@ import {
   AccountUpdateData,
   getAccountAction,
   updateAccountAction,
+  resetPasswordAction,
+  deleteAccountAction,
 } from "./actions";
+import { useRouter } from "next/navigation";
+import { useRef } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useAtom } from "jotai";
-import { accountAtom, updateAccountAtom, setAccountAtom } from "@/lib/store/user-store";
+import {
+  accountAtom,
+  updateAccountAtom,
+  setAccountAtom,
+} from "@/lib/store/user-store";
+import { SignOutHelper } from "@/lib/firebase/client";
 
 const languages = [
   { label: "English", value: "en" },
@@ -92,6 +108,13 @@ export function AccountForm() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteDialogRef = useRef(null);
+  // Call the hook at component level, not inside the event handler
+  const signOutAndClearProfile = SignOutHelper();
 
   async function onSubmit(data: AccountFormValues) {
     try {
@@ -125,6 +148,64 @@ export function AccountForm() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    setIsResetting(true);
+    try {
+      const response = await resetPasswordAction();
+      if (response.success) {
+        toast({
+          title: "Password Reset Email Sent",
+          description: "Check your email for a password reset link.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: response.error || "Failed to send password reset email.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setIsDeleting(true);
+    try {
+      const response = await deleteAccountAction();
+      if (response && response.success) {
+        toast({
+          title: "Account Deleted",
+          description: "Your account has been deleted.",
+        });
+        // Sign out the user from Firebase and clear session, then redirect
+        await signOutAndClearProfile(router);
+        return;
+      } else {
+        toast({
+          title: "Error",
+          description: response?.error || "Failed to delete account.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   }
 
@@ -291,8 +372,71 @@ export function AccountForm() {
         <Button type="submit" disabled={isSubmitting || isLoading}>
           {isSubmitting ? "Updating..." : "Update account"}
         </Button>
+
+        {/* Reset Password Section */}
+        <div className="border-t pt-6 mt-6">
+          <h3 className="font-semibold mb-2">Reset Password</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Send a password reset email to your account email address.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleResetPassword}
+            disabled={isResetting}
+          >
+            {isResetting ? "Sending..." : "Send Password Reset Email"}
+          </Button>
+        </div>
+        {/* Delete Account Section */}
+        <div className="border-t pt-6 mt-6">
+          <h3 className="font-semibold mb-2 text-destructive">Danger Zone</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            This action is{" "}
+            <span className="font-bold text-destructive">irreversible</span>.
+            Your account will be deleted and cannot be recovered.
+          </p>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={isDeleting}
+          >
+            Delete Account
+          </Button>
+        </div>
         <div className="h-4" />
       </form>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent ref={deleteDialogRef}>
+          <DialogHeader>
+            <DialogTitle>Delete Account</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <p>
+              Are you sure you want to delete your account? This action cannot
+              be undone.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Form>
   );
 }
