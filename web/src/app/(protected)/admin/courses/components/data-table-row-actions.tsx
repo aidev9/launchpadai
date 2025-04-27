@@ -3,7 +3,7 @@
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Row } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { Course } from "@/lib/firebase/courses";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ import {
   editCourseModalOpenAtom,
   selectedCourseAtom,
   courseFormDataAtom,
+  courseActionAtom,
 } from "./courses-store";
 import { Eye, PenSquare, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -42,6 +43,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const setSelectedCourse = useSetAtom(selectedCourseAtom);
   const setEditModalOpen = useSetAtom(editCourseModalOpenAtom);
   const setCourseFormData = useSetAtom(courseFormDataAtom);
+  const [, setCourseAction] = useAtom(courseActionAtom);
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -53,7 +55,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     router.push(`/admin/courses/course`);
   };
 
-  const handleEdit = () => {
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click event
     setSelectedCourse(course);
     setCourseFormData(course);
     setEditModalOpen(true);
@@ -75,8 +78,15 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           title: "Course deleted",
           description: `${course.title} has been deleted successfully.`,
         });
+
         // Close the dialog
         setDeleteDialogOpen(false);
+
+        // Dispatch a targeted delete action instead of a full refresh
+        setCourseAction({
+          type: "DELETE",
+          courseId: course.id,
+        });
       } else {
         throw new Error(result.error || "Unknown error");
       }

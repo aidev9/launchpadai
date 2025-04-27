@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   CircleDashed,
   MessageSquare,
-  ArrowLeft,
   PlayCircle,
   FileText,
   Cog,
@@ -30,6 +29,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 import { selectedCourseAtom } from "@/lib/store/course-store";
 
@@ -162,9 +162,19 @@ export default function CourseDetailPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Add breadcrumbs */}
+      <div className="container mx-auto px-4 pt-4">
+        <Breadcrumbs
+          items={[
+            { label: "Academy", href: "/academy" },
+            { label: selectedCourse.title, href: "", isCurrentPage: true },
+          ]}
+        />
+      </div>
+
       {/* Hero Section with Course Image Background */}
       <div
-        className="relative w-full h-[240px] bg-cover bg-center flex items-center"
+        className="relative w-full h-[240px] bg-cover bg-center flex items-center mt-4"
         style={{
           backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${selectedCourse.imageUrl})`,
           backgroundSize: "cover",
@@ -172,14 +182,6 @@ export default function CourseDetailPage() {
         }}
       >
         <div className="container mx-auto px-4 pt-5 pb-8 z-10">
-          <div
-            className="group inline-flex items-center cursor-pointer mb-6"
-            onClick={() => router.push("/academy")}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2 text-white transition-transform group-hover:translate-x-[-3px]" />
-            <span className="text-white text-sm">Back to Courses</span>
-          </div>
-
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <Badge className={getBadgeColor(selectedCourse.level)}>
               {selectedCourse.level.charAt(0).toUpperCase() +

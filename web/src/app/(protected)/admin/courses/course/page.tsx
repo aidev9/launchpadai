@@ -37,6 +37,7 @@ import {
   courseFormDataAtom,
 } from "../components/courses-store";
 import { CourseForm } from "../components/course-form";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 // Level badge colors
 const levelColors = new Map([
@@ -114,18 +115,18 @@ export default function CourseDetailPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header with back button and actions */}
+      {/* Breadcrumbs */}
+      <Breadcrumbs
+        items={[
+          { label: "Admin", href: "/admin" },
+          { label: "Courses", href: "/admin/courses" },
+          { label: course.title, href: "", isCurrentPage: true },
+        ]}
+      />
+
+      {/* Header with course title and actions */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => router.push("/admin/courses")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">{course.title}</h1>
-        </div>
+        <h1 className="text-2xl font-bold">{course.title}</h1>
 
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleEdit}>

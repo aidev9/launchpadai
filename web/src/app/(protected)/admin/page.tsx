@@ -10,6 +10,7 @@ import {
 import { Users, BookOpen, BarChart, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 export default function AdminDashboard() {
   const [isLoading] = useState(false);
@@ -47,6 +48,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumbs */}
+      <Breadcrumbs
+        items={[{ label: "Admin", href: "", isCurrentPage: true }]}
+      />
+
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
 

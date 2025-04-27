@@ -1,6 +1,5 @@
 import HeroSection from "./components/HeroSection";
 import CourseCards from "./components/CourseCards";
-import SeedCoursesButton from "./components/SeedCoursesButton";
 
 const badge = "✨ Start Learning Today";
 const heading = "Sharpen Your Skills With Professional AI Courses";
@@ -32,13 +31,6 @@ export default function AcademyPage() {
         image={image}
       />
       <CourseCards />
-
-      <div className="container py-8">
-        <div className="border-t pt-8">
-          <h3 className="mb-4 text-lg font-medium">Admin Controls</h3>
-          <SeedCoursesButton />
-        </div>
-      </div>
     </div>
   );
 }

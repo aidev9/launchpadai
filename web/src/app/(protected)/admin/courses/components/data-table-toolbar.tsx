@@ -14,6 +14,7 @@ import {
 import { Course } from "@/lib/firebase/courses";
 import { DataTableFacetedFilter } from "./data-table-faceted-filter";
 import { DataTableViewOptions } from "./data-table-view-options";
+import { useEffect, useState } from "react";
 
 // Course levels
 const courseLevels = [
@@ -32,23 +33,60 @@ export function DataTableToolbar<TData>({
   const [searchFilter, setSearchFilter] = useAtom(searchFilterAtom);
   const [levelFilter, setLevelFilter] = useAtom(levelFilterAtom);
   const [tagsFilter, setTagsFilter] = useAtom(tagsFilterAtom);
+  const [allTagOptions, setAllTagOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
 
-  // Get unique tags from all courses
-  const uniqueTags = new Set<string>();
-  table.getFilteredRowModel().rows.forEach((row) => {
-    const tags = (row.original as unknown as Course).tags;
-    if (tags && Array.isArray(tags)) {
-      tags.forEach((tag) => uniqueTags.add(tag));
+  // Fetch all unique tags from the API when the component mounts
+  useEffect(() => {
+    async function fetchAllTags() {
+      setIsLoadingTags(true);
+      try {
+        const response = await fetch("/api/courses/tags");
+        if (!response.ok) {
+          throw new Error("Failed to fetch tags");
+        }
+        const data = await response.json();
+
+        // Convert to options format for the filter component
+        const options = data.tags.map((tag: string) => ({
+          label: tag,
+          value: tag.toLowerCase(), // Store lowercase value for case-insensitive filtering
+        }));
+
+        setAllTagOptions(options);
+      } catch (error) {
+        console.error("Error fetching tags:", error);
+        // Fallback to the old method if API fails
+        fallbackToTableTags();
+      } finally {
+        setIsLoadingTags(false);
+      }
     }
-  });
 
-  // Convert to options format for the filter component
-  const tagOptions = Array.from(uniqueTags)
-    .sort()
-    .map((tag) => ({
-      label: tag,
-      value: tag,
-    }));
+    fetchAllTags();
+  }, []);
+
+  // Fallback to getting tags from the table if API fails
+  const fallbackToTableTags = () => {
+    const uniqueTags = new Set<string>();
+    table.getFilteredRowModel().rows.forEach((row) => {
+      const tags = (row.original as unknown as Course).tags;
+      if (tags && Array.isArray(tags)) {
+        tags.forEach((tag) => uniqueTags.add(tag));
+      }
+    });
+
+    const tagOptions = Array.from(uniqueTags)
+      .sort()
+      .map((tag) => ({
+        label: tag,
+        value: tag.toLowerCase(), // Store lowercase value for case-insensitive filtering
+      }));
+
+    setAllTagOptions(tagOptions);
+  };
 
   // Check if any filters are active
   const isFiltered =
@@ -75,10 +113,10 @@ export function DataTableToolbar<TData>({
             onChange={setLevelFilter}
           />
 
-          {tagOptions.length > 0 && (
+          {allTagOptions.length > 0 && (
             <DataTableFacetedFilter
               title="Tags"
-              options={tagOptions}
+              options={allTagOptions}
               value={tagsFilter}
               onChange={setTagsFilter}
             />

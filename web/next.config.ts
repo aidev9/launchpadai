@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   images: {
     remotePatterns: [
       {
@@ -43,6 +42,11 @@ const nextConfig: NextConfig = {
     ],
   },
   transpilePackages: ["jotai-devtools"],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "16mb"
+    }
+  }
 };
 
 export default nextConfig;

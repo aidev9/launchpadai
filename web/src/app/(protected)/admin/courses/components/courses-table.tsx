@@ -170,13 +170,6 @@ export function CoursesTable({ columns, data }: CoursesTableProps) {
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className="group/row cursor-pointer transition-colors hover:bg-muted/50"
-                  onClick={() => {
-                    const course = row.original;
-                    // Store the selected course in the global atom
-                    setSelectedCourse(course);
-                    // Navigate to the course detail page
-                    router.push(`/admin/courses/course`);
-                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell

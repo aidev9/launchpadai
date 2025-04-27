@@ -28,7 +28,10 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { NewChat } from "./components/new-chat";
 import { type ChatUser, type Convo } from "./data/chat-types";
 // Fake Data
-import { conversations } from "./data/convo.json";
+import convoData from "./data/convo.json";
+
+// Extract conversations from the JSON structure
+const { conversations } = convoData;
 
 export default function Chats() {
   const [search, setSearch] = useState("");

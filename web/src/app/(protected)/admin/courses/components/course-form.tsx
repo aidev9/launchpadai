@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import Image from "next/image";
@@ -42,6 +42,7 @@ import {
   editCourseModalOpenAtom,
   selectedCourseAtom,
 } from "./courses-store";
+import { courseActionAtom } from "./courses-store";
 
 // Schema for course validation
 const courseSchema = z.object({
@@ -55,7 +56,6 @@ const courseSchema = z.object({
   imageUrl: z.string().url("Please provide a valid URL or upload an image"),
   url: z.string().optional(),
   tags: z.array(z.string()),
-  students: z.coerce.number().optional(),
 });
 
 type CourseFormValues = z.infer<typeof courseSchema>;
@@ -69,6 +69,7 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
   const [addModalOpen, setAddModalOpen] = useAtom(addCourseModalOpenAtom);
   const [editModalOpen, setEditModalOpen] = useAtom(editCourseModalOpenAtom);
   const [selectedCourse, setSelectedCourse] = useAtom(selectedCourseAtom);
+  const [, setCourseAction] = useAtom(courseActionAtom);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagInput, setTagInput] = useState("");
@@ -86,79 +87,41 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
   // Initialize form with default values or selected course data
   const form = useForm<CourseFormValues>({
     resolver: zodResolver(courseSchema),
-    defaultValues:
-      isEdit && selectedCourse
-        ? {
-            title: selectedCourse.title,
-            summary: selectedCourse.summary,
-            description: selectedCourse.description || "",
-            level: selectedCourse.level,
-            imageUrl: selectedCourse.imageUrl,
-            url: selectedCourse.url || "",
-            tags: selectedCourse.tags || [],
-          }
-        : {
-            title: "",
-            summary: "",
-            description: "",
-            level: "beginner",
-            imageUrl: "",
-            url: "",
-            tags: [],
-            students: 0,
-          },
+    defaultValues: {
+      title: "",
+      summary: "",
+      description: "",
+      level: "beginner",
+      imageUrl: "",
+      url: "",
+      tags: [],
+    },
   });
+
+  // Reset form when selectedCourse changes
+  useEffect(() => {
+    if (isEdit && selectedCourse && isOpen) {
+      form.reset({
+        title: selectedCourse.title,
+        summary: selectedCourse.summary,
+        description: selectedCourse.description || "",
+        level: selectedCourse.level,
+        imageUrl: selectedCourse.imageUrl,
+        url: selectedCourse.url || "",
+        tags: selectedCourse.tags || [],
+      });
+    }
+  }, [isEdit, selectedCourse, isOpen, form]);
 
   // Handle form submission
   async function onSubmit(data: CourseFormValues) {
     try {
       setIsSubmitting(true);
 
-      let imageUrl = data.imageUrl;
-
-      // If a file is uploaded, first upload it to Firebase storage
-      if (uploadedImage) {
-        try {
-          setIsUploading(true);
-
-          // Create a temporary ID for new courses to use with the upload API
-          const tempId =
-            isEdit && selectedCourse ? selectedCourse.id : `temp-${Date.now()}`;
-
-          // Create form data for the upload
-          const formData = new FormData();
-          formData.append("image", uploadedImage);
-
-          // Upload the image using the API
-          const uploadResponse = await fetch(`/api/courses/${tempId}/image`, {
-            method: "POST",
-            body: formData,
-          });
-
-          const uploadResult = await uploadResponse.json();
-
-          if (!uploadResponse.ok || !uploadResult.success) {
-            throw new Error(uploadResult.error || "Failed to upload image");
-          }
-
-          // Update the image URL and filename
-          imageUrl = uploadResult.url;
-          setImageFileName(uploadResult.fileName);
-        } catch (error) {
-          toast({
-            title: "Image Upload Failed",
-            description:
-              error instanceof Error ? error.message : "Failed to upload image",
-            variant: "destructive",
-          });
-          // Don't proceed if image upload fails
-          setIsSubmitting(false);
-          setIsUploading(false);
-          return;
-        } finally {
-          setIsUploading(false);
-        }
-      }
+      // Use the uploaded image if available, otherwise use the existing/provided URL
+      const imageUrl = uploadedImage
+        ? await uploadImage(uploadedImage)
+        : data.imageUrl;
 
       if (isEdit && selectedCourse) {
         // Update existing course
@@ -168,7 +131,7 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
         });
 
         if (result.success) {
-          // Update the selectedCourse atom with the updated course data
+          // Update the selected course atom with the updated course data
           const updatedCourse: Course = {
             ...selectedCourse,
             ...data,
@@ -176,7 +139,7 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
             updatedAt: new Date().toISOString(),
           };
 
-          // Update the selected course atom to reflect changes without a DB call
+          // Update the selected course atom to reflect changes
           setSelectedCourse(updatedCourse);
 
           toast({
@@ -184,8 +147,14 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
             description: "Course has been updated successfully",
           });
 
-          // Close the modal
+          // Close the modal first
           setIsOpen(false);
+
+          // Dispatch a targeted update action instead of a full refresh
+          setCourseAction({
+            type: "UPDATE",
+            course: updatedCourse,
+          });
         } else {
           throw new Error(result.error || "Failed to update course");
         }
@@ -198,12 +167,29 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
         });
 
         if (result.success) {
+          const newCourse: Course = {
+            id: result.id!,
+            ...data,
+            imageUrl,
+            url: data.url ?? "",
+            tags: data.tags,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
           toast({
             title: "Course created",
             description: "Course has been created successfully",
           });
+
+          // Close the modal first
           setIsOpen(false);
-          router.refresh();
+
+          // Dispatch a targeted add action instead of a full refresh
+          setCourseAction({
+            type: "ADD",
+            course: newCourse,
+          });
         } else {
           throw new Error(result.error || "Failed to create course");
         }
@@ -217,6 +203,11 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
       });
     } finally {
       setIsSubmitting(false);
+      // Reset form and image states after everything is done
+      form.reset();
+      setUploadedImage(null);
+      setImagePreview(null);
+      setImageFileName(null);
     }
   }
 
@@ -306,14 +297,44 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
 
   // Close the dialog and reset form
   function handleClose() {
-    setIsOpen(false);
-    if (isEdit) {
-      setSelectedCourse(null);
-    }
+    // First reset the form data
+    form.reset();
+    // Clear uploaded image states
     setUploadedImage(null);
     setImagePreview(null);
     setImageFileName(null);
-    form.reset();
+    // Finally close the modal after a small delay to ensure smooth transition
+    setTimeout(() => {
+      setIsOpen(false);
+    }, 100);
+  }
+
+  // Helper function to upload image
+  async function uploadImage(file: File): Promise<string> {
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      // For new courses, we'll use a temporary ID that will be replaced
+      const tempId = "temp-" + Date.now();
+      formData.append("courseId", selectedCourse?.id || tempId);
+
+      const response = await fetch("/api/courses/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to upload image");
+      }
+
+      return result.url;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      throw error;
+    }
   }
 
   return (
@@ -413,29 +434,6 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
                   <FormLabel>Course URL Path</FormLabel>
                   <FormControl>
                     <Input placeholder="/academy/courses/[path]" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Students */}
-            <FormField
-              control={form.control}
-              name="students"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Number of Students</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(parseInt(e.target.value) || 0)
-                      }
-                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

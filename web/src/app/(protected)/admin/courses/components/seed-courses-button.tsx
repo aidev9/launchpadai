@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAtom } from "jotai";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { courseActionAtom, initialLoadAtom } from "./courses-store";
 
 export function SeedCoursesButton() {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const [, setCourseAction] = useAtom(courseActionAtom);
+  const [, setInitialLoad] = useAtom(initialLoadAtom);
   const { toast } = useToast();
 
   const handleSeedCourses = async () => {
@@ -29,8 +31,9 @@ export function SeedCoursesButton() {
         description: data.message || "Sample courses have been added",
       });
 
-      // Refresh the page to show the new courses
-      router.refresh();
+      // For bulk operations like seeding, simply trigger a full reload
+      // This is more efficient than adding multiple individual courses
+      setInitialLoad((prev) => prev + 1);
     } catch (error) {
       toast({
         title: "Error",

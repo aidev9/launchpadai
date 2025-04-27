@@ -27,3 +27,17 @@ export const selectedCourseAtom = atom<Course | null>(null);
 
 // Course form atom - for storing form data during edit/create
 export const courseFormDataAtom = atom<Partial<Course>>({});
+
+// Define action types for course operations
+export type CourseAction =
+  | { type: "ADD"; course: Course }
+  | { type: "UPDATE"; course: Course }
+  | { type: "DELETE"; courseId: string }
+  | { type: "DELETE_MANY"; courseIds: string[] }
+  | { type: "LOAD"; courses: Course[] };
+
+// Create a course action atom for targeted updates
+export const courseActionAtom = atom<CourseAction | null>(null);
+
+// Initial data fetch trigger
+export const initialLoadAtom = atom(0);

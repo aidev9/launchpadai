@@ -3,7 +3,6 @@
 import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { v4 as uuidv4 } from "uuid";
 
 // Interface for Course data
@@ -541,6 +540,50 @@ export async function addSampleCourses() {
     };
   } catch (error) {
     console.error("Failed to add sample courses:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Get all unique tags from all courses in the database
+ * This function is case-insensitive and returns normalized tags
+ */
+export async function getAllUniqueTags() {
+  try {
+    const coursesRef = adminDb.collection("courses");
+    const snapshot = await coursesRef.get();
+
+    if (snapshot.empty) {
+      return {
+        success: true,
+        tags: [],
+      };
+    }
+
+    // Collect all tags and normalize them (lowercase for case-insensitive comparison)
+    const tagMap = new Map<string, string>(); // Maps lowercase tag to original case tag
+    snapshot.docs.forEach((doc) => {
+      const course = doc.data() as Course;
+      if (course.tags && Array.isArray(course.tags)) {
+        course.tags.forEach((tag) => {
+          // Store with lowercase as key for uniqueness, but preserve original case for display
+          tagMap.set(tag.toLowerCase(), tag);
+        });
+      }
+    });
+
+    // Get array of original-case tags, sorted alphabetically
+    const uniqueTags = Array.from(tagMap.values()).sort();
+
+    return {
+      success: true,
+      tags: uniqueTags,
+    };
+  } catch (error) {
+    console.error("Failed to fetch tags:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

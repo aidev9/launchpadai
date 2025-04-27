@@ -117,7 +117,14 @@ export const columns: ColumnDef<Course>[] = [
       }
 
       const tags = row.getValue(id) as string[];
-      return value.some((v) => tags.includes(v));
+
+      // Case-insensitive comparison
+      // Convert both the filter values and row tags to lowercase for comparison
+      const lowerCaseTags = tags.map((tag) => tag.toLowerCase());
+      return value.some((v) => {
+        // v is already lowercase from the toolbar component
+        return lowerCaseTags.includes(v);
+      });
     },
   },
   {

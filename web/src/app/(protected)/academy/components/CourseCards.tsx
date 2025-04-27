@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSetAtom } from "jotai";
 
@@ -16,6 +16,15 @@ import {
 import { useCourses } from "@/hooks/useCourses";
 import { Badge } from "@/components/ui/badge";
 import { setSelectedCourseAtom } from "@/lib/store/course-store";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, X } from "lucide-react";
 
 interface CourseCardsProps {
   heading?: string;
@@ -24,14 +33,48 @@ interface CourseCardsProps {
 
 const CourseCards = ({
   heading = "Featured Courses",
-  _demoUrl = "https://www.shadcnblocks.com",
+  _demoUrl = "https://launchpadai.io",
 }: CourseCardsProps) => {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("");
+  const [levelFilter, setLevelFilter] = useState<string>("");
+  const [tagFilter, setTagFilter] = useState<string>("");
   const { courses, loading, error } = useCourses();
   const router = useRouter();
   const setSelectedCourse = useSetAtom(setSelectedCourseAtom);
+
+  // Get unique tags from all courses
+  const uniqueTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    courses.forEach((course) => {
+      course.tags.forEach((tag) => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  }, [courses]);
+
+  // Filter courses based on search, level, and tag
+  const filteredCourses = useMemo(() => {
+    return courses.filter((course) => {
+      const matchesSearch =
+        searchFilter === "" ||
+        course.title.toLowerCase().includes(searchFilter.toLowerCase()) ||
+        course.summary.toLowerCase().includes(searchFilter.toLowerCase());
+
+      const matchesLevel =
+        levelFilter === "all" ||
+        levelFilter === "" ||
+        course.level === levelFilter;
+
+      const matchesTag =
+        tagFilter === "all" ||
+        tagFilter === "" ||
+        course.tags.includes(tagFilter);
+
+      return matchesSearch && matchesLevel && matchesTag;
+    });
+  }, [courses, searchFilter, levelFilter, tagFilter]);
 
   useEffect(() => {
     if (!carouselApi) {
@@ -88,6 +131,13 @@ const CourseCards = ({
     router.push("/academy/course");
   };
 
+  // Add reset filters function
+  const handleResetFilters = () => {
+    setSearchFilter("");
+    setLevelFilter("all");
+    setTagFilter("all");
+  };
+
   return (
     <section className="pb-8">
       <div className="container">
@@ -97,32 +147,83 @@ const CourseCards = ({
               {heading}
             </h2>
           </div>
-          <div className="mt-8 flex shrink-0 items-center justify-start gap-2">
+          <div className="mt-8 flex flex-wrap shrink-0 items-center justify-start gap-4">
+            {/* Search Input */}
+            <div className="relative w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search courses..."
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+
+            {/* Level Filter */}
+            <Select value={levelFilter} onValueChange={setLevelFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                <SelectItem value="beginner">Beginner</SelectItem>
+                <SelectItem value="intermediate">Intermediate</SelectItem>
+                <SelectItem value="advanced">Advanced</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Tags Filter */}
+            <Select value={tagFilter} onValueChange={setTagFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by tag" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tags</SelectItem>
+                {uniqueTags.map((tag) => (
+                  <SelectItem key={tag} value={tag}>
+                    {tag}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Reset Filters Button */}
             <Button
+              variant="ghost"
               size="icon"
-              variant="outline"
-              onClick={() => {
-                carouselApi?.scrollPrev();
-              }}
-              disabled={!canScrollPrev}
-              className="disabled:pointer-events-auto"
+              onClick={handleResetFilters}
+              className="h-9 w-9"
+              title="Reset filters"
             >
-              <ArrowLeft className="size-5" />
+              <X className="h-4 w-4" />
+              <span className="sr-only">Reset filters</span>
             </Button>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => {
-                carouselApi?.scrollNext();
-              }}
-              disabled={!canScrollNext}
-              className="disabled:pointer-events-auto"
-            >
-              <ArrowRight className="size-5" />
-            </Button>
+
+            {/* Navigation Buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => carouselApi?.scrollPrev()}
+                disabled={!canScrollPrev}
+                className="disabled:pointer-events-auto"
+              >
+                <ArrowLeft className="size-5" />
+              </Button>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => carouselApi?.scrollNext()}
+                disabled={!canScrollNext}
+                className="disabled:pointer-events-auto"
+              >
+                <ArrowRight className="size-5" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
+
       <div className="w-full">
         {loading ? (
           <div className="container text-center py-10">
@@ -132,9 +233,9 @@ const CourseCards = ({
           <div className="container text-center py-10 text-red-500">
             Error loading courses: {error}
           </div>
-        ) : courses.length === 0 ? (
+        ) : filteredCourses.length === 0 ? (
           <div className="container text-center py-10">
-            No courses available. Please check back later.
+            No courses match your filters. Try adjusting your search criteria.
           </div>
         ) : (
           <Carousel
@@ -149,7 +250,7 @@ const CourseCards = ({
             className="relative left-[-1rem]"
           >
             <CarouselContent className="-mr-4 ml-8 2xl:mr-[max(0rem,calc(50vw-700px-1rem))] 2xl:ml-[max(8rem,calc(50vw-700px+1rem))]">
-              {courses.map((course) => (
+              {filteredCourses.map((course) => (
                 <CarouselItem key={course.id} className="pl-4 md:max-w-[352px]">
                   <div
                     onClick={() => handleCourseClick(course)}
