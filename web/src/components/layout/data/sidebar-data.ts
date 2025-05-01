@@ -105,6 +105,11 @@ export const sidebarData: SidebarData = {
                 url: "/users",
                 icon: IconUsers,
               },
+              {
+                title: "Academy",
+                url: "/academy",
+                icon: IconBook,
+              },
             ]
           : []),
         {
@@ -116,11 +121,6 @@ export const sidebarData: SidebarData = {
           title: "Questions",
           url: "/qa",
           icon: IconHelpCircle,
-        },
-        {
-          title: "Academy",
-          url: "/academy",
-          icon: IconBook,
         },
       ],
     },

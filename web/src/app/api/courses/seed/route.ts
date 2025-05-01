@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addSampleCourses } from "@/lib/firebase/courses";
+import { addSampleCourses } from "@/lib/firebase/seedCourses";
 
 export async function POST() {
   try {

@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import { Course } from "@/lib/firebase/courses";
+import { Course } from "@/lib/firebase/schema";
 
 // Atom to store the selected course
 export const selectedCourseAtom = atomWithStorage<Course | null>(

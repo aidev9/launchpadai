@@ -4,20 +4,11 @@ import { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Course } from "@/lib/firebase/schema";
-import { format } from "date-fns";
-import { DataTableColumnHeader } from "./data-table-column-header";
-import { CourseHoverCard } from "./course-hover-card";
-import { DataTableRowActions } from "./data-table-row-actions";
+import { Module } from "@/lib/firebase/schema";
+import { DataTableColumnHeader } from "./data-table/data-table-column-header";
+import { DataTableRowActions } from "./data-table/data-table-row-actions";
 
-// Level badge colors
-const levelColors = new Map([
-  ["beginner", "bg-green-600 text-white hover:bg-green-700"],
-  ["intermediate", "bg-blue-600 text-white hover:bg-blue-700"],
-  ["advanced", "bg-purple-600 text-white hover:bg-purple-700"],
-]);
-
-export const columns: ColumnDef<Course>[] = [
+export const columns: ColumnDef<Module>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -53,35 +44,13 @@ export const columns: ColumnDef<Course>[] = [
   {
     accessorKey: "title",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Title" />
+      <DataTableColumnHeader column={column} title="Module Name" />
     ),
     cell: ({ row }) => {
-      const course = row.original;
-      return <CourseHoverCard course={course} />;
+      return <div className="font-medium">{row.getValue("title")}</div>;
     },
     meta: {
       className: "min-w-[180px] lg:w-[300px]",
-    },
-  },
-  {
-    accessorKey: "level",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Level" />
-    ),
-    cell: ({ row }) => {
-      const level = row.getValue("level") as string;
-      const badgeColor = levelColors.get(level) || "";
-
-      return (
-        <div className="flex space-x-2">
-          <Badge variant="outline" className={cn("capitalize", badgeColor)}>
-            {level}
-          </Badge>
-        </div>
-      );
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
     },
   },
   {
@@ -117,49 +86,26 @@ export const columns: ColumnDef<Course>[] = [
       }
 
       const tags = row.getValue(id) as string[];
+      if (!tags || !Array.isArray(tags)) return false;
 
       // Case-insensitive comparison
-      // Convert both the filter values and row tags to lowercase for comparison
       const lowerCaseTags = tags.map((tag) => tag.toLowerCase());
-      return value.some((v) => {
-        // v is already lowercase from the toolbar component
-        return lowerCaseTags.includes(v);
-      });
+      return value.some((v) => lowerCaseTags.includes(v.toLowerCase()));
     },
   },
   {
-    accessorKey: "students",
+    accessorKey: "xpAwards",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Students" />
+      <DataTableColumnHeader column={column} title="XP" />
     ),
     cell: ({ row }) => {
-      const students = (row.getValue("students") as number) || 0;
-      return <div className="font-medium">{students.toLocaleString()}</div>;
+      const xpAwards = row.getValue("xpAwards") as number;
+      return <div className="font-medium">{xpAwards || 0}</div>;
     },
     meta: { className: "w-24" },
   },
   {
-    accessorKey: "updatedAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Updated" />
-    ),
-    cell: ({ row }) => {
-      const updatedAt = row.getValue("updatedAt") as string;
-      const date = updatedAt ? new Date(updatedAt) : null;
-
-      return (
-        <div className="text-sm text-muted-foreground">
-          {date ? format(date, "MMM d, yyyy") : "N/A"}
-        </div>
-      );
-    },
-    sortingFn: "datetime",
-  },
-  {
     id: "actions",
-    cell: DataTableRowActions,
-    meta: {
-      className: "text-right",
-    },
+    cell: ({ row }) => <DataTableRowActions row={row} />,
   },
 ];

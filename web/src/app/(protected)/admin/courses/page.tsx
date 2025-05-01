@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useAtom, useSetAtom } from "jotai";
 import { Plus, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Course, getAllCourses, deleteCourse } from "@/lib/firebase/courses";
+import { getAllCourses, deleteCourse } from "@/lib/firebase/courses";
+import { Course } from "@/lib/firebase/schema";
 import { columns } from "./components/courses-columns";
 import { CoursesTable } from "./components/courses-table";
 import { CourseForm } from "./components/course-form";
@@ -14,7 +15,6 @@ import {
   rowSelectionAtom,
   courseActionAtom,
   initialLoadAtom,
-  CourseAction,
 } from "./components/courses-store";
 import { useToast } from "@/hooks/use-toast";
 import { Breadcrumbs } from "@/components/breadcrumbs";

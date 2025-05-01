@@ -1,10 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
-import Image from "next/image";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
@@ -33,9 +30,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Upload, Loader2 } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Course } from "@/lib/firebase/courses";
+import { Course, CourseInput, courseInputSchema } from "@/lib/firebase/schema";
 import { createCourse, updateCourse } from "@/lib/firebase/courses";
 import {
   addCourseModalOpenAtom,
@@ -43,41 +40,23 @@ import {
   selectedCourseAtom,
 } from "./courses-store";
 import { courseActionAtom } from "./courses-store";
+import ImageUploadFormControl from "@/components/ui/imageUploadFormControl";
+import { clientAuth } from "@/lib/firebase/client";
 
-// Schema for course validation
-const courseSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters").max(100),
-  summary: z
-    .string()
-    .min(10, "Summary must be at least 10 characters")
-    .max(200, "Summary must be at most 200 characters"),
-  description: z.string().optional(),
-  level: z.enum(["beginner", "intermediate", "advanced"]),
-  imageUrl: z.string().url("Please provide a valid URL or upload an image"),
-  url: z.string().optional(),
-  tags: z.array(z.string()),
-});
-
-type CourseFormValues = z.infer<typeof courseSchema>;
+const userId = clientAuth.currentUser?.uid;
+const COURSE_ASSETS_PATH = `storage/${userId}/courses`;
 
 interface CourseFormProps {
   isEdit?: boolean;
 }
 
 export function CourseForm({ isEdit = false }: CourseFormProps) {
-  const router = useRouter();
   const [addModalOpen, setAddModalOpen] = useAtom(addCourseModalOpenAtom);
   const [editModalOpen, setEditModalOpen] = useAtom(editCourseModalOpenAtom);
   const [selectedCourse, setSelectedCourse] = useAtom(selectedCourseAtom);
   const [, setCourseAction] = useAtom(courseActionAtom);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagInput, setTagInput] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFileName, setImageFileName] = useState<string | null>(null);
-
   const { toast } = useToast();
 
   // Set modal open state based on isEdit prop
@@ -85,14 +64,15 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
   const setIsOpen = isEdit ? setEditModalOpen : setAddModalOpen;
 
   // Initialize form with default values or selected course data
-  const form = useForm<CourseFormValues>({
-    resolver: zodResolver(courseSchema),
+  const form = useForm<CourseInput>({
+    resolver: zodResolver(courseInputSchema),
     defaultValues: {
       title: "",
       summary: "",
       description: "",
       level: "beginner",
       imageUrl: "",
+      filePath: "",
       url: "",
       tags: [],
     },
@@ -107,6 +87,7 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
         description: selectedCourse.description || "",
         level: selectedCourse.level,
         imageUrl: selectedCourse.imageUrl,
+        filePath: selectedCourse.filePath || "",
         url: selectedCourse.url || "",
         tags: selectedCourse.tags || [],
       });
@@ -114,20 +95,15 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
   }, [isEdit, selectedCourse, isOpen, form]);
 
   // Handle form submission
-  async function onSubmit(data: CourseFormValues) {
+  async function onSubmit(data: CourseInput) {
     try {
       setIsSubmitting(true);
 
-      // Use the uploaded image if available, otherwise use the existing/provided URL
-      const imageUrl = uploadedImage
-        ? await uploadImage(uploadedImage)
-        : data.imageUrl;
-
+      // When editing, we need to check if the selected course exists
       if (isEdit && selectedCourse) {
         // Update existing course
         const result = await updateCourse(selectedCourse.id, {
           ...data,
-          imageUrl,
         });
 
         if (result.success) {
@@ -135,7 +111,6 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
           const updatedCourse: Course = {
             ...selectedCourse,
             ...data,
-            imageUrl,
             updatedAt: new Date().toISOString(),
           };
 
@@ -145,6 +120,7 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
           toast({
             title: "Course updated",
             description: "Course has been updated successfully",
+            duration: 5000,
           });
 
           // Close the modal first
@@ -162,7 +138,6 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
         // Create new course
         const result = await createCourse({
           ...data,
-          imageUrl,
           url: data.url ?? "",
         });
 
@@ -170,7 +145,6 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
           const newCourse: Course = {
             id: result.id!,
             ...data,
-            imageUrl,
             url: data.url ?? "",
             tags: data.tags,
             createdAt: new Date().toISOString(),
@@ -180,6 +154,7 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
           toast({
             title: "Course created",
             description: "Course has been created successfully",
+            duration: 5000,
           });
 
           // Close the modal first
@@ -200,79 +175,12 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
         description:
           error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
+        duration: 5000,
       });
     } finally {
       setIsSubmitting(false);
-      // Reset form and image states after everything is done
       form.reset();
-      setUploadedImage(null);
-      setImagePreview(null);
-      setImageFileName(null);
     }
-  }
-
-  // Handle file upload
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Check if the file is an image
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Invalid file type",
-        description: "Please select an image file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if the file is too large (e.g., > 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Image must be less than 5MB",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setUploadedImage(file);
-
-    // Create a preview URL
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImagePreview(reader.result as string);
-      // We'll set a placeholder URL which will be replaced with the actual URL after upload
-      form.setValue("imageUrl", "https://placeholder.com/image.jpg");
-    };
-    reader.readAsDataURL(file);
-  }
-
-  // Handle image removal
-  async function handleRemoveImage() {
-    // If there's an uploaded image in Firebase Storage and we're editing a course, remove it
-    if (imageFileName && isEdit && selectedCourse) {
-      try {
-        const deleteResponse = await fetch(
-          `/api/courses/${selectedCourse.id}/image?fileName=${imageFileName}`,
-          { method: "DELETE" }
-        );
-
-        const deleteResult = await deleteResponse.json();
-
-        if (!deleteResponse.ok || !deleteResult.success) {
-          console.error("Failed to delete image:", deleteResult.error);
-        }
-      } catch (error) {
-        console.error("Error deleting image:", error);
-      }
-    }
-
-    // Clear the form image state
-    setImagePreview(null);
-    setUploadedImage(null);
-    setImageFileName(null);
-    form.setValue("imageUrl", "");
   }
 
   // Handle tag input
@@ -297,44 +205,8 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
 
   // Close the dialog and reset form
   function handleClose() {
-    // First reset the form data
+    setIsOpen(false);
     form.reset();
-    // Clear uploaded image states
-    setUploadedImage(null);
-    setImagePreview(null);
-    setImageFileName(null);
-    // Finally close the modal after a small delay to ensure smooth transition
-    setTimeout(() => {
-      setIsOpen(false);
-    }, 100);
-  }
-
-  // Helper function to upload image
-  async function uploadImage(file: File): Promise<string> {
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
-
-      // For new courses, we'll use a temporary ID that will be replaced
-      const tempId = "temp-" + Date.now();
-      formData.append("courseId", selectedCourse?.id || tempId);
-
-      const response = await fetch("/api/courses/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to upload image");
-      }
-
-      return result.url;
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      throw error;
-    }
   }
 
   return (
@@ -441,98 +313,9 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
             />
 
             {/* Course Image */}
-            <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Course Image</FormLabel>
-
-                  {/* Image Preview */}
-                  {(imagePreview || field.value) && !isUploading && (
-                    <div className="relative w-full h-48 mb-4 rounded-md overflow-hidden">
-                      <Image
-                        src={imagePreview || field.value}
-                        alt="Course preview"
-                        fill
-                        className="object-cover"
-                      />
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2"
-                        type="button"
-                        onClick={handleRemoveImage}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Upload interface */}
-                  {!imagePreview && !field.value && (
-                    <div className="flex items-center justify-center w-full">
-                      <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 hover:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
-                          <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                            <span className="font-semibold">
-                              Click to upload
-                            </span>{" "}
-                            or drag and drop
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            SVG, PNG, JPG or GIF (MAX. 5MB)
-                          </p>
-                        </div>
-                        <input
-                          id="dropzone-file"
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={handleFileChange}
-                          disabled={isUploading}
-                        />
-                      </label>
-                    </div>
-                  )}
-
-                  {/* Image URL input - only show when no image is selected */}
-                  {!uploadedImage && !imagePreview && (
-                    <div className="mt-4">
-                      <FormControl>
-                        <Input
-                          placeholder="Or enter image URL"
-                          {...field}
-                          value={field.value}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            if (
-                              e.target.value &&
-                              e.target.value !== imagePreview
-                            ) {
-                              // Clear image preview if URL changes
-                              setImagePreview(null);
-                            }
-                          }}
-                        />
-                      </FormControl>
-                    </div>
-                  )}
-
-                  {/* Show uploading indicator */}
-                  {isUploading && (
-                    <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                      <div className="text-center">
-                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                        <p>Uploading image...</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <FormMessage />
-                </FormItem>
-              )}
+            <ImageUploadFormControl
+              form={form}
+              uploadUrl={COURSE_ASSETS_PATH}
             />
 
             {/* Tags */}
@@ -575,12 +358,12 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
                 type="button"
                 variant="outline"
                 onClick={handleClose}
-                disabled={isSubmitting || isUploading}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting || isUploading}>
-                {isSubmitting || isUploading ? (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     {isEdit ? "Updating..." : "Creating..."}

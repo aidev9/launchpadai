@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Course } from "@/lib/firebase/courses";
+import { Course } from "@/lib/firebase/schema";
 
 // Define the response type from our API endpoint
 interface CoursesResponse {

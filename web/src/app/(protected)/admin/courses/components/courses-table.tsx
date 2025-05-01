@@ -15,7 +15,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useAtom, useSetAtom } from "jotai";
-import { Course } from "@/lib/firebase/courses";
+import { Course } from "@/lib/firebase/schema";
 import {
   Table,
   TableBody,

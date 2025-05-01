@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, X } from "lucide-react";
+import { PLACEHOLDER_IMAGE_URL } from "@/utils/constants";
 
 interface CourseCardsProps {
   heading?: string;
@@ -49,7 +50,7 @@ const CourseCards = ({
   const uniqueTags = useMemo(() => {
     const tagSet = new Set<string>();
     courses.forEach((course) => {
-      course.tags.forEach((tag) => tagSet.add(tag));
+      course.tags.forEach((tag: string) => tagSet.add(tag));
     });
     return Array.from(tagSet).sort();
   }, [courses]);
@@ -109,7 +110,7 @@ const CourseCards = ({
   const handleCourseClick = (course: {
     id: string;
     title: string;
-    imageUrl: string;
+    imageUrl?: string;
     level: string;
     summary: string;
   }) => {
@@ -253,7 +254,12 @@ const CourseCards = ({
               {filteredCourses.map((course) => (
                 <CarouselItem key={course.id} className="pl-4 md:max-w-[352px]">
                   <div
-                    onClick={() => handleCourseClick(course)}
+                    onClick={() =>
+                      handleCourseClick({
+                        ...course,
+                        imageUrl: course.imageUrl || PLACEHOLDER_IMAGE_URL,
+                      })
+                    }
                     className="group flex h-full flex-col justify-between cursor-pointer"
                   >
                     <div>
@@ -261,7 +267,7 @@ const CourseCards = ({
                         <div className="flex-1">
                           <div className="relative h-full w-full origin-bottom transition duration-300 group-hover:scale-105">
                             <Image
-                              src={course.imageUrl}
+                              src={course.imageUrl || PLACEHOLDER_IMAGE_URL}
                               alt={course.title}
                               width={500}
                               height={300}

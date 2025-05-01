@@ -1,6 +1,6 @@
 "use client";
 
-import { Course } from "@/lib/firebase/courses";
+import { Course } from "@/lib/firebase/schema";
 import {
   HoverCard,
   HoverCardContent,
@@ -12,6 +12,7 @@ import { Book, Tag, Users } from "lucide-react";
 import { useSetAtom } from "jotai";
 import { selectedCourseAtom } from "./courses-store";
 import { useRouter } from "next/navigation";
+import { PLACEHOLDER_IMAGE_URL } from "@/utils/constants";
 
 interface CourseHoverCardProps {
   course: Course;
@@ -40,7 +41,7 @@ export function CourseHoverCard({ course }: CourseHoverCardProps) {
       <HoverCardContent className="w-80 p-0">
         <div className="relative h-40 w-full">
           <Image
-            src={course.imageUrl}
+            src={course.imageUrl || PLACEHOLDER_IMAGE_URL}
             alt={course.title}
             fill
             className="object-cover rounded-t-md"

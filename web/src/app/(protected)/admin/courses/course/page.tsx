@@ -6,14 +6,13 @@ import Image from "next/image";
 import { format } from "date-fns";
 import { useAtom, useSetAtom } from "jotai";
 import {
-  ArrowLeft,
   CalendarIcon,
   Clock,
   Edit2Icon,
   Trash2Icon,
   Users,
 } from "lucide-react";
-import { Course, deleteCourse } from "@/lib/firebase/courses";
+import { deleteCourse } from "@/lib/firebase/courses";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +37,11 @@ import {
 } from "../components/courses-store";
 import { CourseForm } from "../components/course-form";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { ModuleList } from "./components/module-list";
+import { addModuleModalOpenAtom } from "./components/modules-store";
+import { ModuleForm } from "./components/module-form";
+import { editModuleModalOpenAtom } from "./components/modules-store";
+import { PLACEHOLDER_IMAGE_URL } from "@/utils/constants";
 
 // Level badge colors
 const levelColors = new Map([
@@ -51,6 +55,9 @@ export default function CourseDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const setEditModalOpen = useSetAtom(editCourseModalOpenAtom);
   const setCourseFormData = useSetAtom(courseFormDataAtom);
+  const [addModuleModalOpen, setAddModuleModalOpen] = useAtom(
+    addModuleModalOpenAtom
+  );
 
   const router = useRouter();
   const { toast } = useToast();
@@ -64,8 +71,10 @@ export default function CourseDetailPage() {
 
   const handleEdit = () => {
     // Set the form data and open the edit modal
-    setCourseFormData(course!);
-    setEditModalOpen(true);
+    if (course) {
+      setCourseFormData(course);
+      setEditModalOpen(true);
+    }
   };
 
   const handleDelete = async () => {
@@ -113,6 +122,7 @@ export default function CourseDetailPage() {
     );
   }
 
+  // Header with course title and actions
   return (
     <div className="space-y-8">
       {/* Breadcrumbs */}
@@ -124,7 +134,6 @@ export default function CourseDetailPage() {
         ]}
       />
 
-      {/* Header with course title and actions */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{course.title}</h1>
 
@@ -167,7 +176,7 @@ export default function CourseDetailPage() {
           <CardContent className="p-0">
             <div className="relative aspect-video w-full overflow-hidden">
               <Image
-                src={course.imageUrl}
+                src={course.imageUrl || PLACEHOLDER_IMAGE_URL}
                 alt={course.title}
                 fill
                 className="object-cover"
@@ -217,7 +226,7 @@ export default function CourseDetailPage() {
                 <h3 className="text-sm font-medium mb-2">Tags</h3>
                 <div className="flex flex-wrap gap-2">
                   {course.tags && course.tags.length > 0 ? (
-                    course.tags.map((tag) => (
+                    course.tags.map((tag: string) => (
                       <Badge key={tag} variant="secondary">
                         {tag}
                       </Badge>
@@ -238,6 +247,7 @@ export default function CourseDetailPage() {
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="modules">Modules</TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="space-y-4 mt-4">
               <div>
@@ -285,12 +295,23 @@ export default function CourseDetailPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="modules" className="mt-4">
+              {/* Module list component */}
+              <ModuleList courseId={course.id} />
+            </TabsContent>
           </Tabs>
         </div>
       </div>
 
       {/* Render the CourseForm component for editing */}
       <CourseForm isEdit={true} />
+
+      {/* Render the ModuleForm component for adding */}
+      {addModuleModalOpen && <ModuleForm isEdit={false} courseId={course.id} />}
+
+      {/* Render the ModuleForm component for editing */}
+      <ModuleForm isEdit={true} courseId={course.id} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 import type { ColumnFiltersState, SortingState } from "@tanstack/react-table";
 import type { Table } from "@tanstack/react-table";
-import { Course } from "@/lib/firebase/courses";
+import { Course } from "@/lib/firebase/schema";
 
 // Table state atoms
 export const rowSelectionAtom = atom<Record<string, boolean>>({});

@@ -11,7 +11,7 @@ import {
   tagsFilterAtom,
 } from "./courses-store";
 
-import { Course } from "@/lib/firebase/courses";
+import { Course } from "@/lib/firebase/schema";
 import { DataTableFacetedFilter } from "./data-table-faceted-filter";
 import { DataTableViewOptions } from "./data-table-view-options";
 import { useEffect, useState } from "react";

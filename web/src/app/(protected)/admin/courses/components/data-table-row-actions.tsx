@@ -4,7 +4,7 @@ import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { Row } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { useAtom, useSetAtom } from "jotai";
-import { Course } from "@/lib/firebase/courses";
+import { Course } from "@/lib/firebase/schema";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

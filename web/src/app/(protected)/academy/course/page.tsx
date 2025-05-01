@@ -187,7 +187,7 @@ export default function CourseDetailPage() {
               {selectedCourse.level.charAt(0).toUpperCase() +
                 selectedCourse.level.slice(1)}
             </Badge>
-            {selectedCourse.tags.map((tag, index) => (
+            {selectedCourse.tags.map((tag: string, index: number) => (
               <Badge key={index} variant="secondary">
                 {tag}
               </Badge>

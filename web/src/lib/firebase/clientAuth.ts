@@ -7,7 +7,7 @@ import {
   GithubAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import { clientAuth, signOutUser, clientDb } from "@/lib/firebase/client";
+import { clientAuth, signOutUser } from "@/lib/firebase/client";
 
 /**
  * Creates a session for a user after successful authentication.

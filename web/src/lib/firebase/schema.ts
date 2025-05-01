@@ -23,3 +23,60 @@ export type ProductQuestionInput = z.infer<typeof productQuestionInputSchema>;
 
 // List of product questions
 export const productQuestionListSchema = z.array(productQuestionSchema);
+
+// Interface for Course data
+export interface Course {
+  id: string;
+  title: string;
+  summary: string;
+  description?: string;
+  level: "beginner" | "intermediate" | "advanced";
+  imageUrl?: string; // Signed URL to the image in Firebase Storage
+  filePath?: string; // Path to the image in Firebase Storage
+  url: string;
+  tags: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Schema for course validation
+export const courseInputSchema = z.object({
+  title: z.string().min(2).max(200),
+  summary: z.string().min(2).max(500),
+  description: z.string().optional(),
+  level: z.enum(["beginner", "intermediate", "advanced"]),
+  imageUrl: z.string().optional(),
+  filePath: z.string().optional(),
+  url: z.string(),
+  tags: z.array(z.string()),
+});
+
+export type CourseInput = z.infer<typeof courseInputSchema>;
+
+export const moduleInputSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters").max(100),
+  body: z.string(),
+  imageUrl: z.string().optional(),
+  filePath: z.string().optional(),
+  attachments: z.array(z.string()).default([]).optional(),
+  tags: z.array(z.string()).default([]).optional(),
+  xpAwards: z.number().min(0).max(500),
+  notifyStudents: z.boolean().default(false).optional(),
+});
+
+export type ModuleInput = z.infer<typeof moduleInputSchema>;
+
+// Interface for Module data
+export interface Module {
+  id: string;
+  title: string;
+  body: string; // Rich text
+  imageUrl?: string;
+  notifyStudents: boolean;
+  filePath?: string; // Path to the image in Firebase Storage
+  attachments: string[]; // URLs of attachments
+  tags: string[];
+  xpAwards: number;
+  createdAt?: string;
+  updatedAt?: string;
+}

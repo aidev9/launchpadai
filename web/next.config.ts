@@ -5,11 +5,27 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
+        hostname: "*", // Allow images from all domains
+      },
+      {
+        protocol: "http",
+        hostname: "*", // Allow images from all domains
+      },
+      {
+        protocol: "https",
         hostname: "images.unsplash.com",
       },
       {
         protocol: "https",
         hostname: "storage.googleapis.com",
+      },
+      {
+        protocol: "https",
+        hostname: "placehold.co",
+      },
+      {
+        protocol: "https",
+        hostname: "placeholder.com",
       },
       {
         protocol: "https",
@@ -44,9 +60,9 @@ const nextConfig: NextConfig = {
   transpilePackages: ["jotai-devtools"],
   experimental: {
     serverActions: {
-      bodySizeLimit: "16mb"
-    }
-  }
+      bodySizeLimit: "16mb",
+    },
+  },
 };
 
 export default nextConfig;
