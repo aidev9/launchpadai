@@ -9,6 +9,7 @@ import { usePrompts } from "@/hooks/usePrompts";
 import { PhaseFilter } from "@/components/prompts/phase-filter";
 import { PromptCard } from "@/components/prompts/prompt-card";
 import { Prompt } from "@/lib/firebase/schema";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export default function MyPrompts() {
   const handlePromptClick = (prompt: Prompt) => {
     setSelectedPrompt(prompt);
     // TODO: Implement edit mode for user prompts
-    router.push(`/myprompts/${prompt.id}`);
+    router.push("/myprompts/prompt");
   };
 
   const handleCreatePrompt = () => {
@@ -40,6 +41,13 @@ export default function MyPrompts() {
   return (
     <Main>
       <div className="space-y-6">
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/dashboard" },
+            { label: "My Prompts", isCurrentPage: true },
+          ]}
+        />
+
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">My Prompts</h1>
           <Button onClick={handleCreatePrompt} className="w-full md:w-auto">

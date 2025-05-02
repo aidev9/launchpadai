@@ -23,3 +23,4 @@ alwaysApply: false
 - Do not use the window object. Use React constructs only.
 - Do not create routes with /[id]. Instead, create a clean route without /[id], set the parent object into a Jotai atom and load it on the detail page from memory, saving a database trip.
 - Always use React Server Actions whenever possible. Do not use APIs if you can handle it with actions.
+- For new pages and their children, always add a Breadcrumb from from "@/components/breadcrumbs". Do not add a Back button.

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useToast } from "@/hooks/use-toast";
 import { Prompt } from "@/lib/firebase/schema";
 import { useAtom, useSetAtom } from "jotai";
@@ -23,6 +22,7 @@ import {
   initialLoadAtom,
   editedPromptAtom,
 } from "@/lib/store/prompt-store";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 import {
   AlertDialog,
@@ -186,8 +186,9 @@ export default function AdminPrompts() {
       {/* Breadcrumbs */}
       <Breadcrumbs
         items={[
+          { label: "Home", href: "/dashboard" },
           { label: "Admin", href: "/admin" },
-          { label: "Prompts", href: "", isCurrentPage: true },
+          { label: "Prompts", isCurrentPage: true },
         ]}
       />
 

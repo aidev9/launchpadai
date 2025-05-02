@@ -8,6 +8,7 @@ import { usePrompts } from "@/hooks/usePrompts";
 import { PhaseFilter } from "@/components/prompts/phase-filter";
 import { PromptCard } from "@/components/prompts/prompt-card";
 import { Prompt } from "@/lib/firebase/schema";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -27,12 +28,19 @@ export default function PromptsBrowse() {
 
   const handlePromptClick = (prompt: Prompt) => {
     setSelectedPrompt(prompt);
-    router.push(`/prompts/${prompt.id}`);
+    router.push("/prompts/prompt");
   };
 
   return (
     <Main>
       <div className="space-y-6">
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/dashboard" },
+            { label: "Prompts", isCurrentPage: true },
+          ]}
+        />
+
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">Prompts</h1>
         </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Main } from "@/components/layout/main";
@@ -9,15 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Prompt } from "@/lib/firebase/schema";
 import { getPhaseColor } from "@/components/prompts/phase-filter";
-import { usePrompts } from "@/hooks/usePrompts";
 import { copyPromptToUserCollectionAction } from "@/lib/firebase/actions/prompts";
+import { useAtom } from "jotai";
+import { selectedPromptAtom } from "@/lib/store/prompt-store";
+import { useState } from "react";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 export default function PromptDetail() {
   const router = useRouter();
   const { toast } = useToast();
-  const { fetchPromptById } = usePrompts();
-  const [prompt, setPrompt] = useState<Prompt | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [prompt] = useAtom(selectedPromptAtom);
   const [isCopying, setIsCopying] = useState(false);
 
   const handleBack = () => {
@@ -39,7 +39,7 @@ export default function PromptDetail() {
         });
 
         // Navigate to /myprompts
-        router.push(`/myprompts/${result.promptId}`);
+        router.push("/myprompts/prompt");
       } else {
         toast({
           title: "Error",
@@ -71,30 +71,21 @@ export default function PromptDetail() {
     });
   };
 
-  // Render loading state
-  if (loading) {
-    return (
-      <Main>
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-1/3 bg-muted rounded"></div>
-          <div className="h-24 bg-muted rounded"></div>
-          <div className="h-4 w-1/4 bg-muted rounded"></div>
-        </div>
-      </Main>
-    );
-  }
-
-  // Render not found state
+  // Render no prompt selected state
   if (!prompt) {
     return (
       <Main>
         <div className="text-center py-12">
-          <h2 className="text-xl font-semibold">Prompt not found</h2>
+          <h2 className="text-xl font-semibold">No prompt selected</h2>
           <p className="text-muted-foreground mt-2">
-            The prompt you're looking for could not be found
+            Please select a prompt from the prompts list
           </p>
-          <Button onClick={handleBack} variant="outline" className="mt-4">
-            Go back
+          <Button
+            onClick={() => router.push("/prompts")}
+            variant="outline"
+            className="mt-4"
+          >
+            Back
           </Button>
         </div>
       </Main>
@@ -104,10 +95,13 @@ export default function PromptDetail() {
   return (
     <Main>
       <div className="space-y-6">
-        <Button variant="ghost" className="pl-0 mb-4" onClick={handleBack}>
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/dashboard" },
+            { label: "Prompts", href: "/prompts" },
+            { label: prompt.title, isCurrentPage: true },
+          ]}
+        />
 
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <h1 className="text-2xl font-bold tracking-tight">{prompt.title}</h1>

@@ -29,25 +29,6 @@ export function usePrompts({ userPromptsOnly = false }: UsePromptsProps = {}) {
   const [phaseFilter, setPhaseFilter] = useAtom(promptPhaseFilterAtom);
   const [searchQuery, setSearchQuery] = useAtom(promptSearchQueryAtom);
 
-  // Helper function to serialize timestamps for client-side use
-  const serializePrompt = (prompt: any): Prompt => ({
-    ...prompt,
-    createdAt: prompt.createdAt
-      ? {
-          toDate: () => new Date(prompt.createdAt.seconds * 1000),
-          seconds: prompt.createdAt.seconds,
-          nanoseconds: prompt.createdAt.nanoseconds,
-        }
-      : null,
-    updatedAt: prompt.updatedAt
-      ? {
-          toDate: () => new Date(prompt.updatedAt.seconds * 1000),
-          seconds: prompt.updatedAt.seconds,
-          nanoseconds: prompt.updatedAt.nanoseconds,
-        }
-      : null,
-  });
-
   // Fetch all prompts or filtered prompts based on phase tags
   const fetchPrompts = useCallback(
     async (forceRefresh = false) => {
@@ -71,10 +52,8 @@ export function usePrompts({ userPromptsOnly = false }: UsePromptsProps = {}) {
         }
 
         if (result.success) {
-          // Serialize prompt timestamps for client use
-          //   const serializedPrompts = result.prompts?.map(serializePrompt) || [];
-          //   setPrompts(serializedPrompts);
-          console.log("[HOOK] result.prompts", result.prompts);
+          // Set prompts from the result
+          setPrompts(result.prompts || []);
         } else {
           setError(result.error || "Failed to fetch prompts");
           setPrompts([]);
@@ -99,10 +78,9 @@ export function usePrompts({ userPromptsOnly = false }: UsePromptsProps = {}) {
         const result = await getPromptAction(promptId);
 
         if (result.success && result.prompt) {
-          const serializedPrompt = serializePrompt(result.prompt);
-          setSelectedPrompt(serializedPrompt);
-          setSelectedPromptId(serializedPrompt.id);
-          return serializedPrompt;
+          setSelectedPrompt(result.prompt);
+          setSelectedPromptId(result.prompt.id);
+          return result.prompt;
         } else {
           setError(result.error || "Failed to fetch prompt");
           return null;
