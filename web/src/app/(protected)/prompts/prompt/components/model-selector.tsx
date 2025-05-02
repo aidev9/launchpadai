@@ -26,18 +26,35 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-import { Model, ModelType } from "../data/models";
+import { Model } from "@/lib/firebase/schema";
 
 interface ModelSelectorProps extends PopoverProps {
-  types: readonly ModelType[];
+  types: { value: string; label: string }[];
   models: Model[];
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
 }
 
-export function ModelSelector({ models, types, ...props }: ModelSelectorProps) {
+export function ModelSelector({
+  models,
+  types,
+  defaultValue,
+  onValueChange,
+  ...props
+}: ModelSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [selectedModel, setSelectedModel] = React.useState<Model>(models[0]);
-  const [peekedModel, setPeekedModel] = React.useState<Model>(models[0]);
+  const [selectedModel, setSelectedModel] = React.useState<Model>(
+    defaultValue
+      ? models.find((m) => m.id === defaultValue) || models[0]
+      : models[0]
+  );
+  const [peekedModel, setPeekedModel] = React.useState(selectedModel);
+
+  const handleSelect = (model: Model) => {
+    setSelectedModel(model);
+    setOpen(false);
+    onValueChange?.(model.id || "");
+  };
 
   return (
     <div className="grid gap-2">
@@ -98,19 +115,16 @@ export function ModelSelector({ models, types, ...props }: ModelSelectorProps) {
                 <CommandEmpty>No Models found.</CommandEmpty>
                 <HoverCardTrigger />
                 {types.map((type) => (
-                  <CommandGroup key={type} heading={type}>
+                  <CommandGroup key={type.value} heading={type.label}>
                     {models
-                      .filter((model) => model.type === type)
+                      .filter((model) => model.type === type.value)
                       .map((model) => (
                         <ModelItem
                           key={model.id}
                           model={model}
                           isSelected={selectedModel?.id === model.id}
                           onPeek={(model) => setPeekedModel(model)}
-                          onSelect={() => {
-                            setSelectedModel(model);
-                            setOpen(false);
-                          }}
+                          onSelect={() => handleSelect(model)}
                         />
                       ))}
                   </CommandGroup>
@@ -151,6 +165,7 @@ function ModelItem({ model, isSelected, onSelect, onPeek }: ModelItemProps) {
       key={model.id}
       onSelect={onSelect}
       ref={ref}
+      disabled={model.active === false}
       className="data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground"
     >
       {model.name}

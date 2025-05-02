@@ -122,3 +122,30 @@ export type PhaseTag =
   | "Grow";
 
 // END: PROMPTS
+
+// START: MODELS
+
+export const modelCategories = [
+  "OpenAI",
+  "Anthropic",
+  "Google",
+  "Groq",
+] as const;
+
+export type ModelType = (typeof modelCategories)[number];
+
+export interface Model<Type = string> {
+  id: string;
+  name: string;
+  description: string;
+  provider?: string;
+  strengths?: string;
+  type?: Type;
+  value?: string;
+  label?: string;
+  maxTokens?: number;
+  temperature?: number;
+  topP?: number;
+  active?: boolean;
+}
+// END: MODELS
