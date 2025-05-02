@@ -2,11 +2,72 @@ import { atom } from "jotai";
 import { Prompt } from "@/lib/firebase/schema";
 import { Table, ColumnFiltersState, SortingState } from "@tanstack/react-table";
 
-// Atom for filtering prompts by phase
-export const promptPhaseFilterAtom = atom<string[]>([]);
+// Base data atoms
+export const allPromptsAtom = atom<Prompt[]>([]);
+export const userPromptsAtom = atom<Prompt[]>([]);
+export const promptsLoadingAtom = atom<boolean>(false);
+export const promptsErrorAtom = atom<string | null>(null);
 
-// Atom for text search query
+// Filter atoms
+export const promptPhaseFilterAtom = atom<string[]>([]);
 export const promptSearchQueryAtom = atom<string>("");
+
+// Derived atoms for filtered prompts
+export const filteredPromptsAtom = atom((get) => {
+  const allPrompts = get(allPromptsAtom);
+  const phaseFilter = get(promptPhaseFilterAtom);
+  const searchQuery = get(promptSearchQueryAtom);
+
+  let filtered = allPrompts;
+
+  // Apply phase filter
+  if (phaseFilter.length > 0) {
+    filtered = filtered.filter((prompt) =>
+      prompt.phaseTags.some((tag) => phaseFilter.includes(tag))
+    );
+  }
+
+  // Apply search filter
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filtered = filtered.filter(
+      (prompt) =>
+        prompt.title.toLowerCase().includes(query) ||
+        prompt.body.toLowerCase().includes(query) ||
+        prompt.tags.some((tag) => tag.toLowerCase().includes(query))
+    );
+  }
+
+  return filtered;
+});
+
+export const filteredUserPromptsAtom = atom((get) => {
+  const userPrompts = get(userPromptsAtom);
+  const phaseFilter = get(promptPhaseFilterAtom);
+  const searchQuery = get(promptSearchQueryAtom);
+
+  let filtered = userPrompts;
+
+  // Apply phase filter
+  if (phaseFilter.length > 0) {
+    filtered = filtered.filter((prompt) =>
+      prompt.phaseTags.some((tag) => phaseFilter.includes(tag))
+    );
+  }
+
+  // Apply search filter
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filtered = filtered.filter(
+      (prompt) =>
+        prompt.title.toLowerCase().includes(query) ||
+        prompt.body.toLowerCase().includes(query) ||
+        prompt.tags.some((tag) => tag.toLowerCase().includes(query))
+    );
+  }
+
+  return filtered;
+});
 
 // Atom for current selected prompt (used when navigating to detail view)
 export const selectedPromptAtom = atom<Prompt | null>(null);
@@ -41,13 +102,13 @@ export const sortingAtom = atom<SortingState>([
 // Atom for tracking if a new refresh is needed (toggle after seeding)
 export const initialLoadAtom = atom<boolean>(false);
 
-// // Add an atom to store the prompt being edited
+// Add an atom to store the prompt being edited
 export const editedPromptAtom = atom<Prompt | null>(null);
 
-// // Table instance atom
+// Table instance atom
 export const tableInstanceAtom = atom<Table<Prompt> | null>(null);
 
-// // Filter atoms
+// Filter atoms
 export const titleFilterAtom = atom<string>("");
 export const phaseTagsFilterAtom = atom<string[]>([]);
 export const productTagsFilterAtom = atom<string[]>([]);

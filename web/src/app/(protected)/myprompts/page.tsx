@@ -56,19 +56,29 @@ export default function MyPrompts() {
           </Button>
         </div>
 
-        {/* Search bar */}
-        <div className="relative w-full max-w-sm">
-          <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search my prompts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+        {/* Filter and Search row */}
+        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+          {/* Phase filter pills */}
+          <div className="w-full md:flex-1 overflow-x-auto pb-2">
+            <div className="inline-flex md:flex flex-nowrap md:flex-wrap">
+              <PhaseFilter
+                selectedPhases={phaseFilter}
+                onChange={setPhaseFilter}
+              />
+            </div>
+          </div>
 
-        {/* Phase filter pills */}
-        <PhaseFilter selectedPhases={phaseFilter} onChange={setPhaseFilter} />
+          {/* Search bar */}
+          <div className="relative w-full md:w-72 flex-shrink-0">
+            <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Filter my prompts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
 
         {/* Loading state */}
         {isLoading && (

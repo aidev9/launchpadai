@@ -146,15 +146,15 @@ export default function RootLayout({
               profileResult.profile.userType === "superadmin";
 
             // Only redirect once to avoid infinite loops
-            if (
-              isAdmin &&
-              !redirectedToAdmin &&
-              !window.location.pathname.startsWith("/admin")
-            ) {
-              setRedirectedToAdmin(true);
-              router.push("/admin");
-              return;
-            }
+            // if (
+            //   isAdmin &&
+            //   !redirectedToAdmin &&
+            //   !window.location.pathname.startsWith("/admin")
+            // ) {
+            //   setRedirectedToAdmin(true);
+            //   router.push("/admin");
+            //   return;
+            // }
           } else {
             setUserProfile(null); // Ensure atom is null if profile fetch fails
           }
@@ -277,9 +277,7 @@ export default function RootLayout({
               <ProfileDropdown />
             </div>
           </Header>
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
+          <main className="flex-1 overflow-auto">{children}</main>
         </div>
       </div>
     </Providers>

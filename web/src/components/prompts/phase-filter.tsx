@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface PhaseFilterProps {
   selectedPhases: string[];
@@ -41,6 +41,30 @@ export const getPhaseColor = (phase: string) => {
   }
 };
 
+// Get the ring color for selected phases
+export const getPhaseRingColor = (phase: string) => {
+  switch (phase) {
+    case "All":
+      return "ring-2 ring-gray-500";
+    case "Discover":
+      return "ring-2 ring-blue-500";
+    case "Validate":
+      return "ring-2 ring-purple-500";
+    case "Design":
+      return "ring-2 ring-pink-500";
+    case "Build":
+      return "ring-2 ring-amber-500";
+    case "Secure":
+      return "ring-2 ring-red-500";
+    case "Launch":
+      return "ring-2 ring-green-500";
+    case "Grow":
+      return "ring-2 ring-orange-500";
+    default:
+      return "ring-2 ring-gray-500";
+  }
+};
+
 export function PhaseFilter({ selectedPhases, onChange }: PhaseFilterProps) {
   const handlePhaseClick = (phase: string) => {
     if (phase === "All") {
@@ -57,23 +81,24 @@ export function PhaseFilter({ selectedPhases, onChange }: PhaseFilterProps) {
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex gap-2 w-max md:w-auto">
       {PHASE_OPTIONS.map((phase) => {
         const isSelected =
           (phase === "All" && selectedPhases.length === 0) ||
           (phase !== "All" && selectedPhases.includes(phase));
 
         return (
-          <Badge
+          <button
             key={phase}
-            variant={isSelected ? "default" : "outline"}
-            className={`cursor-pointer ${
-              isSelected ? getPhaseColor(phase) : ""
-            }`}
             onClick={() => handlePhaseClick(phase)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+              isSelected
+                ? `bg-black text-white`
+                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            }`}
           >
             {phase}
-          </Badge>
+          </button>
         );
       })}
     </div>

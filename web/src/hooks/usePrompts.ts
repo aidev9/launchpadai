@@ -1,71 +1,106 @@
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useAtom } from "jotai";
 import {
+  allPromptsAtom,
+  userPromptsAtom,
   promptPhaseFilterAtom,
   promptSearchQueryAtom,
   selectedPromptAtom,
   selectedPromptIdAtom,
+  filteredPromptsAtom,
+  filteredUserPromptsAtom,
+  promptsLoadingAtom,
+  promptsErrorAtom,
 } from "@/lib/store/prompt-store";
 import {
   getAllPromptsAction,
-  getPromptsByPhaseAction,
   getPromptAction,
   getUserPromptsAction,
-  getUserPromptsByPhaseAction,
 } from "@/lib/firebase/actions/prompts";
 import { Prompt } from "@/lib/firebase/schema";
 
 interface UsePromptsProps {
   userPromptsOnly?: boolean;
+  loadPrompts?: boolean;
 }
 
-export function usePrompts({ userPromptsOnly = false }: UsePromptsProps = {}) {
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function usePrompts({
+  userPromptsOnly = false,
+  loadPrompts = true,
+}: UsePromptsProps = {}) {
+  // State atoms
+  const [allPrompts, setAllPrompts] = useAtom(allPromptsAtom);
+  const [userPrompts, setUserPrompts] = useAtom(userPromptsAtom);
+  const [isLoading, setIsLoading] = useAtom(promptsLoadingAtom);
+  const [error, setError] = useAtom(promptsErrorAtom);
 
-  const [selectedPrompt, setSelectedPrompt] = useAtom(selectedPromptAtom);
-  const [selectedPromptId, setSelectedPromptId] = useAtom(selectedPromptIdAtom);
+  // Filter atoms
   const [phaseFilter, setPhaseFilter] = useAtom(promptPhaseFilterAtom);
   const [searchQuery, setSearchQuery] = useAtom(promptSearchQueryAtom);
 
-  // Fetch all prompts or filtered prompts based on phase tags
-  const fetchPrompts = useCallback(
+  // Selection atoms
+  const [selectedPrompt, setSelectedPrompt] = useAtom(selectedPromptAtom);
+  const [selectedPromptId, setSelectedPromptId] = useAtom(selectedPromptIdAtom);
+
+  // Filtered results
+  const [filteredPrompts] = useAtom(
+    userPromptsOnly ? filteredUserPromptsAtom : filteredPromptsAtom
+  );
+
+  // Fetch all prompts once
+  const fetchAllPrompts = useCallback(
     async (forceRefresh = false) => {
+      // Skip if we already have data and aren't forcing a refresh
+      if (!forceRefresh && allPrompts.length > 0) return;
+
       try {
         setIsLoading(true);
         setError(null);
 
-        let result;
-        if (phaseFilter.length > 0) {
-          if (userPromptsOnly) {
-            result = await getUserPromptsByPhaseAction(phaseFilter);
-          } else {
-            result = await getPromptsByPhaseAction(phaseFilter);
-          }
-        } else {
-          if (userPromptsOnly) {
-            result = await getUserPromptsAction();
-          } else {
-            result = await getAllPromptsAction();
-          }
-        }
+        const result = await getAllPromptsAction();
 
         if (result.success) {
-          // Set prompts from the result
-          setPrompts(result.prompts || []);
+          setAllPrompts(result.prompts || []);
         } else {
           setError(result.error || "Failed to fetch prompts");
-          setPrompts([]);
+          setAllPrompts([]);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
-        setPrompts([]);
+        setAllPrompts([]);
       } finally {
         setIsLoading(false);
       }
     },
-    [phaseFilter, userPromptsOnly]
+    [allPrompts.length, setAllPrompts, setIsLoading, setError]
+  );
+
+  // Fetch user prompts once
+  const fetchUserPrompts = useCallback(
+    async (forceRefresh = false) => {
+      // Skip if we already have data and aren't forcing a refresh
+      if (!forceRefresh && userPrompts.length > 0) return;
+
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const result = await getUserPromptsAction();
+
+        if (result.success) {
+          setUserPrompts(result.prompts || []);
+        } else {
+          setError(result.error || "Failed to fetch user prompts");
+          setUserPrompts([]);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+        setUserPrompts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [userPrompts.length, setUserPrompts, setIsLoading, setError]
   );
 
   // Get a specific prompt by ID
@@ -75,16 +110,45 @@ export function usePrompts({ userPromptsOnly = false }: UsePromptsProps = {}) {
         setIsLoading(true);
         setError(null);
 
-        const result = await getPromptAction(promptId);
+        // Try to find prompt in existing collections first
+        let foundPrompt =
+          allPrompts.find((p) => p.id === promptId) ||
+          userPrompts.find((p) => p.id === promptId);
 
-        if (result.success && result.prompt) {
-          setSelectedPrompt(result.prompt);
-          setSelectedPromptId(result.prompt.id);
-          return result.prompt;
-        } else {
-          setError(result.error || "Failed to fetch prompt");
-          return null;
+        // If not found locally, fetch from server
+        if (!foundPrompt) {
+          const result = await getPromptAction(promptId);
+
+          if (result.success && result.prompt) {
+            foundPrompt = result.prompt;
+
+            // Update the appropriate atom with the new prompt data
+            // Check if the prompt already exists in user prompts - if so, it's a user prompt
+            const isUserPrompt =
+              userPrompts.some((p) => p.id === promptId) ||
+              result.prompt.tags.includes("user");
+
+            if (isUserPrompt) {
+              // Add to user prompts if it's not already there
+              if (!userPrompts.some((p) => p.id === promptId)) {
+                setUserPrompts((prev) => [...prev, result.prompt!]);
+              }
+            } else {
+              // Add to all prompts if it's not already there
+              if (!allPrompts.some((p) => p.id === promptId)) {
+                setAllPrompts((prev) => [...prev, result.prompt!]);
+              }
+            }
+          } else {
+            setError(result.error || "Failed to fetch prompt");
+            return null;
+          }
         }
+
+        // Update selected prompt
+        setSelectedPrompt(foundPrompt);
+        setSelectedPromptId(foundPrompt.id);
+        return foundPrompt;
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
         return null;
@@ -92,7 +156,16 @@ export function usePrompts({ userPromptsOnly = false }: UsePromptsProps = {}) {
         setIsLoading(false);
       }
     },
-    [setSelectedPrompt, setSelectedPromptId]
+    [
+      allPrompts,
+      userPrompts,
+      setAllPrompts,
+      setUserPrompts,
+      setSelectedPrompt,
+      setSelectedPromptId,
+      setIsLoading,
+      setError,
+    ]
   );
 
   // Clear the selected prompt
@@ -101,28 +174,23 @@ export function usePrompts({ userPromptsOnly = false }: UsePromptsProps = {}) {
     setSelectedPromptId(null);
   }, [setSelectedPrompt, setSelectedPromptId]);
 
-  // Filter prompts based on search query
-  const filteredPrompts = searchQuery
-    ? prompts.filter(
-        (prompt) =>
-          prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          prompt.body.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          prompt.tags.some((tag) =>
-            tag.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-      )
-    : prompts;
-
-  // Load prompts on initial mount or when filters change
+  // Load prompts on initial mount if requested
   useEffect(() => {
-    fetchPrompts();
-  }, [fetchPrompts]);
+    if (!loadPrompts) return;
+
+    if (userPromptsOnly) {
+      fetchUserPrompts();
+    } else {
+      fetchAllPrompts();
+    }
+  }, [userPromptsOnly, fetchAllPrompts, fetchUserPrompts, loadPrompts]);
 
   return {
     prompts: filteredPrompts,
     isLoading,
     error,
-    fetchPrompts,
+    fetchAllPrompts,
+    fetchUserPrompts,
     fetchPromptById,
     selectedPrompt,
     setSelectedPrompt,

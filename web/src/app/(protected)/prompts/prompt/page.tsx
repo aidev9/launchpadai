@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Main } from "@/components/layout/main";
-import { ChevronLeft, Copy, FileText } from "lucide-react";
+import { ChevronLeft, Copy, FileText, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Prompt } from "@/lib/firebase/schema";
@@ -13,6 +13,7 @@ import { useAtom } from "jotai";
 import { selectedPromptAtom } from "@/lib/store/prompt-store";
 import { useState } from "react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import Playground from "./playground";
 
 export default function PromptDetail() {
   const router = useRouter();
@@ -136,9 +137,14 @@ export default function PromptDetail() {
           ))}
         </div>
 
-        <div className="prose max-w-none dark:prose-invert">
+        {/* <div className="prose max-w-none dark:prose-invert">
           <p className="whitespace-pre-wrap">{prompt.body}</p>
-        </div>
+        </div> */}
+
+        {/* Start Playground */}
+
+        <Playground prompt={prompt} />
+        {/* End Playground */}
       </div>
     </Main>
   );
