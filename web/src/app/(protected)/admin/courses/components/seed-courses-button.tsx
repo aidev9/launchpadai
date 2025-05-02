@@ -5,7 +5,7 @@ import { useAtom } from "jotai";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { courseActionAtom, initialLoadAtom } from "./courses-store";
+import { courseActionAtom, initialLoadAtom } from "@/lib/store/course-store";
 
 export function SeedCoursesButton() {
   const [isLoading, setIsLoading] = useState(false);

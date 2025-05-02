@@ -24,6 +24,7 @@ export type ProductQuestionInput = z.infer<typeof productQuestionInputSchema>;
 // List of product questions
 export const productQuestionListSchema = z.array(productQuestionSchema);
 
+// START: COURSES
 // Interface for Course data
 export interface Course {
   id: string;
@@ -52,20 +53,9 @@ export const courseInputSchema = z.object({
 });
 
 export type CourseInput = z.infer<typeof courseInputSchema>;
+// END: COURSES
 
-export const moduleInputSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters").max(100),
-  body: z.string(),
-  imageUrl: z.string().optional(),
-  filePath: z.string().optional(),
-  attachments: z.array(z.string()).default([]).optional(),
-  tags: z.array(z.string()).default([]).optional(),
-  xpAwards: z.number().min(0).max(500),
-  notifyStudents: z.boolean().default(false).optional(),
-});
-
-export type ModuleInput = z.infer<typeof moduleInputSchema>;
-
+// START: MODULES
 // Interface for Module data
 export interface Module {
   id: string;
@@ -80,3 +70,55 @@ export interface Module {
   createdAt?: string;
   updatedAt?: string;
 }
+
+// Schema for module validation
+export const moduleInputSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters").max(100),
+  body: z.string(),
+  imageUrl: z.string().optional(),
+  filePath: z.string().optional(),
+  attachments: z.array(z.string()).default([]).optional(),
+  tags: z.array(z.string()).default([]).optional(),
+  xpAwards: z.number().min(0).max(500),
+  notifyStudents: z.boolean().default(false).optional(),
+});
+
+export type ModuleInput = z.infer<typeof moduleInputSchema>;
+// END: MODULES
+
+// START: PROMPTS
+export interface Prompt {
+  id: string;
+  title: string;
+  body: string;
+  phaseTags: string[];
+  productTags: string[];
+  tags: string[];
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+/**
+ * Zod schema for prompt validation
+ */
+export const promptInputSchema = z.object({
+  title: z.string().min(1, "Title is required").max(100, "Title is too long"),
+  body: z.string().min(1, "Body is required"),
+  phaseTags: z.array(z.string()).min(1, "Select at least one phase tag"),
+  productTags: z.array(z.string()),
+  tags: z.array(z.string()),
+});
+
+export type PromptInput = z.infer<typeof promptInputSchema>;
+
+export type PhaseTag =
+  | "All"
+  | "Discover"
+  | "Validate"
+  | "Design"
+  | "Build"
+  | "Secure"
+  | "Launch"
+  | "Grow";
+
+// END: PROMPTS

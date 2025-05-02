@@ -26,7 +26,7 @@ import {
   selectedCourseAtom,
   courseFormDataAtom,
   courseActionAtom,
-} from "./courses-store";
+} from "@/lib/store/course-store";
 import { Eye, PenSquare, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";

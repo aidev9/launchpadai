@@ -34,7 +34,7 @@ import {
   selectedCourseAtom,
   editCourseModalOpenAtom,
   courseFormDataAtom,
-} from "../components/courses-store";
+} from "@/lib/store/course-store";
 import { CourseForm } from "../components/course-form";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ModuleList } from "./components/module-list";

@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -14,8 +13,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useAtom, useSetAtom } from "jotai";
-import { Course } from "@/lib/firebase/schema";
+import { useAtom } from "jotai";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -24,79 +23,76 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
+import { DataTablePagination } from "./data-table-pagination";
+import { DataTableToolbar } from "./data-table-toolbar";
 import {
-  columnFiltersAtom,
+  promptRowSelectionAtom,
   columnVisibilityAtom,
-  rowSelectionAtom,
-  searchFilterAtom,
+  columnFiltersAtom,
   sortingAtom,
   tableInstanceAtom,
-  levelFilterAtom,
+  titleFilterAtom,
+  phaseTagsFilterAtom,
+  productTagsFilterAtom,
   tagsFilterAtom,
-  selectedCourseAtom,
-} from "@/lib/store/course-store";
-import { DataTableToolbar } from "./data-table-toolbar";
-import { DataTablePagination } from "./data-table-pagination";
+} from "@/lib/store/prompt-store";
+import { Prompt } from "@/lib/firebase/schema";
 
-declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface ColumnMeta<TData, TValue> {
-    className?: string;
-  }
+interface PromptTableProps {
+  columns: ColumnDef<Prompt>[];
+  data: Prompt[];
 }
 
-interface CoursesTableProps {
-  columns: ColumnDef<Course>[];
-  data: Course[];
-}
-
-export function CoursesTable({ columns, data }: CoursesTableProps) {
-  // Initialize router for navigation
-  const router = useRouter();
-
-  // Add setSelectedCourse at component level
-  const setSelectedCourse = useSetAtom(selectedCourseAtom);
-
+export function PromptTable({ columns, data }: PromptTableProps) {
   // Use Jotai atoms for table state
-  const [rowSelection, setRowSelection] = useAtom(rowSelectionAtom);
-  const [columnFilters, setColumnFilters] = useAtom(columnFiltersAtom);
+  const [rowSelection, setRowSelection] = useAtom(promptRowSelectionAtom);
   const [columnVisibility, setColumnVisibility] = useAtom(columnVisibilityAtom);
+  const [columnFilters, setColumnFilters] = useAtom(columnFiltersAtom);
   const [sorting, setSorting] = useAtom(sortingAtom);
   const [, setTableInstance] = useAtom(tableInstanceAtom);
 
   // Get filter atoms
-  const [searchFilter] = useAtom(searchFilterAtom);
-  const [levelFilter] = useAtom(levelFilterAtom);
+  const [titleFilter] = useAtom(titleFilterAtom);
+  const [phaseTagsFilter] = useAtom(phaseTagsFilterAtom);
+  const [productTagsFilter] = useAtom(productTagsFilterAtom);
   const [tagsFilter] = useAtom(tagsFilterAtom);
 
   // Keep track of previous data length to detect when data changes
   const prevDataLength = React.useRef(data.length);
 
   // Clear row selection when data changes significantly
-  useEffect(() => {
-    // If data length has changed, it means courses were added or deleted
+  // This prevents selection state from being out of sync with actual data
+  React.useEffect(() => {
+    // If data length has changed, it means prompts were added or deleted
     if (data.length !== prevDataLength.current) {
+      console.log("Data changed, clearing row selection");
       setRowSelection({});
       prevDataLength.current = data.length;
     }
   }, [data.length, setRowSelection]);
 
-  // Sync filter atoms with columnFilters when component mounts or filters change
-  useEffect(() => {
+  // Sync filter atoms with columnFilters when component mounts
+  React.useEffect(() => {
     const newColumnFilters: ColumnFiltersState = [];
 
-    if (searchFilter) {
+    if (titleFilter) {
       newColumnFilters.push({
         id: "title",
-        value: searchFilter,
+        value: titleFilter,
       });
     }
 
-    if (levelFilter.length > 0) {
+    if (phaseTagsFilter.length > 0) {
       newColumnFilters.push({
-        id: "level",
-        value: levelFilter,
+        id: "phaseTags",
+        value: phaseTagsFilter,
+      });
+    }
+
+    if (productTagsFilter.length > 0) {
+      newColumnFilters.push({
+        id: "productTags",
+        value: productTagsFilter,
       });
     }
 
@@ -110,7 +106,14 @@ export function CoursesTable({ columns, data }: CoursesTableProps) {
     if (JSON.stringify(newColumnFilters) !== JSON.stringify(columnFilters)) {
       setColumnFilters(newColumnFilters);
     }
-  }, [searchFilter, levelFilter, tagsFilter, setColumnFilters, columnFilters]);
+  }, [
+    titleFilter,
+    phaseTagsFilter,
+    productTagsFilter,
+    tagsFilter,
+    setColumnFilters,
+    columnFilters,
+  ]);
 
   const table = useReactTable({
     data,
@@ -134,8 +137,8 @@ export function CoursesTable({ columns, data }: CoursesTableProps) {
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  // Store the table instance in the atom for access from other components
-  useEffect(() => {
+  // Store the table instance in the atom
+  React.useEffect(() => {
     setTableInstance(table);
   }, [table, setTableInstance]);
 
@@ -150,7 +153,11 @@ export function CoursesTable({ columns, data }: CoursesTableProps) {
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className={header.column.columnDef.meta?.className}
+                    className={cn(
+                      header.column.getCanSort() &&
+                        "cursor-pointer select-none",
+                      header.column.columnDef.meta?.className
+                    )}
                   >
                     {header.isPlaceholder
                       ? null
@@ -169,12 +176,12 @@ export function CoursesTable({ columns, data }: CoursesTableProps) {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="group/row cursor-pointer transition-colors hover:bg-muted/50"
+                  className="group/row"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className={cell.column.columnDef.meta?.className}
+                      className={cn(cell.column.columnDef.meta?.className)}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -190,7 +197,7 @@ export function CoursesTable({ columns, data }: CoursesTableProps) {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No courses found.
+                  No prompts found.
                 </TableCell>
               </TableRow>
             )}

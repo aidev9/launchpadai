@@ -15,7 +15,7 @@ import {
   rowSelectionAtom,
   courseActionAtom,
   initialLoadAtom,
-} from "./components/courses-store";
+} from "@/lib/store/course-store";
 import { useToast } from "@/hooks/use-toast";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SeedCoursesButton } from "./components/seed-courses-button";

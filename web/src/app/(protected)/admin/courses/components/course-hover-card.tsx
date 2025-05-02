@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { Book, Tag, Users } from "lucide-react";
 import { useSetAtom } from "jotai";
-import { selectedCourseAtom } from "./courses-store";
+import { selectedCourseAtom } from "@/lib/store/course-store";
 import { useRouter } from "next/navigation";
 import { PLACEHOLDER_IMAGE_URL } from "@/utils/constants";
 

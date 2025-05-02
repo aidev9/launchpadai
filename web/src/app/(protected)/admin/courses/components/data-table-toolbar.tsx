@@ -9,7 +9,7 @@ import {
   levelFilterAtom,
   searchFilterAtom,
   tagsFilterAtom,
-} from "./courses-store";
+} from "@/lib/store/course-store";
 
 import { Course } from "@/lib/firebase/schema";
 import { DataTableFacetedFilter } from "./data-table-faceted-filter";

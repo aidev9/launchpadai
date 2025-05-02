@@ -38,8 +38,8 @@ import {
   addCourseModalOpenAtom,
   editCourseModalOpenAtom,
   selectedCourseAtom,
-} from "./courses-store";
-import { courseActionAtom } from "./courses-store";
+  courseActionAtom,
+} from "@/lib/store/course-store";
 import ImageUploadFormControl from "@/components/ui/imageUploadFormControl";
 import { clientAuth } from "@/lib/firebase/client";
 

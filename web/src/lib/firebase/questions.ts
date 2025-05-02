@@ -48,6 +48,7 @@ export async function createQuestion(data: QuestionInput) {
 
     // Add timestamps
     const now = new Date().toISOString();
+    console.log("now::::", now);
     const questionData = {
       ...validatedData,
       createdAt: now,

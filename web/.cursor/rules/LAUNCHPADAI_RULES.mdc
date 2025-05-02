@@ -8,7 +8,7 @@ alwaysApply: false
 - Break down large steps into smaller tasks
 - Finish each task in the list
 - Do not ask question such as "Shall we?", "Shoud I go forward?". Just do the tasks outlined.
-- When you're creating a parent/child route where the parent displays a list of items and then the user clicks on one of the items to navigate to the item detail page, follow these principles:
+- When you're creating a parent/child route where the parent displays a list of items and the user clicks on one of the items to navigate to the child page (detail), follow these rules:
     - On the parent page use a Tanstack Table whenever possible
     - On the parent page incude an + Add Item button to the top right
     - On the parent page include a Delete Selected button when one or more items are selected from the table rows
@@ -17,3 +17,9 @@ alwaysApply: false
     - On the detail page do not make a DB call to fetch the details, use the atom
     - On the cild page, always include CRUD operations where you update both the atoms and the DB
     - Always use React Server Actions for the mutations
+- When creating files, if the file size exceeds 400 lines, extract relevant functionality into a separate file. Follow the rule of single responsibility files and separation of concerns when breaking up large files
+- Look for common functionality, especially for react components
+- Before creating a new component, API route, Jotail store, or a utility function ALWAYS look for similar functionality inside the current codebase and see if it's possible to extend or refactor it to support the new functionality.
+- Do not use the window object. Use React constructs only.
+- Do not create routes with /[id]. Instead, create a clean route without /[id], set the parent object into a Jotai atom and load it on the detail page from memory, saving a database trip.
+- Always use React Server Actions whenever possible. Do not use APIs if you can handle it with actions.

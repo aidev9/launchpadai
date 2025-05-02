@@ -39,20 +39,10 @@ import {
 } from "@/lib/firebase/actions/questions";
 import { useXp } from "@/xp/useXp";
 import { toast as showToast } from "@/hooks/use-toast";
+import { phaseOptions } from "@/utils/constants";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
-
-// Phase options for dropdown
-const phaseOptions = [
-  { value: "Discover", label: "Discover" },
-  { value: "Validate", label: "Validate" },
-  { value: "Design", label: "Design" },
-  { value: "Build", label: "Build" },
-  { value: "Secure", label: "Secure" },
-  { value: "Launch", label: "Launch" },
-  { value: "Grow", label: "Grow" },
-];
 
 // Form schema for adding a new question
 const formSchema = z.object({

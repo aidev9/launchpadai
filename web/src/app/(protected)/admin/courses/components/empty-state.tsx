@@ -4,7 +4,7 @@ import { useSetAtom } from "jotai";
 import { Book, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SeedCoursesButton } from "./seed-courses-button";
-import { addCourseModalOpenAtom } from "./courses-store";
+import { addCourseModalOpenAtom } from "@/lib/store/course-store";
 
 export function EmptyState() {
   const setAddCourseModalOpen = useSetAtom(addCourseModalOpenAtom);

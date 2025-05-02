@@ -27,6 +27,8 @@ import {
   IconUserShield,
   IconSchool,
   IconReportAnalytics,
+  IconNotes,
+  IconPlaylistAdd,
 } from "@tabler/icons-react";
 import { AudioWaveform, Command, GalleryVerticalEnd } from "lucide-react";
 import { type SidebarData } from "../types";
@@ -60,6 +62,16 @@ export const sidebarData: SidebarData = {
           title: "Products",
           url: "/dashboard",
           icon: IconCube,
+        },
+        {
+          title: "Prompts",
+          url: "/prompts",
+          icon: IconNotes,
+        },
+        {
+          title: "My Prompts",
+          url: "/myprompts",
+          icon: IconPlaylistAdd,
         },
         {
           title: "Tools",
@@ -143,6 +155,11 @@ export const sidebarData: SidebarData = {
           title: "Courses",
           url: "/admin/courses",
           icon: IconSchool,
+        },
+        {
+          title: "Prompts",
+          url: "/admin/prompts",
+          icon: IconNotes,
         },
         {
           title: "Analytics",

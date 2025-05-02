@@ -1,0 +1,109 @@
+# Prompt Management System PRD
+
+## Overview
+This document outlines the development of a prompt management system with three main routes:
+1. `/prompts` - Browse predefined prompts
+2. `/admin/prompts` - Admin management of prompts
+3. `/myprompts` - User-specific prompts
+
+## Data Structure
+
+### Prompt Schema
+```typescript
+interface Prompt {
+  id: string;
+  title: string;
+  body: string;
+  phaseTags: Array<'Discover' | 'Validate' | 'Design' | 'Build' | 'Secure' | 'Launch' | 'Grow'>;
+  productTags: string[];
+  tags: string[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+### Database Collections
+- `prompts/{prompt_id}` - Global prompts
+- `myprompts/{user_id}/prompts/{prompt_id}` - User-specific prompts
+
+## Route 1: `/prompts`
+
+### Purpose
+Allow users to browse and filter predefined prompts from Firestore.
+
+### UI Components
+- Horizontal filter with phase pills (All, Discover, Validate, Design, Build, Secure, Launch, Grow)
+- Search text box for filtering by title and content
+- Prompt cards display (similar to `/dashboard`)
+
+### Functionality
+- Filter prompts by phase (multiple selection allowed)
+- Filter prompts by search text (matching title or body)
+- Click on prompt card navigates to detail page
+- Navigation sets Jotai atom with prompt details to avoid database calls
+
+## Route 2: `/admin/prompts`
+
+### Purpose
+Allow administrators to manage global prompts.
+
+### UI Components
+- Tanstack table with prompts listed in rows
+- Filters at table top
+- "Add New" button to trigger modal form
+- "Seed Database" button to populate with generated prompts
+
+### Functionality
+- CRUD operations for prompts
+- 3-dot menu for edit/delete on individual prompts
+- Multi-select for batch deletion
+- Form for prompt creation/editing with fields:
+  - Title
+  - Body
+  - Phase tags (multi-select)
+  - Product tags (multi-select)
+  - General tags (multi-select)
+- Database seeding with 300 generated prompts spanning all 7 phases
+
+## Route 3: `/myprompts`
+
+### Purpose
+Allow users to manage their personal collection of prompts.
+
+### UI Components
+- Horizontal filter with phase pills (same as `/prompts`)
+- Search text box
+- Prompt cards display
+
+### Functionality
+- Filter personal prompts by phase and search text
+- View prompt details
+- Edit personal prompts
+- Generate enhanced versions using AI
+- Copy/download (markdown) prompts
+- Delete personal prompts
+
+## Prompt Detail Page
+
+### Purpose
+Display comprehensive prompt information and actions.
+
+### UI Components
+- Prompt title and body display
+- Tags display
+- Action buttons
+
+### Functionality
+- View complete prompt details
+- "Use as template" button to:
+  1. Copy prompt to user's collection
+  2. Navigate to `/myprompts`
+  3. Open prompt in edit mode
+
+## Implementation Guidelines
+- Follow existing data handling patterns
+- Use Tanstack table for admin interface
+- Maintain UI consistency with the rest of the application
+- Leverage Jotai for state management
+- Implement single responsibility and separation of concerns
+- Reuse existing functionality where possible
