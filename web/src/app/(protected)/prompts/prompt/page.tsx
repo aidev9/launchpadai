@@ -61,16 +61,6 @@ export default function PromptDetail() {
     }
   };
 
-  const handleCopyToClipboard = () => {
-    if (!prompt) return;
-
-    navigator.clipboard.writeText(prompt.body);
-    toast({
-      title: "Copied",
-      description: "Prompt content copied to clipboard",
-    });
-  };
-
   // Render no prompt selected state
   if (!prompt) {
     return (
@@ -136,12 +126,7 @@ export default function PromptDetail() {
           ))}
         </div>
 
-        {/* <div className="prose max-w-none dark:prose-invert">
-          <p className="whitespace-pre-wrap">{prompt.body}</p>
-        </div> */}
-
         {/* Start Playground */}
-
         <Playground prompt={prompt} />
         {/* End Playground */}
       </div>

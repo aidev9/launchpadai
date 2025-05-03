@@ -17,6 +17,7 @@ import { getPhaseColor } from "@/components/prompts/phase-filter";
 import { useAtom } from "jotai";
 import { selectedPromptAtom } from "@/lib/store/prompt-store";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import Playground from "./playground";
 
 export default function UserPromptDetail() {
   const router = useRouter();
@@ -155,9 +156,13 @@ export default function UserPromptDetail() {
           ))}
         </div>
 
-        <div className="prose max-w-none dark:prose-invert">
+        {/* <div className="prose max-w-none dark:prose-invert">
           <p className="whitespace-pre-wrap">{prompt.body}</p>
-        </div>
+        </div> */}
+
+        {/* Start Playground */}
+        <Playground prompt={prompt} />
+        {/* End Playground */}
       </div>
     </Main>
   );

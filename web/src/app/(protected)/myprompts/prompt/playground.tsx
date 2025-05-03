@@ -21,7 +21,7 @@ import { TopPSelector } from "./components/top-p-selector";
 import { Prompt } from "@/lib/firebase/schema";
 import { useAtom } from "jotai";
 import { selectedPromptAtom } from "@/lib/store/prompt-store";
-import { enhancePromptStream } from "./actions";
+import { enhancePromptStream } from "@/app/(protected)/prompts/prompt/actions";
 import {
   selectedModelAtom,
   temperatureAtom,
