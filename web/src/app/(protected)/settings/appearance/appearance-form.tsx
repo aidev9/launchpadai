@@ -19,6 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 const appearanceFormSchema = z.object({
   theme: z.enum(["light", "dark"], {
@@ -53,6 +54,7 @@ export function AppearanceForm() {
 
     toast({
       title: "You submitted the following values:",
+      duration: TOAST_DEFAULT_DURATION,
       description: (
         <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
           <code className="text-white">{JSON.stringify(data, null, 2)}</code>

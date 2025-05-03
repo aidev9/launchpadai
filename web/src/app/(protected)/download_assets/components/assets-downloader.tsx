@@ -12,6 +12,7 @@ import { selectedPhasesAtom } from "./phase-toolbar";
 import { getProductAssets } from "@/lib/firebase/assets";
 import { toast } from "@/components/ui/use-toast";
 import { selectedAssetsAtom } from "./assets-atoms";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 interface FirestoreAsset {
   id: string;
@@ -48,6 +49,7 @@ export function AssetsDownloader() {
         } else {
           toast({
             title: "Error loading assets",
+            duration: TOAST_DEFAULT_DURATION,
             description: result.error || "Failed to load assets",
             variant: "destructive",
           });
@@ -56,6 +58,7 @@ export function AssetsDownloader() {
         console.error("Error fetching assets:", error);
         toast({
           title: "Error loading assets",
+          duration: TOAST_DEFAULT_DURATION,
           description: "Failed to load assets from server",
           variant: "destructive",
         });

@@ -12,6 +12,7 @@ import { getOrderedProductQuestions } from "@/lib/firebase/actions/questions";
 import { toast as showToast } from "@/hooks/use-toast";
 import { allQuestionsAtom } from "./components/qa-store";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -67,6 +68,7 @@ export default function QA() {
             title: "Error loading questions",
             description: response.error || "Failed to load questions",
             variant: "destructive",
+            duration: TOAST_DEFAULT_DURATION,
           });
         }
       } catch (error) {
@@ -75,6 +77,7 @@ export default function QA() {
           title: "Error loading questions",
           description: error instanceof Error ? error.message : "Unknown error",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
       } finally {
         // Only update loading state if we were showing loading

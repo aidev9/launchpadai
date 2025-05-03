@@ -23,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 interface ModuleListProps {
   courseId: string;
@@ -96,6 +97,7 @@ export function ModuleList({ courseId }: ModuleListProps) {
           setError(result.error || "Failed to fetch modules");
           toast({
             title: "Error",
+            duration: TOAST_DEFAULT_DURATION,
             description: result.error || "Failed to fetch modules",
             variant: "destructive",
           });
@@ -106,6 +108,7 @@ export function ModuleList({ courseId }: ModuleListProps) {
         setError(errorMessage);
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description: errorMessage,
           variant: "destructive",
         });
@@ -172,11 +175,13 @@ export function ModuleList({ courseId }: ModuleListProps) {
 
         toast({
           title: "Module deleted",
+          duration: TOAST_DEFAULT_DURATION,
           description: "Module has been deleted successfully",
         });
       } else {
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description: result.error || "Failed to delete module",
           variant: "destructive",
         });
@@ -186,6 +191,7 @@ export function ModuleList({ courseId }: ModuleListProps) {
         err instanceof Error ? err.message : "An error occurred";
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description: errorMessage,
         variant: "destructive",
       });

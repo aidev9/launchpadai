@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -61,6 +62,7 @@ export default function CoursesPage() {
             title: "Error",
             description: result.error || "Failed to load courses",
             variant: "destructive",
+            duration: TOAST_DEFAULT_DURATION,
           });
           setCourses([]);
         }
@@ -70,6 +72,7 @@ export default function CoursesPage() {
           description:
             error instanceof Error ? error.message : "An error occurred",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
         setCourses([]);
       } finally {
@@ -169,6 +172,7 @@ export default function CoursesPage() {
         // Show success message
         toast({
           title: "Courses deleted",
+          duration: TOAST_DEFAULT_DURATION,
           description: `Successfully deleted ${successCount} ${successCount === 1 ? "course" : "courses"}${
             failedCount > 0
               ? `. Failed to delete ${failedCount} ${failedCount === 1 ? "course" : "courses"}.`
@@ -178,6 +182,7 @@ export default function CoursesPage() {
       } else {
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description: "Failed to delete selected courses.",
           variant: "destructive",
         });
@@ -185,6 +190,7 @@ export default function CoursesPage() {
     } catch (error) {
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           error instanceof Error
             ? error.message

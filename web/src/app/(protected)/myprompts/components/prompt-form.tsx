@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
-import { useAtom, useSetAtom } from "jotai";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,52 +21,27 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  addPromptAction,
-  updatePromptAction,
-} from "@/lib/firebase/actions/prompts";
 import { Prompt } from "@/lib/firebase/schema";
-import { promptActionAtom } from "@/lib/store/prompt-store";
 import { useToast } from "@/hooks/use-toast";
-import { promptModalOpenAtom } from "@/lib/store/prompt-store";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { TagInput } from "@/components/ui/tag-input";
-import {
-  getCurrentUnixTimestamp,
-  phaseOptions,
-  TOAST_DEFAULT_DURATION,
-} from "@/utils/constants";
+import { phaseOptions, TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { promptInputSchema, PromptInput } from "@/lib/firebase/schema";
 
-// Product tag options (keeping for reference but not using in MultiSelect anymore)
-const productOptions = [
-  { label: "SaaS", value: "SaaS" },
-  { label: "Mobile App", value: "Mobile App" },
-  { label: "Marketplace", value: "Marketplace" },
-  { label: "E-commerce", value: "E-commerce" },
-  { label: "Web App", value: "Web App" },
-];
-
-// General tag options (keeping for reference but not using in MultiSelect anymore)
-const tagOptions = [
-  { label: "frontend", value: "frontend" },
-  { label: "backend", value: "backend" },
-  { label: "design", value: "design" },
-  { label: "marketing", value: "marketing" },
-  { label: "legal", value: "legal" },
-  { label: "finance", value: "finance" },
-  { label: "sales", value: "sales" },
-  { label: "customer service", value: "customer service" },
-];
-
 interface PromptFormProps {
-  promptEdited?: Prompt | null;
+  prompt?: Prompt | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: PromptInput, promptId?: string) => Promise<any>;
 }
 
-export function PromptForm({ promptEdited }: PromptFormProps) {
+export function PromptForm({
+  prompt,
+  open,
+  onOpenChange,
+  onSubmit,
+}: PromptFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const setPromptAction = useSetAtom(promptActionAtom);
-  const [promptModalOpen, setPromptModalOpen] = useAtom(promptModalOpenAtom);
   const { toast } = useToast();
 
   // Initialize the form
@@ -83,15 +57,15 @@ export function PromptForm({ promptEdited }: PromptFormProps) {
     mode: "onChange",
   });
 
-  // Update form values when editing an existing prompt or resetting form
+  // Update form values when editing an existing prompt
   useEffect(() => {
-    if (promptEdited) {
+    if (prompt) {
       form.reset({
-        title: promptEdited.title,
-        body: promptEdited.body,
-        phaseTags: promptEdited.phaseTags,
-        productTags: promptEdited.productTags,
-        tags: promptEdited.tags,
+        title: prompt.title,
+        body: prompt.body,
+        phaseTags: prompt.phaseTags,
+        productTags: prompt.productTags,
+        tags: prompt.tags,
       });
     } else {
       form.reset({
@@ -102,77 +76,18 @@ export function PromptForm({ promptEdited }: PromptFormProps) {
         tags: [],
       });
     }
-  }, [promptEdited, form, promptModalOpen]);
+  }, [prompt, form, open]);
 
-  const onSubmit = async (data: PromptInput) => {
+  const handleSubmit = async (data: PromptInput) => {
     setIsSubmitting(true);
 
     try {
-      if (promptEdited) {
-        // Ensure promptEdited.id is defined
-        if (!promptEdited.id) {
-          toast({
-            title: "Error",
-            duration: TOAST_DEFAULT_DURATION,
-            description: "Prompt ID is missing. Cannot update prompt.",
-            variant: "destructive",
-          });
-          setIsSubmitting(false);
-          return;
-        }
-
-        // Update existing prompt
-        const result = await updatePromptAction(promptEdited.id, data);
-
-        if (result.success) {
-          if (result.prompt) {
-            setPromptAction({
-              type: "UPDATE",
-              prompt: result.prompt,
-            });
-          }
-
-          setPromptModalOpen(false);
-          toast({
-            title: "Prompt updated",
-            duration: TOAST_DEFAULT_DURATION,
-            description: "The prompt has been updated successfully.",
-          });
-          form.reset();
-        } else {
-          toast({
-            title: "Error",
-            duration: TOAST_DEFAULT_DURATION,
-            description: result.error || "Failed to update prompt",
-            variant: "destructive",
-          });
-        }
-      } else {
-        // Add new prompt
-        const result = await addPromptAction(data);
-
-        if (result.success && result.prompt) {
-          setPromptAction({
-            type: "ADD",
-            prompt: result.prompt,
-          });
-
-          setPromptModalOpen(false);
-          toast({
-            title: "Prompt added",
-            duration: TOAST_DEFAULT_DURATION,
-            description: "The prompt has been added successfully.",
-          });
-          form.reset();
-        } else {
-          toast({
-            title: "Error",
-            description: result.error || "Failed to add prompt",
-            variant: "destructive",
-          });
-        }
-      }
+      console.log("Form submitted with data:", data);
+      console.log("Prompt ID for editing:", prompt?.id);
+      await onSubmit(data, prompt?.id);
+      // Dialog closing is now handled by the parent component
     } catch (error) {
+      console.error("Error in form submission:", error);
       toast({
         title: "Error",
         duration: TOAST_DEFAULT_DURATION,
@@ -188,16 +103,19 @@ export function PromptForm({ promptEdited }: PromptFormProps) {
   };
 
   return (
-    <Dialog open={promptModalOpen} onOpenChange={setPromptModalOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
-            {promptEdited ? "Edit Prompt" : "Add New Prompt"}
+            {prompt ? "Edit Prompt" : "Create New Prompt"}
           </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-6"
+          >
             {/* Title field */}
             <FormField
               control={form.control}
@@ -217,7 +135,7 @@ export function PromptForm({ promptEdited }: PromptFormProps) {
               )}
             />
 
-            {/* Body field - moving up for better UX */}
+            {/* Body field */}
             <FormField
               control={form.control}
               name="body"
@@ -302,19 +220,19 @@ export function PromptForm({ promptEdited }: PromptFormProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setPromptModalOpen(false)}
+                onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting
-                  ? promptEdited
+                  ? prompt
                     ? "Updating..."
-                    : "Adding..."
-                  : promptEdited
+                    : "Creating..."
+                  : prompt
                     ? "Update Prompt"
-                    : "Add Prompt"}
+                    : "Create Prompt"}
               </Button>
             </DialogFooter>
           </form>

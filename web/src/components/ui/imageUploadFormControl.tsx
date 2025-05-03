@@ -15,6 +15,7 @@ import {
   API_DELETE_ASSET,
   API_UPLOAD_ASSET,
   MAX_FILE_SIZE,
+  TOAST_DEFAULT_DURATION,
 } from "@/utils/constants";
 
 export interface ImageUploadFormControlProps {
@@ -104,6 +105,7 @@ export default function ImageUploadFormControl(
         title: "File too large",
         description: "Image must be less than 10MB",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
       return;
     }

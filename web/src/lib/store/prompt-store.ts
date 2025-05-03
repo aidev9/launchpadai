@@ -2,6 +2,10 @@ import { atom } from "jotai";
 import { Prompt } from "@/lib/firebase/schema";
 import { Table, ColumnFiltersState, SortingState } from "@tanstack/react-table";
 
+// Layout view type
+export type LayoutViewType = "card" | "table";
+export const layoutViewAtom = atom<LayoutViewType>("card");
+
 // Base data atoms
 export const allPromptsAtom = atom<Prompt[]>([]);
 export const userPromptsAtom = atom<Prompt[]>([]);
@@ -113,6 +117,66 @@ export const titleFilterAtom = atom<string>("");
 export const phaseTagsFilterAtom = atom<string[]>([]);
 export const productTagsFilterAtom = atom<string[]>([]);
 export const tagsFilterAtom = atom<string[]>([]);
+
+// Optimistic update atoms for prompt CRUD operations
+export const updatePromptAtom = atom(
+  null,
+  (get, set, updatedPrompt: Prompt) => {
+    // Update in userPrompts atom
+    set(userPromptsAtom, (prev) =>
+      prev.map((prompt) =>
+        prompt.id === updatedPrompt.id ? updatedPrompt : prompt
+      )
+    );
+
+    // Update in allPrompts atom if it exists there
+    set(allPromptsAtom, (prev) => {
+      const exists = prev.some((prompt) => prompt.id === updatedPrompt.id);
+      return exists
+        ? prev.map((prompt) =>
+            prompt.id === updatedPrompt.id ? updatedPrompt : prompt
+          )
+        : prev;
+    });
+  }
+);
+
+export const deletePromptAtom = atom(null, (get, set, promptId: string) => {
+  // Remove from userPrompts atom
+  set(userPromptsAtom, (prev) =>
+    prev.filter((prompt) => prompt.id !== promptId)
+  );
+
+  // Remove from allPrompts atom if it exists there
+  set(allPromptsAtom, (prev) =>
+    prev.filter((prompt) => prompt.id !== promptId)
+  );
+});
+
+export const deleteMultiplePromptsAtom = atom(
+  null,
+  (get, set, promptIds: string[]) => {
+    // Remove from userPrompts atom
+    set(userPromptsAtom, (prev) =>
+      prev.filter((prompt) => !promptIds.includes(prompt.id || ""))
+    );
+
+    // Remove from allPrompts atom if it exists there
+    set(allPromptsAtom, (prev) =>
+      prev.filter((prompt) => !promptIds.includes(prompt.id || ""))
+    );
+  }
+);
+
+export const addPromptAtom = atom(null, (get, set, newPrompt: Prompt) => {
+  // Add to userPrompts atom
+  set(userPromptsAtom, (prev) => [...prev, newPrompt]);
+
+  // Add to allPrompts atom if it has user tag
+  if (newPrompt.tags.includes("user")) {
+    set(allPromptsAtom, (prev) => [...prev, newPrompt]);
+  }
+});
 
 // // Modal atoms
 // export const deletePromptModalOpenAtom = atom<boolean>(false);

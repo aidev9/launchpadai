@@ -25,6 +25,7 @@ import { Loader2 } from "lucide-react";
 import StepIndicator from "./stepIndicator";
 import StepContent from "./stepContent";
 import { moduleInputSchema, ModuleInput } from "@/lib/firebase/schema";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 interface ModuleFormProps {
   isEdit?: boolean;
@@ -166,6 +167,7 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({
         if (result.success) {
           toast({
             title: isEdit ? "Module updated" : "Module added",
+            duration: TOAST_DEFAULT_DURATION,
             description: isEdit
               ? "Module has been updated successfully"
               : "Module has been added successfully",
@@ -191,6 +193,7 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({
         console.error("Form submission error:", error);
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description:
             error instanceof Error
               ? error.message

@@ -41,7 +41,10 @@ import { ModuleList } from "./components/module-list";
 import { addModuleModalOpenAtom } from "./components/modules-store";
 import { ModuleForm } from "./components/module-form";
 import { editModuleModalOpenAtom } from "./components/modules-store";
-import { PLACEHOLDER_IMAGE_URL } from "@/utils/constants";
+import {
+  PLACEHOLDER_IMAGE_URL,
+  TOAST_DEFAULT_DURATION,
+} from "@/utils/constants";
 
 // Level badge colors
 const levelColors = new Map([
@@ -87,6 +90,7 @@ export default function CourseDetailPage() {
       if (result.success) {
         toast({
           title: "Course deleted",
+          duration: TOAST_DEFAULT_DURATION,
           description: "Course has been deleted successfully",
         });
         router.push("/admin/courses");
@@ -96,6 +100,7 @@ export default function CourseDetailPage() {
     } catch (error) {
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",

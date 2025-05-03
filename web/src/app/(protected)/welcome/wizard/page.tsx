@@ -53,6 +53,8 @@ import { useAtom } from "jotai";
 import { CountrySelect } from "@/components/ui/country-select";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useXp } from "@/xp/useXp";
+import { Skeleton } from "@/components/ui/skeleton";
+import SkeletonForm from "@/components/layout/skeletonForm";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -334,27 +336,7 @@ export default function ProductWizard() {
 
   // Loading state
   if (isLoading) {
-    return (
-      <>
-        <Header fixed>
-          <Search />
-          <div className="ml-auto flex items-center space-x-4">
-            <ThemeSwitch />
-            <ProfileDropdown />
-          </div>
-        </Header>
-
-        <Main>
-          <div className="max-w-3xl mx-auto">
-            <div className="flex flex-col gap-4 animate-pulse p-6">
-              <div className="h-8 w-2/3 bg-muted rounded"></div>
-              <div className="h-4 w-1/2 bg-muted rounded"></div>
-              <div className="h-32 w-full bg-muted rounded mt-4"></div>
-            </div>
-          </div>
-        </Main>
-      </>
-    );
+    return <SkeletonForm />;
   }
 
   return (

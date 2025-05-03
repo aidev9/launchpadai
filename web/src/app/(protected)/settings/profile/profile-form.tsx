@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { updateProfileAction, ProfileUpdateData } from "./actions";
 import { useAtom } from "jotai";
 import { userProfileAtom, updateUserProfileAtom } from "@/lib/store/user-store";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 const profileFormSchema = z.object({
   displayName: z
@@ -99,6 +100,7 @@ export default function ProfileForm() {
       if (result.success) {
         toast({
           title: "Profile updated",
+          duration: TOAST_DEFAULT_DURATION,
           description: "Your profile has been updated successfully.",
         });
       } else {
@@ -110,6 +112,7 @@ export default function ProfileForm() {
       console.error("Error updating profile:", error);
       toast({
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
         title: "Error",
         description:
           error instanceof Error ? error.message : "Failed to update profile",

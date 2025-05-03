@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { courseActionAtom, initialLoadAtom } from "@/lib/store/course-store";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 export function SeedCoursesButton() {
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +29,7 @@ export function SeedCoursesButton() {
 
       toast({
         title: "Success",
+        duration: TOAST_DEFAULT_DURATION,
         description: data.message || "Sample courses have been added",
       });
 
@@ -37,6 +39,7 @@ export function SeedCoursesButton() {
     } catch (error) {
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive",

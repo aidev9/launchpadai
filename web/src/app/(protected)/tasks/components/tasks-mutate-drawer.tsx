@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sheet";
 import { SelectDropdown } from "@/components/select-dropdown";
 import { Task } from "../data/schema";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 interface Props {
   open: boolean;
@@ -64,6 +65,7 @@ export function TasksMutateDrawer({ open, onOpenChange, currentRow }: Props) {
           <code className="text-white">{JSON.stringify(data, null, 2)}</code>
         </pre>
       ),
+      duration: TOAST_DEFAULT_DURATION,
     });
   };
 

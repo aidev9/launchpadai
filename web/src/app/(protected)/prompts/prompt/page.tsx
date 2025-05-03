@@ -13,6 +13,7 @@ import { selectedPromptAtom } from "@/lib/store/prompt-store";
 import { useState } from "react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import Playground from "./playground";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 export default function PromptDetail() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function PromptDetail() {
         toast({
           title: "Success",
           description: "Prompt copied to your collection",
+          duration: TOAST_DEFAULT_DURATION,
         });
 
         // Navigate to /myprompts
@@ -45,11 +47,13 @@ export default function PromptDetail() {
           title: "Error",
           description: result.error || "Failed to copy prompt",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
       }
     } catch (error) {
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           error instanceof Error
             ? error.message

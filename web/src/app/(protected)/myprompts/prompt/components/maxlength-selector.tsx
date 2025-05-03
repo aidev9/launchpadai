@@ -40,9 +40,9 @@ export function MaxLengthSelector({
             </div>
             <Slider
               id="maxlength"
-              max={4000}
+              max={8000}
               defaultValue={value}
-              step={10}
+              step={20}
               onValueChange={handleValueChange}
               className="[&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
               aria-label="Maximum Length"

@@ -26,6 +26,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Form schemas
 const generalSettingsSchema = z.object({
@@ -74,6 +75,7 @@ export default function AdminSettingsPage() {
     console.log("General settings submitted:", data);
     toast({
       title: "Settings saved",
+      duration: TOAST_DEFAULT_DURATION,
       description: "General settings have been updated successfully.",
     });
   }
@@ -83,6 +85,7 @@ export default function AdminSettingsPage() {
     console.log("Security settings submitted:", data);
     toast({
       title: "Settings saved",
+      duration: TOAST_DEFAULT_DURATION,
       description: "Security settings have been updated successfully.",
     });
   };

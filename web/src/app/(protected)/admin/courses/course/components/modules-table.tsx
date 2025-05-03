@@ -51,6 +51,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 interface ModulesTableProps {
   columns: ColumnDef<Module>[];
@@ -176,17 +177,20 @@ export function ModulesTable({ columns, data, courseId }: ModulesTableProps) {
       if (successCount > 0 && failureCount === 0) {
         toast({
           title: "Success",
+          duration: TOAST_DEFAULT_DURATION,
           description: `Successfully deleted ${successCount} module(s).`,
         });
       } else if (successCount > 0 && failureCount > 0) {
         toast({
           title: "Partial Success",
+          duration: TOAST_DEFAULT_DURATION,
           description: `Deleted ${successCount} module(s), but failed to delete ${failureCount} module(s).`,
           variant: "destructive",
         });
       } else {
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description: "Failed to delete selected modules.",
           variant: "destructive",
         });
@@ -197,6 +201,7 @@ export function ModulesTable({ columns, data, courseId }: ModulesTableProps) {
     } catch (error) {
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",

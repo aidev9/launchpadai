@@ -35,6 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 export default function AdminPrompts() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -67,6 +68,7 @@ export default function AdminPrompts() {
         } else {
           toast({
             title: "Error",
+            duration: TOAST_DEFAULT_DURATION,
             description: result.error || "Failed to load prompts",
             variant: "destructive",
           });
@@ -75,6 +77,7 @@ export default function AdminPrompts() {
       } catch (error) {
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description:
             error instanceof Error ? error.message : "An error occurred",
           variant: "destructive",
@@ -158,6 +161,7 @@ export default function AdminPrompts() {
         // Show success message
         toast({
           title: "Prompts deleted",
+          duration: TOAST_DEFAULT_DURATION,
           description: `Successfully deleted ${selectedPromptIds.length} ${
             selectedPromptIds.length === 1 ? "prompt" : "prompts"
           }`,
@@ -165,6 +169,7 @@ export default function AdminPrompts() {
       } else {
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description: result.error || "Failed to delete selected prompts",
           variant: "destructive",
         });
@@ -172,6 +177,7 @@ export default function AdminPrompts() {
     } catch (error) {
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           error instanceof Error
             ? error.message

@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectDropdown } from "@/components/select-dropdown";
 import { userTypes } from "../data/data";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 const formSchema = z.object({
   email: z
@@ -58,6 +59,7 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
           <code className="text-white">{JSON.stringify(values, null, 2)}</code>
         </pre>
       ),
+      duration: TOAST_DEFAULT_DURATION,
     });
     onOpenChange(false);
   };

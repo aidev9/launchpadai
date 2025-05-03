@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { deleteProduct } from "@/lib/firebase/products";
 import { toast as showToast } from "@/hooks/use-toast";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -98,6 +99,7 @@ export default function Dashboard() {
       if (result.success) {
         showToast({
           title: "Product Deleted",
+          duration: TOAST_DEFAULT_DURATION,
           description: `Successfully deleted "${productToDelete.name}".`,
           variant: "default",
         });
@@ -111,6 +113,7 @@ export default function Dashboard() {
         console.error("Failed to delete product:", result.error);
         showToast({
           title: "Error Deleting Product",
+          duration: TOAST_DEFAULT_DURATION,
           description: result.error || "Could not delete the product.",
           variant: "destructive",
         });
@@ -119,6 +122,7 @@ export default function Dashboard() {
       console.error("Error deleting product:", error);
       showToast({
         title: "Error Deleting Product",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           error instanceof Error
             ? error.message

@@ -30,7 +30,10 @@ import {
   availableModels,
 } from "@/lib/store/ai-settings-store";
 import { selectedProductAtom } from "@/lib/store/product-store";
-import { MODEL_SELECTOR_TYPES } from "@/utils/constants";
+import {
+  MODEL_SELECTOR_TYPES,
+  TOAST_DEFAULT_DURATION,
+} from "@/utils/constants";
 import { CompleteIcon, InsertIcon, EditIcon } from "./components/svgIcons";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
@@ -85,6 +88,7 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
     toast({
       title: "Reset",
       description: "Prompt has been reset to its original content",
+      duration: TOAST_DEFAULT_DURATION,
     });
   }, [selectedPrompt, originalPrompt, setSelectedPrompt, toast]);
 
@@ -96,6 +100,7 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
     toast({
       title: "Copied",
       description: "Prompt content copied to clipboard",
+      duration: TOAST_DEFAULT_DURATION,
     });
   }, [selectedPrompt, toast]);
 
@@ -118,6 +123,7 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
     toast({
       title: "Downloaded",
       description: "Prompt content downloaded as text file",
+      duration: TOAST_DEFAULT_DURATION,
     });
   }, [selectedPrompt, toast]);
 
@@ -137,6 +143,7 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
     toast({
       title: "Updated",
       description: "Prompt updated to enhanced prompt",
+      duration: TOAST_DEFAULT_DURATION,
     });
   }, [
     selectedPrompt,

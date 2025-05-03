@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import LongText from "@/components/long-text";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // This function will be called to render each cell in the "actions" column
 function ActionsCell({ row }: { row: any }) {
@@ -56,11 +57,13 @@ function ActionsCell({ row }: { row: any }) {
 
         toast({
           title: "Prompt deleted",
+          duration: TOAST_DEFAULT_DURATION,
           description: "The prompt has been deleted successfully.",
         });
       } else {
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description: result.error || "Failed to delete prompt",
           variant: "destructive",
         });
@@ -68,6 +71,7 @@ function ActionsCell({ row }: { row: any }) {
     } catch (error) {
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           error instanceof Error
             ? error.message
@@ -272,7 +276,7 @@ export const columns: ColumnDef<Prompt>[] = [
         seconds: number;
         nanoseconds: number;
       };
-      const date = updatedAt ? new Date(updatedAt.seconds * 1000) : null;
+      const date = updatedAt ? new Date(updatedAt.seconds) : null;
 
       return (
         <div className="text-sm text-muted-foreground">

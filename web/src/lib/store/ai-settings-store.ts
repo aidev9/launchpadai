@@ -31,28 +31,28 @@ export const availableModels: Model[] = [
     maxTokens: 8192,
     active: true,
   },
-  {
-    id: "gpt-3.5-turbo",
-    name: "gpt-3.5-turbo",
-    provider: "OpenAI",
-    type: "gpt",
-    description: "Great balance of intelligence and speed",
-    strengths:
-      "Language understanding, generation, and reasoning. Great balance of intelligence and speed.",
-    maxTokens: 4096,
-    active: true,
-  },
-  {
-    id: "gpt-3.5-turbo-16k",
-    name: "gpt-3.5-turbo-16k",
-    provider: "OpenAI",
-    type: "gpt",
-    description: "Extended context length for more complex tasks",
-    strengths:
-      "Language understanding, generation, and reasoning. Extended context length for more complex tasks.",
-    maxTokens: 16384,
-    active: true,
-  },
+  // {
+  //   id: "gpt-3.5-turbo",
+  //   name: "gpt-3.5-turbo",
+  //   provider: "OpenAI",
+  //   type: "gpt",
+  //   description: "Great balance of intelligence and speed",
+  //   strengths:
+  //     "Language understanding, generation, and reasoning. Great balance of intelligence and speed.",
+  //   maxTokens: 4096,
+  //   active: true,
+  // },
+  // {
+  //   id: "gpt-3.5-turbo-16k",
+  //   name: "gpt-3.5-turbo-16k",
+  //   provider: "OpenAI",
+  //   type: "gpt",
+  //   description: "Extended context length for more complex tasks",
+  //   strengths:
+  //     "Language understanding, generation, and reasoning. Extended context length for more complex tasks.",
+  //   maxTokens: 16384,
+  //   active: true,
+  // },
   {
     id: "claude-3.5",
     name: "claude-3.5",

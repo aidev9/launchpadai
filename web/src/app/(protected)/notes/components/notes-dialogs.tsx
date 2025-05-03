@@ -17,6 +17,7 @@ import { useXp } from "@/xp/useXp";
 // Import toast function just for type extraction
 import { toast as showToast } from "@/hooks/use-toast";
 import { Note } from "./notes-store";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -107,14 +108,14 @@ export function NotesDialogs({
           onShowToast({
             title: "Note added",
             description: `Your note has been added successfully and you earned ${pointsAwarded} XP!`,
-            duration: 5000,
+            duration: TOAST_DEFAULT_DURATION,
           });
         } catch (error) {
           console.log("error:", error);
           onShowToast({
             title: "Note added",
             description: "Your note has been added successfully.",
-            duration: 5000,
+            duration: TOAST_DEFAULT_DURATION,
           });
         }
         // --- End XP Award ---

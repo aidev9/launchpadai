@@ -1,4 +1,5 @@
 "use client";
+// TODO: Refactor this component - break it down into smaller components
 
 import { useState, useEffect } from "react";
 import { useAtom } from "jotai";
@@ -36,6 +37,7 @@ import {
 } from "@/lib/store/assets-store";
 import { useXp } from "@/xp/useXp";
 import { toast as showToast } from "@/hooks/use-toast";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -175,6 +177,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
             title: "Error loading assets",
             description: response.error || "Failed to fetch assets",
             variant: "destructive",
+            duration: TOAST_DEFAULT_DURATION,
           });
         }
 
@@ -192,6 +195,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
           title: "Error loading assets",
           description: error instanceof Error ? error.message : "Unknown error",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
       } finally {
         setIsLoading(false);
@@ -254,6 +258,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
             description:
               response.error || "Failed to refresh assets after creation",
             variant: "destructive",
+            duration: TOAST_DEFAULT_DURATION,
           });
         }
       } catch (error) {
@@ -262,6 +267,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
           title: "Error refreshing assets",
           description: error instanceof Error ? error.message : "Unknown error",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
       } finally {
         setIsLoading(false);
@@ -334,6 +340,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         onShowToast({
           title: "Asset Saved",
           description: "Content updated successfully.",
+          duration: TOAST_DEFAULT_DURATION,
         });
         setIsEditing(false);
       } else {
@@ -346,6 +353,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         title: "Save Error",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
     } finally {
       setIsSaving(false);
@@ -394,7 +402,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         onShowToast({
           title: "Content Generated",
           description: toastDescription,
-          duration: 5000,
+          duration: TOAST_DEFAULT_DURATION,
         });
       } else {
         throw new Error(response.error || "Failed to generate content");
@@ -405,6 +413,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         title: "Generation Error",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
     } finally {
       setIsGenerating(false);
@@ -458,7 +467,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         onShowToast({
           title: "Download Successful",
           description: toastDescription,
-          duration: 5000,
+          duration: TOAST_DEFAULT_DURATION,
         });
       } else {
         throw new Error(response.error || "Failed to prepare download");
@@ -469,6 +478,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         title: "Download Error",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
     }
   };
@@ -484,6 +494,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         title: "Save Error",
         description: "Cannot save note without product selected or content.",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
       return;
     }
@@ -529,7 +540,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         onShowToast({
           title: "Note Added",
           description: toastDescription,
-          duration: 5000,
+          duration: TOAST_DEFAULT_DURATION,
         });
 
         if (response.note) {
@@ -560,6 +571,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         title: "Error Saving Note",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
     } finally {
       setIsSavingNote(false);
@@ -597,6 +609,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         onShowToast({
           title: "Asset Deleted",
           description: `\"${deletedAssetTitle}\" was deleted successfully.`,
+          duration: TOAST_DEFAULT_DURATION,
         });
 
         const newDisplayedAssets = Object.values(updatedAssets).filter(
@@ -639,6 +652,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         title: "Delete Error",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
       if (firestoreAssets[assetIdToDelete]) {
         setSelectedAssetId(assetIdToDelete);

@@ -38,6 +38,7 @@ import {
   setAccountAtom,
 } from "@/lib/store/user-store";
 import { SignOutHelper } from "@/lib/firebase/client";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 const languages = [
   { label: "English", value: "en" },
@@ -110,6 +111,7 @@ export function AccountForm() {
         toast({
           title: "Success",
           description: "Your account settings have been updated",
+          duration: TOAST_DEFAULT_DURATION,
         });
       } else {
         if (prevAccount) updateAccount(prevAccount);
@@ -117,6 +119,7 @@ export function AccountForm() {
           title: "Error",
           description: response.error || "Failed to update account settings",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
       }
     } catch (error) {
@@ -126,6 +129,7 @@ export function AccountForm() {
         title: "Error",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
     } finally {
       setIsSubmitting(false);
@@ -139,6 +143,7 @@ export function AccountForm() {
       if (response.success) {
         toast({
           title: "Password Reset Email Sent",
+          duration: TOAST_DEFAULT_DURATION,
           description: "Check your email for a password reset link.",
         });
       } else {
@@ -146,6 +151,7 @@ export function AccountForm() {
           title: "Error",
           description: response.error || "Failed to send password reset email.",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
       }
     } catch (error) {
@@ -153,6 +159,7 @@ export function AccountForm() {
         title: "Error",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
     } finally {
       setIsResetting(false);
@@ -167,6 +174,7 @@ export function AccountForm() {
         toast({
           title: "Account Deleted",
           description: "Your account has been deleted.",
+          duration: TOAST_DEFAULT_DURATION,
         });
         // Sign out the user from Firebase and clear session, then redirect
         await signOutAndClearProfile(router);
@@ -176,6 +184,7 @@ export function AccountForm() {
           title: "Error",
           description: response?.error || "Failed to delete account.",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
       }
     } catch (error) {

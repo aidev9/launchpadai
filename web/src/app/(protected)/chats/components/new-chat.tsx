@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ChatUser } from "../data/chat-types";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 type User = Omit<ChatUser, "messages">;
 
@@ -51,6 +52,7 @@ export function NewChat({ users, onOpenChange, open }: Props) {
   const onSubmit = () => {
     toast({
       title: "You submitted the following values:",
+      duration: TOAST_DEFAULT_DURATION,
       description: (
         <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
           <code className="text-white">

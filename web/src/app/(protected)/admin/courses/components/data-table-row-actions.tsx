@@ -31,6 +31,7 @@ import { Eye, PenSquare, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { deleteCourse } from "@/lib/firebase/courses";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 interface DataTableRowActionsProps {
   row: Row<Course>;
@@ -77,6 +78,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         toast({
           title: "Course deleted",
           description: `${course.title} has been deleted successfully.`,
+          duration: TOAST_DEFAULT_DURATION,
         });
 
         // Close the dialog
@@ -93,6 +95,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     } catch (error) {
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description: `Failed to delete course: ${
           error instanceof Error ? error.message : String(error)
         }`,

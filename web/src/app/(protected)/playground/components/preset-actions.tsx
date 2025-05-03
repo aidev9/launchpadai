@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 export function PresetActions() {
   const [open, setIsOpen] = React.useState(false);
@@ -111,6 +112,7 @@ export function PresetActions() {
                 setShowDeleteDialog(false);
                 toast({
                   description: "This preset has been deleted.",
+                  duration: TOAST_DEFAULT_DURATION,
                 });
               }}
             >

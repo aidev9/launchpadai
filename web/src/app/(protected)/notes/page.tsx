@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast as showToast } from "@/hooks/use-toast";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Replace direct server function calls with API fetches
 async function fetchNotes(productId: string) {
@@ -94,6 +95,7 @@ export default function NotesPage() {
           title: "Error loading notes",
           description: response.error || "Failed to load notes",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
       }
     } catch (error) {
@@ -101,6 +103,7 @@ export default function NotesPage() {
         title: "Error loading notes",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
     }
   }, [selectedProductId, store]);
@@ -163,7 +166,7 @@ export default function NotesPage() {
         showToastHandler({
           title: `${noteIdsToDelete.length} note${noteIdsToDelete.length > 1 ? "s" : ""} deleted`,
           // description: "Successfully removed from the system.", // Optional: Add description if desired
-          duration: 5000,
+          duration: TOAST_DEFAULT_DURATION,
         });
         // No need to reload the entire list since we already updated the UI
       } else {

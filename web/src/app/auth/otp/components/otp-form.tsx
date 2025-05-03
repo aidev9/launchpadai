@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { PinInput, PinInputField } from "@/components/pin-input";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 type OtpFormProps = HTMLAttributes<HTMLDivElement>;
 
@@ -42,6 +43,7 @@ export function OtpForm({ className, ...props }: OtpFormProps) {
           <code className="text-white">{JSON.stringify(data, null, 2)}</code>
         </pre>
       ),
+      duration: TOAST_DEFAULT_DURATION,
     });
 
     setTimeout(() => {

@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 const formSchema = z.object({
   file: z
@@ -66,6 +67,7 @@ export function TasksImportDialog({ open, onOpenChange }: Props) {
             </code>
           </pre>
         ),
+        duration: TOAST_DEFAULT_DURATION,
       });
     }
     onOpenChange(false);

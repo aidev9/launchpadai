@@ -21,6 +21,7 @@ import {
 import Link from "next/link";
 import { deletePromptAction } from "@/lib/firebase/actions/prompts";
 import { Prompt } from "@/lib/firebase/schema";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 interface DataTableRowActionsProps {
   row: Row<Prompt>;
@@ -51,6 +52,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           title: "Error",
           description: "Prompt ID is missing.",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
         return;
       }
@@ -63,11 +65,13 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
 
         toast({
           title: "Prompt deleted",
+          duration: TOAST_DEFAULT_DURATION,
           description: "The prompt has been deleted successfully.",
         });
       } else {
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description: result.error || "Failed to delete prompt",
           variant: "destructive",
         });
@@ -75,6 +79,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     } catch (error) {
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",

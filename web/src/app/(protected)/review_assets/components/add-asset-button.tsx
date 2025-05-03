@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { v4 as uuidv4 } from "uuid";
 import { atom, useSetAtom } from "jotai";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Create an atom to store the newly created asset ID
 export const newlyCreatedAssetIdAtom = atom<string | null>(null);
@@ -90,6 +91,7 @@ export function AddAssetButton() {
       toast({
         title: "Asset added",
         description: "Your custom asset has been added successfully.",
+        duration: TOAST_DEFAULT_DURATION,
       });
     } catch (error) {
       console.error("Error adding asset:", error);
@@ -97,6 +99,7 @@ export function AddAssetButton() {
         title: "Error adding asset",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
     } finally {
       setIsSaving(false);

@@ -67,3 +67,5 @@ export const MODEL_SELECTOR_TYPES = [
   { value: "google", label: "Google" },
   { value: "groq", label: "Groq" },
 ];
+
+export const TOAST_DEFAULT_DURATION = 3000; // 3 seconds

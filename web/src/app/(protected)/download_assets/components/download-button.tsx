@@ -10,6 +10,7 @@ import { downloadAssets } from "../actions/download-assets";
 import { selectedAssetsAtom } from "./assets-atoms";
 import { useXp } from "@/xp/useXp";
 import { toast as showToast } from "@/hooks/use-toast";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 type ShowToastOptions = Parameters<typeof showToast>[0];
 
@@ -30,6 +31,7 @@ export function DownloadButton({ onShowToast }: DownloadButtonProps) {
     if (!selectedProductId) {
       onShowToast({
         title: "No product selected",
+        duration: TOAST_DEFAULT_DURATION,
         description: "Please select a product first",
         variant: "destructive",
       });
@@ -45,6 +47,7 @@ export function DownloadButton({ onShowToast }: DownloadButtonProps) {
     if (numSelected === 0) {
       onShowToast({
         title: "No items selected",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           "Please select at least one asset or guideline to download",
         variant: "destructive",
@@ -93,7 +96,7 @@ export function DownloadButton({ onShowToast }: DownloadButtonProps) {
         onShowToast({
           title: "Download Complete",
           description: toastDescription,
-          duration: 5000,
+          duration: TOAST_DEFAULT_DURATION,
         });
 
         // Reset status after a delay

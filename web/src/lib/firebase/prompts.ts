@@ -11,8 +11,11 @@ function getPromptsRef() {
 }
 
 // Get user-specific prompts collection reference
-function getUserPromptsRef(userId: string) {
-  return adminDb.collection("myprompts").doc(userId).collection("prompts");
+export async function getUserPromptsRef(userId: string) {
+  return await adminDb
+    .collection("myprompts")
+    .doc(userId)
+    .collection("prompts");
 }
 
 // Helper function to get the current user ID
@@ -293,13 +296,13 @@ export async function getUserPrompts() {
   try {
     const userId = await getUserId();
 
-    const userPromptsRef = getUserPromptsRef(userId);
+    const userPromptsRef = await getUserPromptsRef(userId);
     const promptsSnapshot = await userPromptsRef
       .orderBy("createdAt", "desc")
       .get();
 
     const prompts: Prompt[] = [];
-    promptsSnapshot.forEach((doc) => {
+    promptsSnapshot.forEach((doc: any) => {
       const data = doc.data();
       prompts.push({
         id: doc.id,
@@ -328,14 +331,14 @@ export async function getUserPromptsByPhase(phases: string[]) {
   try {
     const userId = await getUserId();
 
-    const userPromptsRef = getUserPromptsRef(userId);
+    const userPromptsRef = await getUserPromptsRef(userId);
     const promptsSnapshot = await userPromptsRef
       .where("phaseTags", "array-contains-any", phases)
       .orderBy("createdAt", "desc")
       .get();
 
     const prompts: Prompt[] = [];
-    promptsSnapshot.forEach((doc) => {
+    promptsSnapshot.forEach((doc: any) => {
       const data = doc.data();
       prompts.push({
         id: doc.id,
@@ -372,7 +375,7 @@ export async function copyPromptToUserCollection(promptId: string) {
 
     // Create a new prompt in the user's collection
     const timestamp = new Date().toISOString();
-    const userPromptRef = getUserPromptsRef(userId);
+    const userPromptRef = await getUserPromptsRef(userId);
     const newPromptRef = await userPromptRef.add({
       title: prompt.title,
       body: prompt.body,
@@ -405,7 +408,7 @@ export async function addUserPrompt(
     const userId = await getUserId();
 
     const timestamp = new Date().toISOString();
-    const userPromptRef = getUserPromptsRef(userId);
+    const userPromptRef = await getUserPromptsRef(userId);
     const newPromptRef = await userPromptRef.add({
       ...promptData,
       createdAt: timestamp,
@@ -433,7 +436,8 @@ export async function updateUserPrompt(
   try {
     const userId = await getUserId();
 
-    const promptRef = getUserPromptsRef(userId).doc(promptId);
+    const userPromptsRef = await getUserPromptsRef(userId);
+    const promptRef = userPromptsRef.doc(promptId);
 
     // Check if prompt exists
     const doc = await promptRef.get();
@@ -467,7 +471,8 @@ export async function deleteUserPrompt(promptId: string) {
   try {
     const userId = await getUserId();
 
-    await getUserPromptsRef(userId).doc(promptId).delete();
+    const userPromptsRef = await getUserPromptsRef(userId);
+    await userPromptsRef.doc(promptId).delete();
 
     // Revalidate paths
     revalidatePath("/myprompts");

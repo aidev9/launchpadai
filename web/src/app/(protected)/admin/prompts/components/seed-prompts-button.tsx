@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { seedPrompts } from "@/app/actions/seed-prompts";
 import { Loader2 } from "lucide-react";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 export function SeedPromptsButton() {
   const [isSeeding, setIsSeeding] = useState(false);
@@ -18,12 +19,14 @@ export function SeedPromptsButton() {
       if (result.success) {
         toast({
           title: "Success",
+          duration: TOAST_DEFAULT_DURATION,
           description: result.message,
           variant: "default",
         });
       } else {
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description: result.error || "Failed to seed prompts",
           variant: "destructive",
         });
@@ -32,6 +35,7 @@ export function SeedPromptsButton() {
       console.error("Error seeding prompts:", error);
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description: "An error occurred while seeding prompts",
         variant: "destructive",
       });

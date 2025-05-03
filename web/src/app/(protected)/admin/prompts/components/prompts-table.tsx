@@ -31,6 +31,7 @@ import {
 } from "@/lib/store/prompt-store";
 import { deletePromptsAction } from "@/lib/firebase/actions/prompts";
 import { useToast } from "@/hooks/use-toast";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -99,11 +100,13 @@ export function PromptsTable<TData, TValue>({
 
         toast({
           title: "Prompts deleted",
+          duration: TOAST_DEFAULT_DURATION,
           description: `Successfully deleted ${promptIds.length} prompts.`,
         });
       } else {
         toast({
           title: "Error",
+          duration: TOAST_DEFAULT_DURATION,
           description: result.error || "Failed to delete prompts",
           variant: "destructive",
         });
@@ -112,6 +115,7 @@ export function PromptsTable<TData, TValue>({
       console.error("Error deleting prompts:", error);
       toast({
         title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
         description:
           error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",

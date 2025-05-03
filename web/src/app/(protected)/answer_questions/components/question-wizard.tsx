@@ -39,7 +39,7 @@ import {
 } from "@/lib/firebase/actions/questions";
 import { useXp } from "@/xp/useXp";
 import { toast as showToast } from "@/hooks/use-toast";
-import { phaseOptions } from "@/utils/constants";
+import { phaseOptions, TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -213,7 +213,7 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
           onShowToast({
             title: "Success",
             description: "Question updated successfully",
-            duration: 5000,
+            duration: TOAST_DEFAULT_DURATION,
           });
         } else {
           // Show error if update fails
@@ -269,7 +269,7 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
               onShowToast({
                 title: "Question added",
                 description: `Your question has been added successfully and you earned ${pointsAwarded} XP!`,
-                duration: 5000,
+                duration: TOAST_DEFAULT_DURATION,
               });
             }, 100);
           } catch (error) {
@@ -278,7 +278,7 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
               onShowToast({
                 title: "Question added",
                 description: "Your question has been added successfully.",
-                duration: 5000,
+                duration: TOAST_DEFAULT_DURATION,
               });
             }, 100);
           }

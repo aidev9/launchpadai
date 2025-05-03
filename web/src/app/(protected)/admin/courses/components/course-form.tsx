@@ -42,6 +42,7 @@ import {
 } from "@/lib/store/course-store";
 import ImageUploadFormControl from "@/components/ui/imageUploadFormControl";
 import { clientAuth } from "@/lib/firebase/client";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 const userId = clientAuth.currentUser?.uid;
 const COURSE_ASSETS_PATH = `storage/${userId}/courses`;
@@ -120,7 +121,7 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
           toast({
             title: "Course updated",
             description: "Course has been updated successfully",
-            duration: 5000,
+            duration: TOAST_DEFAULT_DURATION,
           });
 
           // Close the modal first
@@ -154,7 +155,7 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
           toast({
             title: "Course created",
             description: "Course has been created successfully",
-            duration: 5000,
+            duration: TOAST_DEFAULT_DURATION,
           });
 
           // Close the modal first
@@ -175,7 +176,7 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
         description:
           error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
-        duration: 5000,
+        duration: TOAST_DEFAULT_DURATION,
       });
     } finally {
       setIsSubmitting(false);

@@ -44,6 +44,7 @@ import {
 import { userProfileAtom, updateUserProfileAtom } from "@/lib/store/user-store";
 import { toast as showToast } from "@/hooks/use-toast";
 import React from "react";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -372,7 +373,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
         onShowToast({
           title: toastTitle,
           description: toastDescription,
-          duration: 5000,
+          duration: TOAST_DEFAULT_DURATION,
           variant: toastVariant,
         });
       } else {
@@ -443,7 +444,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
         onShowToast({
           title: "Success",
           description: "Question deleted successfully",
-          duration: 5000, // Add duration
+          duration: TOAST_DEFAULT_DURATION,
         });
       } else {
         // Use callback for delete failure toast

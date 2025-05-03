@@ -50,6 +50,7 @@ import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Question } from "../data/schema";
 import { toast as showToast } from "@/hooks/use-toast";
 import { useXp } from "@/xp/useXp";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -145,6 +146,7 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
       onShowToast({
         title: "Error",
         description: "No product selected. Please select a product first.",
+        duration: TOAST_DEFAULT_DURATION,
       });
       return;
     }
@@ -212,7 +214,7 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
         onShowToast({
           title: "Success",
           description: toastDescription,
-          duration: 5000,
+          duration: TOAST_DEFAULT_DURATION,
         });
 
         // Close dialogs
