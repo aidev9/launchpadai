@@ -69,7 +69,9 @@ function ActionsCell({ row }: { row: any }) {
       toast({
         title: "Error",
         description:
-          error instanceof Error ? error.message : "An error occurred",
+          error instanceof Error
+            ? error.message
+            : "An error occurred while deleting the prompt",
         variant: "destructive",
       });
     }

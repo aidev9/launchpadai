@@ -31,7 +31,7 @@ export default function PromptDetail() {
     setIsCopying(true);
     try {
       // Copy the prompt to the user's collection
-      const result = await copyPromptToUserCollectionAction(prompt.id);
+      const result = await copyPromptToUserCollectionAction(prompt.id!);
 
       if (result.success) {
         toast({

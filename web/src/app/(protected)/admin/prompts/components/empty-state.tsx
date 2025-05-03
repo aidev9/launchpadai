@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, Plus } from "lucide-react";
+import { JsonPromptModal } from "./json-prompt-modal";
+import { SeedPromptsButton } from "./seed-prompts-button";
 
 interface EmptyStateProps {
   setPromptModalOpen: (open: boolean) => void;
@@ -13,12 +15,17 @@ export function EmptyState({ setPromptModalOpen }: EmptyStateProps) {
       </div>
       <h3 className="mt-8 text-xl font-semibold">No prompts created</h3>
       <p className="mb-8 mt-2 text-sm text-muted-foreground">
-        You haven't created any prompts yet. Add one below.
+        You haven't created any prompts yet. Start by adding a prompt or seeding
+        the database.
       </p>
-      <Button onClick={() => setPromptModalOpen(true)}>
-        <Plus className="mr-2 h-4 w-4" />
-        Add Prompt
-      </Button>
+      <div className="flex gap-3 flex-wrap justify-center">
+        <Button onClick={() => setPromptModalOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Prompt
+        </Button>
+        <SeedPromptsButton />
+        <JsonPromptModal />
+      </div>
     </div>
   );
 }

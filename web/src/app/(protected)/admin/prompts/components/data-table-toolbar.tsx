@@ -1,126 +1,115 @@
 "use client";
 
+import { Cross2Icon } from "@radix-ui/react-icons";
 import { Table } from "@tanstack/react-table";
-import { useAtom } from "jotai";
-import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Cross2Icon } from "@radix-ui/react-icons";
 import { DataTableViewOptions } from "./data-table-view-options";
 import { DataTableFacetedFilter } from "./data-table-faceted-filter";
+import { Search } from "lucide-react";
 import { phaseOptions } from "@/utils/constants";
-import {
-  titleFilterAtom,
-  phaseTagsFilterAtom,
-  productTagsFilterAtom,
-  tagsFilterAtom,
-} from "@/lib/store/prompt-store";
+import { useState, useEffect } from "react";
 import { Prompt } from "@/lib/firebase/schema";
 
-interface DataTableToolbarProps {
-  table: Table<Prompt>;
+// Product tag options
+const productOptions = [
+  { label: "SaaS", value: "SaaS" },
+  { label: "Mobile App", value: "Mobile App" },
+  { label: "Marketplace", value: "Marketplace" },
+  { label: "E-commerce", value: "E-commerce" },
+  { label: "Web App", value: "Web App" },
+];
+
+interface DataTableToolbarProps<TData> {
+  table: Table<TData>;
 }
 
-export function DataTableToolbar({ table }: DataTableToolbarProps) {
-  const [titleFilter, setTitleFilter] = useAtom(titleFilterAtom);
-  const [phaseTagsFilter, setPhaseTagsFilter] = useAtom(phaseTagsFilterAtom);
-  const [productTagsFilter, setProductTagsFilter] = useAtom(
-    productTagsFilterAtom
-  );
-  const [tagsFilter, setTagsFilter] = useAtom(tagsFilterAtom);
+export function DataTableToolbar<TData>({
+  table,
+}: DataTableToolbarProps<TData>) {
+  const isFiltered = table.getState().columnFilters.length > 0;
+  const [allProductTags, setAllProductTags] = useState<string[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
 
-  // Get unique product tags from all rows
-  const uniqueProductTags = new Set<string>();
-  table.getFilteredRowModel().rows.forEach((row) => {
-    const productTags = row.getValue("productTags") as string[];
-    if (productTags) {
-      productTags.forEach((tag) => uniqueProductTags.add(tag));
-    }
-  });
+  // Extract unique productTags and tags from prompts
+  useEffect(() => {
+    const data = table
+      .getFilteredRowModel()
+      .flatRows.map((row) => row.original);
 
-  const productTagOptions = Array.from(uniqueProductTags)
-    .sort()
-    .map((tag) => ({
-      label: tag,
-      value: tag,
-    }));
+    // Extract all unique product tags
+    const uniqueProductTags = new Set<string>();
+    data.forEach((item: any) => {
+      if (item.productTags && Array.isArray(item.productTags)) {
+        item.productTags.forEach((tag: string) => uniqueProductTags.add(tag));
+      }
+    });
 
-  // Get unique tags from all rows
-  const uniqueTags = new Set<string>();
-  table.getFilteredRowModel().rows.forEach((row) => {
-    const tags = row.getValue("tags") as string[];
-    if (tags) {
-      tags.forEach((tag) => uniqueTags.add(tag));
-    }
-  });
+    // Extract all unique tags
+    const uniqueTags = new Set<string>();
+    data.forEach((item: any) => {
+      if (item.tags && Array.isArray(item.tags)) {
+        item.tags.forEach((tag: string) => uniqueTags.add(tag));
+      }
+    });
 
-  const tagOptions = Array.from(uniqueTags)
-    .sort()
-    .map((tag) => ({
-      label: tag,
-      value: tag,
-    }));
+    setAllProductTags(Array.from(uniqueProductTags));
+    setAllTags(Array.from(uniqueTags));
+  }, [table.getFilteredRowModel().flatRows]);
 
-  // Convert phase options
-  // If phaseOptions is already [{ label, value }], use as is
-  const phaseOptionsMapped = phaseOptions;
+  // Convert product tags to options format
+  const dynamicProductOptions = allProductTags.map((tag) => ({
+    label: tag,
+    value: tag,
+  }));
 
-  const isFiltered =
-    phaseTagsFilter.length > 0 ||
-    productTagsFilter.length > 0 ||
-    tagsFilter.length > 0 ||
-    titleFilter.trim() !== "";
+  // Convert tags to options format
+  const tagOptions = allTags.map((tag) => ({
+    label: tag,
+    value: tag,
+  }));
 
   return (
-    <div className="flex flex-col space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-1 items-center space-x-2">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search prompts..."
-              value={titleFilter}
-              onChange={(e) => setTitleFilter(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-
-          {phaseOptionsMapped.length > 0 && (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-1 items-center space-x-2">
+        <div className="relative w-full md:w-60">
+          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search prompts..."
+            value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("title")?.setFilterValue(event.target.value)
+            }
+            className="pl-8"
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {table.getColumn("phaseTags") && (
             <DataTableFacetedFilter
-              title="Phase"
-              options={phaseOptionsMapped}
-              value={phaseTagsFilter}
-              onChange={setPhaseTagsFilter}
-            />
-          )}
-
-          {productTagOptions.length > 0 && (
-            <DataTableFacetedFilter
-              title="Products"
-              options={productTagOptions}
-              value={productTagsFilter}
-              onChange={setProductTagsFilter}
+              column={table.getColumn("phaseTags")}
+              title="Phases"
+              options={phaseOptions}
             />
           )}
-
-          {tagOptions.length > 0 && (
+          {table.getColumn("productTags") &&
+            dynamicProductOptions.length > 0 && (
+              <DataTableFacetedFilter
+                column={table.getColumn("productTags")}
+                title="Products"
+                options={dynamicProductOptions}
+              />
+            )}
+          {table.getColumn("tags") && tagOptions.length > 0 && (
             <DataTableFacetedFilter
+              column={table.getColumn("tags")}
               title="Tags"
               options={tagOptions}
-              value={tagsFilter}
-              onChange={setTagsFilter}
             />
           )}
-
           {isFiltered && (
             <Button
               variant="ghost"
-              onClick={() => {
-                setTitleFilter("");
-                setPhaseTagsFilter([]);
-                setProductTagsFilter([]);
-                setTagsFilter([]);
-              }}
+              onClick={() => table.resetColumnFilters()}
               className="h-8 px-2 lg:px-3"
             >
               Reset
@@ -128,8 +117,8 @@ export function DataTableToolbar({ table }: DataTableToolbarProps) {
             </Button>
           )}
         </div>
-        <DataTableViewOptions table={table} />
       </div>
+      <DataTableViewOptions table={table} />
     </div>
   );
 }

@@ -46,6 +46,14 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
 
     try {
       // Use the server action for deletion
+      if (!prompt.id) {
+        toast({
+          title: "Error",
+          description: "Prompt ID is missing.",
+          variant: "destructive",
+        });
+        return;
+      }
       const result = await deletePromptAction(prompt.id);
       if (result.success) {
         setPromptAction({

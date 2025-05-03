@@ -15,6 +15,7 @@ import { PromptTable } from "./components/prompt-table";
 import { EmptyState } from "./components/empty-state";
 import { PromptForm } from "./components/prompt-form";
 import { SeedPromptsButton } from "./components/seed-prompts-button";
+import { JsonPromptModal } from "./components/json-prompt-modal";
 import {
   promptModalOpenAtom,
   promptActionAtom,
@@ -60,8 +61,6 @@ export default function AdminPrompts() {
         setLoading(true);
         // Use server action to get all prompts
         const result = await getAllPromptsAction();
-
-        console.log("[PAGE] getAllPromptsAction", result);
 
         if (result.success) {
           setPrompts(result.prompts || []);
@@ -115,7 +114,9 @@ export default function AdminPrompts() {
       case "DELETE_MANY":
         setPrompts((prevPrompts) =>
           prevPrompts.filter(
-            (prompt) => !promptAction.promptIds.includes(prompt.id)
+            (prompt) =>
+              typeof prompt.id !== "undefined" &&
+              !promptAction.promptIds.includes(prompt.id)
           )
         );
         break;
@@ -135,7 +136,9 @@ export default function AdminPrompts() {
 
     try {
       // Get the IDs of the selected prompts
-      const selectedPromptIds = selectedRows.map((prompt) => prompt.id);
+      const selectedPromptIds = selectedRows
+        .map((prompt) => prompt.id)
+        .filter((id): id is string => typeof id === "string");
 
       if (selectedPromptIds.length === 0) {
         setDeleteDialogOpen(false);
@@ -202,6 +205,7 @@ export default function AdminPrompts() {
         {prompts.length > 0 && (
           <div className="flex items-center gap-2">
             <SeedPromptsButton />
+            <JsonPromptModal />
             {hasSelectedPrompts && (
               <Button
                 variant="outline"

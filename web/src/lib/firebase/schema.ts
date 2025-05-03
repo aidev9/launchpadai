@@ -88,7 +88,7 @@ export type ModuleInput = z.infer<typeof moduleInputSchema>;
 
 // START: PROMPTS
 export interface Prompt {
-  id: string;
+  id?: string;
   title: string;
   body: string;
   phaseTags: string[];

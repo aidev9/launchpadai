@@ -131,25 +131,41 @@ export async function addPromptAction(
 ) {
   try {
     // Validate data before sending to Firestore
-    if (!promptData.title) {
-      console.error("Title is required for prompt");
+    if (!promptData.title || promptData.title.trim() === "") {
       return {
         success: false,
         error: "Title is required for prompt",
       };
     }
 
+    if (!promptData.body || promptData.body.trim() === "") {
+      return {
+        success: false,
+        error: "Content is required for prompt",
+      };
+    }
+
     if (!promptData.phaseTags || promptData.phaseTags.length === 0) {
-      console.error("At least one phase tag is required");
       return {
         success: false,
         error: "At least one phase tag is required",
       };
     }
 
+    // Sanitize and normalize data
+    const sanitizedData = {
+      title: promptData.title.trim(),
+      body: promptData.body.trim(),
+      phaseTags: promptData.phaseTags,
+      productTags: Array.isArray(promptData.productTags)
+        ? promptData.productTags
+        : [],
+      tags: Array.isArray(promptData.tags) ? promptData.tags : [],
+    };
+
     // Prepare the data for Firestore
     const firestoreData = {
-      ...promptData,
+      ...sanitizedData,
       createdAt: getCurrentUnixTimestamp(),
       updatedAt: getCurrentUnixTimestamp(),
     };
@@ -161,7 +177,16 @@ export async function addPromptAction(
     revalidatePath("/admin/prompts");
     revalidatePath("/prompts");
 
-    return { success: true, prompt: { ...firestoreData, id: promptRef.id } };
+    return {
+      success: true,
+      prompt: {
+        ...firestoreData,
+        id: promptRef.id,
+        // Convert to milliseconds for client-side use
+        createdAt: firestoreData.createdAt * 1000,
+        updatedAt: firestoreData.updatedAt * 1000,
+      },
+    };
   } catch (error) {
     console.error("Error adding prompt:", error);
     return {
@@ -190,16 +215,79 @@ export async function updatePromptAction(
       };
     }
 
-    await promptRef.update({
-      ...promptData,
-      updatedAt: getCurrentUnixTimestamp(),
-    });
+    // Get current prompt data
+    const currentData = doc.data();
+
+    // Validate essential fields if they're being updated
+    if (promptData.title !== undefined && promptData.title.trim() === "") {
+      return {
+        success: false,
+        error: "Title cannot be empty",
+      };
+    }
+
+    if (promptData.body !== undefined && promptData.body.trim() === "") {
+      return {
+        success: false,
+        error: "Content cannot be empty",
+      };
+    }
+
+    if (
+      promptData.phaseTags !== undefined &&
+      promptData.phaseTags.length === 0
+    ) {
+      return {
+        success: false,
+        error: "At least one phase tag is required",
+      };
+    }
+
+    // Sanitize and normalize data
+    const updateData: any = {};
+    if (promptData.title !== undefined)
+      updateData.title = promptData.title.trim();
+    if (promptData.body !== undefined) updateData.body = promptData.body.trim();
+    if (promptData.phaseTags !== undefined)
+      updateData.phaseTags = promptData.phaseTags;
+    if (promptData.productTags !== undefined)
+      updateData.productTags = promptData.productTags;
+    if (promptData.tags !== undefined) updateData.tags = promptData.tags;
+
+    updateData.updatedAt = getCurrentUnixTimestamp();
+
+    await promptRef.update(updateData);
+
+    // Create complete prompt object to return
+    const updatedPrompt: Prompt = {
+      id: promptId,
+      title:
+        updateData.title !== undefined ? updateData.title : currentData?.title,
+      body: updateData.body !== undefined ? updateData.body : currentData?.body,
+      phaseTags:
+        updateData.phaseTags !== undefined
+          ? updateData.phaseTags
+          : currentData?.phaseTags || [],
+      productTags:
+        updateData.productTags !== undefined
+          ? updateData.productTags
+          : currentData?.productTags || [],
+      tags:
+        updateData.tags !== undefined
+          ? updateData.tags
+          : currentData?.tags || [],
+      createdAt: currentData?.createdAt * 1000, // Convert to milliseconds
+      updatedAt: updateData.updatedAt * 1000, // Convert to milliseconds
+    };
 
     // Revalidate paths
     revalidatePath("/admin/prompts");
     revalidatePath("/prompts");
 
-    return { success: true };
+    return {
+      success: true,
+      prompt: updatedPrompt,
+    };
   } catch (error) {
     console.error("Error updating prompt:", error);
     return {

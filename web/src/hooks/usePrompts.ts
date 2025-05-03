@@ -147,7 +147,7 @@ export function usePrompts({
 
         // Update selected prompt
         setSelectedPrompt(foundPrompt);
-        setSelectedPromptId(foundPrompt.id);
+        setSelectedPromptId(foundPrompt.id ?? null);
         return foundPrompt;
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");

@@ -23,26 +23,43 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 
-interface DataTableFacetedFilterProps {
+interface DataTableFacetedFilterProps<TData, TValue> {
+  column?: Column<TData, TValue>;
   title?: string;
   options: {
     label: string;
     value: string;
     icon?: React.ComponentType<{ className?: string }>;
   }[];
-  value: string[];
-  onChange: (value: string[]) => void;
+  value?: string[];
+  onChange?: (value: string[]) => void;
 }
 
-export function DataTableFacetedFilter({
+export function DataTableFacetedFilter<TData, TValue>({
+  column,
   title,
   options,
   value,
   onChange,
-}: DataTableFacetedFilterProps) {
+}: DataTableFacetedFilterProps<TData, TValue>) {
   const [open, setOpen] = React.useState(false);
 
-  const selectedValues = new Set(value);
+  // Use the value/onChange from props if provided directly, otherwise use from column
+  const facetedValue = value || (column?.getFilterValue() as string[]) || [];
+
+  const selectedValues = new Set(facetedValue);
+
+  // Handle filter change
+  const handleFilterChange = React.useCallback(
+    (values: string[]) => {
+      if (onChange) {
+        onChange(values);
+      } else if (column) {
+        column.setFilterValue(values.length ? values : undefined);
+      }
+    },
+    [column, onChange]
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -103,7 +120,7 @@ export function DataTableFacetedFilter({
                         selectedValues.add(option.value);
                       }
                       const filterValues = Array.from(selectedValues);
-                      onChange(filterValues);
+                      handleFilterChange(filterValues);
                     }}
                   >
                     <div
@@ -129,7 +146,7 @@ export function DataTableFacetedFilter({
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem
-                    onSelect={() => onChange([])}
+                    onSelect={() => handleFilterChange([])}
                     className="justify-center text-center"
                   >
                     Clear filters

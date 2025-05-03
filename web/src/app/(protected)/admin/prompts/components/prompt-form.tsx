@@ -82,7 +82,6 @@ export function PromptForm({ promptEdited }: PromptFormProps) {
   // Update form values when editing an existing prompt or resetting form
   useEffect(() => {
     if (promptEdited) {
-      console.log("Setting form values for editing:", promptEdited);
       form.reset({
         title: promptEdited.title,
         body: promptEdited.body,
@@ -91,7 +90,6 @@ export function PromptForm({ promptEdited }: PromptFormProps) {
         tags: promptEdited.tags,
       });
     } else {
-      console.log("Resetting form to default values");
       form.reset({
         title: "",
         body: "",
@@ -103,33 +101,39 @@ export function PromptForm({ promptEdited }: PromptFormProps) {
   }, [promptEdited, form, promptModalOpen]);
 
   const onSubmit = async (data: PromptInput) => {
-    console.log("Form submission started with data:", data);
     setIsSubmitting(true);
 
     try {
       if (promptEdited) {
-        // First close the modal before awaiting API response to prevent flickering
-        setPromptModalOpen(false);
-
-        // Update existing prompt using Server Action
-        const result = await updatePromptAction(promptEdited.id, data);
-        console.log("Update result:", result);
-        if (result.success) {
-          setPromptAction({
-            type: "UPDATE",
-            prompt: {
-              ...promptEdited,
-              ...data,
-              updatedAt: getCurrentUnixTimestamp(),
-            },
+        // Ensure promptEdited.id is defined
+        if (!promptEdited.id) {
+          toast({
+            title: "Error",
+            description: "Prompt ID is missing. Cannot update prompt.",
+            variant: "destructive",
           });
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Update existing prompt
+        const result = await updatePromptAction(promptEdited.id, data);
+
+        if (result.success) {
+          if (result.prompt) {
+            setPromptAction({
+              type: "UPDATE",
+              prompt: result.prompt,
+            });
+          }
+
+          setPromptModalOpen(false);
           toast({
             title: "Prompt updated",
             description: "The prompt has been updated successfully.",
           });
           form.reset();
         } else {
-          console.error("Failed to update prompt:", result.error);
           toast({
             title: "Error",
             description: result.error || "Failed to update prompt",
@@ -137,67 +141,36 @@ export function PromptForm({ promptEdited }: PromptFormProps) {
           });
         }
       } else {
-        // First close the modal before awaiting API response to prevent flickering
-        setPromptModalOpen(false);
+        // Add new prompt
+        const result = await addPromptAction(data);
 
-        // Add new prompt using Server Action
-        try {
-          const result = await addPromptAction(data);
-          console.log("Add result:", result);
-          if (result.success) {
-            if (result.prompt) {
-              setPromptAction({
-                type: "ADD",
-                prompt: result.prompt,
-              });
-              toast({
-                title: "Prompt added",
-                description: "The prompt has been added successfully.",
-              });
-            } else {
-              throw new Error("Prompt data missing from server response.");
-            }
-            form.reset();
-          } else {
-            console.error("Failed to add prompt:", result.error);
-            toast({
-              title: "Error",
-              description: result.error || "Failed to add prompt",
-              variant: "destructive",
-            });
-          }
-        } catch (submissionError) {
-          console.error("Submission error:", submissionError);
-          // Special handling for timeout errors
-          if (
-            submissionError instanceof Error &&
-            submissionError.message.includes("timeout")
-          ) {
-            toast({
-              title: "Connection Issues",
-              description:
-                "We're having trouble connecting to the database. Please check your internet connection and try again.",
-              variant: "destructive",
-              duration: 7000,
-            });
-          } else {
-            toast({
-              title: "Error",
-              description:
-                submissionError instanceof Error
-                  ? submissionError.message
-                  : "Failed to add prompt",
-              variant: "destructive",
-            });
-          }
+        if (result.success && result.prompt) {
+          setPromptAction({
+            type: "ADD",
+            prompt: result.prompt,
+          });
+
+          setPromptModalOpen(false);
+          toast({
+            title: "Prompt added",
+            description: "The prompt has been added successfully.",
+          });
+          form.reset();
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to add prompt",
+            variant: "destructive",
+          });
         }
       }
     } catch (error) {
-      console.error("Error in form submission:", error);
       toast({
         title: "Error",
         description:
-          error instanceof Error ? error.message : "An error occurred",
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
