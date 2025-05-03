@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+// START: QUESTIONS
+// TODO: Clean up the question schema
+export interface Question {
+  id: string;
+  question: string;
+  answer: string | null;
+  tags?: string[];
+  phase?: string;
+  order?: number;
+  createdAt?: string;
+  last_modified?: string;
+}
 // Schema for questions within a product
 export const productQuestionSchema = z.object({
   id: z.string(),
@@ -23,6 +35,7 @@ export type ProductQuestionInput = z.infer<typeof productQuestionInputSchema>;
 
 // List of product questions
 export const productQuestionListSchema = z.array(productQuestionSchema);
+// END: QUESTIONS
 
 // START: COURSES
 // Interface for Course data

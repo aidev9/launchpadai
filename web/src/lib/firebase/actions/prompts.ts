@@ -424,7 +424,10 @@ export async function getUserPromptsByPhaseAction(phases: string[]) {
 /**
  * Copy a prompt from global collection to user's collection
  */
-export async function copyPromptToUserCollectionAction(promptId: string) {
+export async function copyPromptToUserCollectionAction(
+  promptId: string,
+  overrideBody?: string
+) {
   try {
     const userId = await getCurrentUserId();
 
@@ -438,7 +441,7 @@ export async function copyPromptToUserCollectionAction(promptId: string) {
     const userPromptRef = getUserPromptsRef(userId);
     const newPromptRef = await userPromptRef.add({
       title: prompt.title,
-      body: prompt.body,
+      body: overrideBody || prompt.body, // Use override body if provided
       phaseTags: prompt.phaseTags,
       productTags: prompt.productTags,
       tags: prompt.tags,

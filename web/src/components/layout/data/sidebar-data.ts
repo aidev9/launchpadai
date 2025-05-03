@@ -56,22 +56,49 @@ export const sidebarData: SidebarData = {
   ],
   navGroups: [
     {
+      title: "My Launchpad",
+      items: [
+        {
+          title: "Dashboard",
+          url: "/dashboard",
+          icon: IconDashboard,
+          items: [
+            {
+              title: "My Products",
+              url: "/dashboard",
+              icon: IconCube,
+            },
+            {
+              title: "My Prompts",
+              url: "/myprompts",
+              icon: IconPlaylistAdd,
+            },
+            {
+              title: "Notes",
+              url: "/notes",
+              icon: IconMessages,
+            },
+            {
+              title: "Questions",
+              url: "/qa",
+              icon: IconHelpCircle,
+            },
+          ],
+        },
+      ],
+    },
+    {
       title: "General",
       items: [
         {
-          title: "Products",
+          title: "Product Templates",
           url: "/dashboard",
           icon: IconCube,
         },
         {
-          title: "Prompts",
+          title: "Prompt Templates",
           url: "/prompts",
           icon: IconNotes,
-        },
-        {
-          title: "My Prompts",
-          url: "/myprompts",
-          icon: IconPlaylistAdd,
         },
         {
           title: "Tools",
@@ -112,11 +139,7 @@ export const sidebarData: SidebarData = {
                 badge: "3",
                 icon: IconMessages,
               },
-              {
-                title: "Users",
-                url: "/users",
-                icon: IconUsers,
-              },
+
               {
                 title: "Academy",
                 url: "/academy",
@@ -124,16 +147,6 @@ export const sidebarData: SidebarData = {
               },
             ]
           : []),
-        {
-          title: "Notes",
-          url: "/notes",
-          icon: IconMessages,
-        },
-        {
-          title: "Questions",
-          url: "/qa",
-          icon: IconHelpCircle,
-        },
       ],
     },
     // Admin section - only shown to admin users
@@ -150,6 +163,11 @@ export const sidebarData: SidebarData = {
           title: "Users Management",
           url: "/admin/users",
           icon: IconUserShield,
+        },
+        {
+          title: "Users",
+          url: "/users",
+          icon: IconUsers,
         },
         {
           title: "Courses",

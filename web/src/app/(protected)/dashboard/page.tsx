@@ -59,16 +59,14 @@ export default function Dashboard() {
   // Add a ref to track initial load state
   const initialLoadRef = useRef(false);
 
-  // Refresh products list only on initial mount
   useEffect(() => {
+    // This is a one-time manual refresh that can be triggered if needed
+    // for example after creating a new product and returning to this page
     if (!initialLoadRef.current) {
       initialLoadRef.current = true;
-      // Force a refresh from the server to get the latest data
-      fetchProducts(true).catch((err) => {
-        console.error("Error refreshing products:", err);
-      });
+      // Do any additional setup here if needed
     }
-  }, [fetchProducts]);
+  }, []);
 
   const handleCreateProduct = () => {
     router.push("/welcome");

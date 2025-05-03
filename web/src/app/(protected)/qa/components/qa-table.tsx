@@ -23,12 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-/* eslint-disable */
-// @ts-ignore
 import { DataTablePagination } from "./data-table-pagination";
-// @ts-ignore
 import { DataTableToolbar } from "./data-table-toolbar";
-/* eslint-enable */
 import {
   rowSelectionAtom,
   columnVisibilityAtom,

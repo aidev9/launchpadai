@@ -1,5 +1,5 @@
 "use client";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -29,7 +29,9 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { NavCollapsible, NavItem, NavLink, type NavGroup } from "./types";
-import { countProducts } from "@/lib/firebase/products";
+// import { useProductCount } from "@/hooks/useProductCount";
+import { useAtom, useSetAtom } from "jotai";
+import { productCountAtom } from "@/lib/store/product-store";
 
 export function NavGroup({ title, items }: NavGroup) {
   const { state } = useSidebar();
@@ -74,15 +76,8 @@ const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
 
   // Custom logic for Products link to show product count
   const isProducts = item.url === "/dashboard";
-  const [productCount, setProductCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (isProducts) {
-      countProducts().then((res) => {
-        if (res.success) setProductCount(res.count);
-      });
-    }
-  }, [isProducts]);
+  // const { count: productCount, isLoading } = useProductCount();
+  const [productCount] = useAtom(productCountAtom);
 
   return (
     <SidebarMenuItem>
@@ -94,8 +89,8 @@ const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
         <Link href={item.url} onClick={() => setOpenMobile(false)}>
           {item.icon && <item.icon />}
           <span>{item.title}</span>
-          {/* Show badge for Products link */}
-          {isProducts && productCount !== null && (
+          {/* Show badge for Products link with improved display logic */}
+          {isProducts && (
             <span className="ml-2 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold w-5 h-5">
               {productCount}
             </span>
@@ -115,6 +110,9 @@ const SidebarMenuCollapsible = ({
   href: string;
 }) => {
   const { setOpenMobile } = useSidebar();
+  // Use the product count hook
+  const [productCount] = useAtom(productCountAtom);
+
   return (
     <Collapsible
       asChild
@@ -132,20 +130,31 @@ const SidebarMenuCollapsible = ({
         </CollapsibleTrigger>
         <CollapsibleContent className="CollapsibleContent">
           <SidebarMenuSub>
-            {item.items.map((subItem) => (
-              <SidebarMenuSubItem key={subItem.title}>
-                <SidebarMenuSubButton
-                  asChild
-                  isActive={checkIsActive(href, subItem)}
-                >
-                  <Link href={subItem.url} onClick={() => setOpenMobile(false)}>
-                    {subItem.icon && <subItem.icon />}
-                    <span>{subItem.title}</span>
-                    {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
-                  </Link>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            ))}
+            {item.items.map((subItem) => {
+              const isProducts = subItem.url === "/dashboard";
+              return (
+                <SidebarMenuSubItem key={subItem.title}>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={checkIsActive(href, subItem)}
+                  >
+                    <Link
+                      href={subItem.url}
+                      onClick={() => setOpenMobile(false)}
+                    >
+                      {subItem.icon && <subItem.icon />}
+                      <span>{subItem.title}</span>
+                      {isProducts && (
+                        <span className="ml-2 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold w-5 h-5">
+                          {productCount}
+                        </span>
+                      )}
+                      {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              );
+            })}
           </SidebarMenuSub>
         </CollapsibleContent>
       </SidebarMenuItem>

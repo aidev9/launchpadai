@@ -1,7 +1,7 @@
 "use client";
 
 import { Main } from "@/components/layout/main";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -21,7 +21,6 @@ import {
 } from "./data/templates";
 import { PlusCircle, Search as SearchIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { countProducts } from "@/lib/firebase/products";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { cn } from "@/lib/utils";
 
@@ -32,18 +31,6 @@ export default function Welcome() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>(["all"]);
   const router = useRouter();
-
-  // Check if user has any products
-  useEffect(() => {
-    const checkProducts = async () => {
-      const result = await countProducts();
-      if (result.success && result.count > 0) {
-        // setHasProducts(true);
-      }
-    };
-
-    checkProducts();
-  }, []);
 
   // Pills for filtering
   const pillOptions = [

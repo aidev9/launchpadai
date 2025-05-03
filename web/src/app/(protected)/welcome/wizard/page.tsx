@@ -358,321 +358,292 @@ export default function ProductWizard() {
   }
 
   return (
-    <>
-      <Header fixed>
-        <Search />
-        <div className="ml-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown />
+    <Main>
+      <div className="mb-8">
+        <div className="mb-4">
+          <Breadcrumbs
+            items={[
+              { label: "Products", href: "/dashboard" },
+              ...(isEditMode && productToEdit
+                ? [
+                    { label: productToEdit.name, href: "/product" },
+                    {
+                      label: "Edit Product",
+                      href: "",
+                      isCurrentPage: true,
+                    },
+                  ]
+                : [
+                    {
+                      label: "Create Product",
+                      href: "",
+                      isCurrentPage: true,
+                    },
+                  ]),
+            ]}
+          />
         </div>
-      </Header>
 
-      <Main>
-        <div className="max-w-3xl mx-auto">
-          <div className="mb-8">
-            <div className="mb-4">
-              <Breadcrumbs
-                items={[
-                  { label: "Products", href: "/dashboard" },
-                  ...(isEditMode && productToEdit
-                    ? [
-                        { label: productToEdit.name, href: "/product" },
-                        {
-                          label: "Edit Product",
-                          href: "",
-                          isCurrentPage: true,
-                        },
-                      ]
-                    : [
-                        {
-                          label: "Create Product",
-                          href: "",
-                          isCurrentPage: true,
-                        },
-                      ]),
-                ]}
-              />
-            </div>
+        <h1 className="text-3xl font-bold tracking-tight mb-2">
+          {isEditMode
+            ? `Edit ${productToEdit?.name || "Product"}`
+            : templateId === "blank"
+              ? "Create a New Product"
+              : `Set Up Your ${selectedTemplate?.name || "Product"}`}
+        </h1>
+        <p className="text-muted-foreground">
+          {isEditMode
+            ? "Update your product details"
+            : "Tell us about your product or startup to get started."}
+        </p>
+      </div>
 
-            <h1 className="text-3xl font-bold tracking-tight mb-2">
-              {isEditMode
-                ? `Edit ${productToEdit?.name || "Product"}`
-                : templateId === "blank"
-                  ? "Create a New Product"
-                  : `Set Up Your ${selectedTemplate?.name || "Product"}`}
-            </h1>
-            <p className="text-muted-foreground">
-              {isEditMode
-                ? "Update your product details"
-                : "Tell us about your product or startup to get started."}
-            </p>
+      {/* Progress Indicator */}
+      <div className="flex items-center justify-between mb-8 max-w-[70%]">
+        <div className="flex items-center w-full">
+          <div
+            className={`flex items-center justify-center h-10 w-10 rounded-full ${currentStep >= 1 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
+            {currentStep > 1 ? <Check className="h-5 w-5" /> : "1"}
           </div>
-
-          {/* Progress Indicator */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center w-full">
-              <div
-                className={`flex items-center justify-center h-10 w-10 rounded-full ${currentStep >= 1 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-              >
-                {currentStep > 1 ? <Check className="h-5 w-5" /> : "1"}
-              </div>
-              <div
-                className={`flex-1 h-1 ${currentStep > 1 ? "bg-primary" : "bg-muted"}`}
-              ></div>
-              <div
-                className={`flex items-center justify-center h-10 w-10 rounded-full ${currentStep >= 2 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-              >
-                {currentStep > 2 ? <Check className="h-5 w-5" /> : "2"}
-              </div>
-              <div
-                className={`flex-1 h-1 ${currentStep > 2 ? "bg-primary" : "bg-muted"}`}
-              ></div>
-              <div
-                className={`flex items-center justify-center h-10 w-10 rounded-full ${currentStep >= 3 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-              >
-                3
-              </div>
-            </div>
+          <div
+            className={`flex-1 h-1 ${currentStep > 1 ? "bg-primary" : "bg-muted"}`}
+          ></div>
+          <div
+            className={`flex items-center justify-center h-10 w-10 rounded-full ${currentStep >= 2 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
+            {currentStep > 2 ? <Check className="h-5 w-5" /> : "2"}
           </div>
+          <div
+            className={`flex-1 h-1 ${currentStep > 2 ? "bg-primary" : "bg-muted"}`}
+          ></div>
+          <div
+            className={`flex items-center justify-center h-10 w-10 rounded-full ${currentStep >= 3 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
+            3
+          </div>
+        </div>
+      </div>
 
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>
-                {currentStep === 1 && "Basic Information"}
-                {currentStep === 2 && "Problem Statement"}
-                {currentStep === 3 && "Additional Details"}
-              </CardTitle>
-              <CardDescription>
-                {currentStep === 1 &&
-                  "Tell us the basic details about your product."}
-                {currentStep === 2 &&
-                  "Describe the specific problem you're working on."}
-                {currentStep === 3 &&
-                  "Provide additional information to customize your experience."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form className="space-y-6">
-                  {/* Step 1: Basic Information */}
-                  {currentStep === 1 && (
-                    <>
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Product/Startup Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter a name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+      <Card className="mb-8 max-w-[70%]">
+        <CardHeader>
+          <CardTitle>
+            {currentStep === 1 && "Basic Information"}
+            {currentStep === 2 && "Problem Statement"}
+            {currentStep === 3 && "Additional Details"}
+          </CardTitle>
+          <CardDescription>
+            {currentStep === 1 &&
+              "Tell us the basic details about your product."}
+            {currentStep === 2 &&
+              "Describe the specific problem you're working on."}
+            {currentStep === 3 &&
+              "Provide additional information to customize your experience."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form className="space-y-6">
+              {/* Step 1: Basic Information */}
+              {currentStep === 1 && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Product/Startup Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter a name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                      <FormField
-                        control={form.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Short Description</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Briefly describe your product or startup"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Short Description</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Briefly describe your product or startup"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                      <FormField
-                        control={form.control}
-                        name="stage"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Current Stage</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select the current stage" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="Discover">
-                                  Discover
-                                </SelectItem>
-                                <SelectItem value="Validate">
-                                  Validate
-                                </SelectItem>
-                                <SelectItem value="Design">Design</SelectItem>
-                                <SelectItem value="Build">Build</SelectItem>
-                                <SelectItem value="Secure">Secure</SelectItem>
-                                <SelectItem value="Launch">Launch</SelectItem>
-                                <SelectItem value="Grow">Grow</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </>
-                  )}
-
-                  {/* Step 2: Problem Statement */}
-                  {currentStep === 2 && (
-                    <>
-                      <FormField
-                        control={form.control}
-                        name="problem"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              What problem are you working on?
-                            </FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Describe the specific problem you're trying to solve"
-                                className="min-h-32"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="mt-4">
-                        <p className="text-sm font-medium mb-2">Suggestions:</p>
-                        <div className="grid grid-cols-1 gap-3">
-                          {problemSuggestions.map((suggestion, index) => (
-                            <Button
-                              key={index}
-                              variant="outline"
-                              type="button"
-                              className="justify-start h-auto min-h-[3.5rem] py-3 px-4 text-left text-sm break-words whitespace-normal font-normal"
-                              onClick={() =>
-                                form.setValue("problem", suggestion)
-                              }
-                            >
-                              {suggestion}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Step 3: Additional Details */}
-                  {currentStep === 3 && (
-                    <>
-                      <FormField
-                        control={form.control}
-                        name="team"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Team Members</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Who is working on this project with you?"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="website"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Website (if any)</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="https://example.com"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="country"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Country of Operation</FormLabel>
-                            <CountrySelect
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              value={field.value}
-                            />
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </>
-                  )}
-
-                  {formError && (
-                    <div className="text-destructive text-sm mt-2">
-                      {formError}
-                    </div>
-                  )}
-                </form>
-              </Form>
-            </CardContent>
-            <CardFooter className="flex justify-center border-t pt-4">
-              {formError && (
-                <div className="text-destructive text-sm absolute left-4">
-                  {formError}
-                </div>
+                  <FormField
+                    control={form.control}
+                    name="stage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Current Stage</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select the current stage" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Discover">Discover</SelectItem>
+                            <SelectItem value="Validate">Validate</SelectItem>
+                            <SelectItem value="Design">Design</SelectItem>
+                            <SelectItem value="Build">Build</SelectItem>
+                            <SelectItem value="Secure">Secure</SelectItem>
+                            <SelectItem value="Launch">Launch</SelectItem>
+                            <SelectItem value="Grow">Grow</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
-              <div className="flex space-x-2">
-                {currentStep > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={goToPreviousStep}
-                    disabled={isSubmitting}
-                  >
-                    Previous
-                  </Button>
-                )}
-                {currentStep < 3 ? (
-                  <Button type="button" onClick={goToNextStep}>
-                    Next
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={handleFinalSubmit}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting
-                      ? "Saving..."
-                      : isEditMode
-                        ? "Update"
-                        : "Create"}
-                    <Check className="ml-2 h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </CardFooter>
-          </Card>
-        </div>
-      </Main>
-    </>
+
+              {/* Step 2: Problem Statement */}
+              {currentStep === 2 && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="problem"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>What problem are you working on?</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Describe the specific problem you're trying to solve"
+                            className="min-h-32"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="mt-4">
+                    <p className="text-sm font-medium mb-2">Suggestions:</p>
+                    <div className="grid grid-cols-1 gap-3">
+                      {problemSuggestions.map((suggestion, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          type="button"
+                          className="justify-start h-auto min-h-[3.5rem] py-3 px-4 text-left text-sm break-words whitespace-normal font-normal"
+                          onClick={() => form.setValue("problem", suggestion)}
+                        >
+                          {suggestion}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Step 3: Additional Details */}
+              {currentStep === 3 && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="team"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Team Members</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Who is working on this project with you?"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="website"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Website (if any)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="country"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country of Operation</FormLabel>
+                        <CountrySelect
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          value={field.value}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {formError && (
+                <div className="text-destructive text-sm mt-2">{formError}</div>
+              )}
+            </form>
+          </Form>
+        </CardContent>
+        <CardFooter className="flex justify-center border-t pt-4">
+          {formError && (
+            <div className="text-destructive text-sm absolute left-4">
+              {formError}
+            </div>
+          )}
+          <div className="flex space-x-2">
+            {currentStep > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={goToPreviousStep}
+                disabled={isSubmitting}
+              >
+                Previous
+              </Button>
+            )}
+            {currentStep < 3 ? (
+              <Button type="button" onClick={goToNextStep}>
+                Next
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleFinalSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : isEditMode ? "Update" : "Create"}
+                <Check className="ml-2 h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </CardFooter>
+      </Card>
+    </Main>
   );
 }

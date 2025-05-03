@@ -132,7 +132,8 @@ export function useProducts() {
         fetchingRef.current.products = false;
       }
     },
-    [products, setProducts]
+    // Remove products from dependency array to prevent infinite loops
+    [setProducts]
   );
 
   // Fetch a single product by ID
@@ -212,6 +213,7 @@ export function useProducts() {
         fetchingRef.current.productId = null;
       }
     },
+    // Keep products in this dependency array since we're reading from it directly
     [products, selectedProduct]
   );
 
@@ -299,19 +301,17 @@ export function useProducts() {
 
   // Initialize products on first mount
   useEffect(() => {
-    if (
-      !isLoading &&
-      products.length === 0 &&
-      !fetchingRef.current.products &&
-      !initialFetchAttemptedRef.current
-    ) {
+    // Only fetch once on mount, using the ref to track this
+    if (!initialFetchAttemptedRef.current && !fetchingRef.current.products) {
+      initialFetchAttemptedRef.current = true;
       fetchProducts().catch((err) => {
         console.error("[useProducts] Error during initial fetch:", err);
       });
     }
-  }, [fetchProducts, isLoading, products.length]);
+    // Add fetchProducts to dependencies, but wrap the effect in useRef to prevent re-runs
+  }, [fetchProducts]);
 
-  // Handle loading selected product when ID changes
+  // Handle loading selected product when ID changes - fix dependency array
   useEffect(() => {
     // Skip if no selected ID or product already matches ID
     if (
@@ -322,24 +322,29 @@ export function useProducts() {
       return;
     }
 
+    // Track if component is mounted
     let isMounted = true;
 
-    selectProduct(selectedProductId).catch((err) => {
-      console.error("[useProducts] Error loading selected product:", err);
-      if (isMounted) {
-        clearProductSelection();
+    // Use a local copy of the current ID to avoid stale closure issues
+    const currentId = selectedProductId;
+
+    // Wrap in immediate async function to avoid useEffect async warnings
+    (async () => {
+      try {
+        if (!isMounted) return;
+        await selectProduct(currentId);
+      } catch (err) {
+        console.error("[useProducts] Error loading selected product:", err);
+        if (isMounted) {
+          clearProductSelection();
+        }
       }
-    });
+    })();
 
     return () => {
       isMounted = false;
     };
-  }, [
-    selectedProductId,
-    selectedProduct,
-    selectProduct,
-    clearProductSelection,
-  ]);
+  }, [selectedProductId, selectedProduct?.id]); // Reduce dependencies to just what's needed
 
   // Compute derived state
   const hasProducts = products.length > 0;

@@ -6,7 +6,6 @@ import { Main } from "@/components/layout/main";
 import { ChevronLeft, Copy, FileText, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Prompt } from "@/lib/firebase/schema";
 import { getPhaseColor } from "@/components/prompts/phase-filter";
 import { copyPromptToUserCollectionAction } from "@/lib/firebase/actions/prompts";
 import { useAtom } from "jotai";
@@ -21,17 +20,17 @@ export default function PromptDetail() {
   const [prompt] = useAtom(selectedPromptAtom);
   const [isCopying, setIsCopying] = useState(false);
 
-  const handleBack = () => {
-    router.back();
-  };
-
   const handleUseAsTemplate = async () => {
     if (!prompt) return;
 
     setIsCopying(true);
     try {
-      // Copy the prompt to the user's collection
-      const result = await copyPromptToUserCollectionAction(prompt.id!);
+      // Copy the prompt to the user's collection, using the current prompt body from atom
+      // which might contain enhanced content if user clicked "Keep"
+      const result = await copyPromptToUserCollectionAction(
+        prompt.id!,
+        prompt.body
+      );
 
       if (result.success) {
         toast({
@@ -108,10 +107,10 @@ export default function PromptDetail() {
           <h1 className="text-2xl font-bold tracking-tight">{prompt.title}</h1>
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleCopyToClipboard}>
+            {/* <Button variant="outline" onClick={handleCopyToClipboard}>
               <Copy className="mr-2 h-4 w-4" />
               Copy
-            </Button>
+            </Button> */}
             <Button onClick={handleUseAsTemplate} disabled={isCopying}>
               <FileText className="mr-2 h-4 w-4" />
               {isCopying ? "Copying..." : "Use as Template"}

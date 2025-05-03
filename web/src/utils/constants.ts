@@ -38,6 +38,7 @@ When enhancing prompts, follow these guidelines:
 6. Balance brevity with sufficient detail
 7. Use clear and concise language
 8. Always work with what the user has provided, even if it is vague or incomplete
+9. The prompt passed is the most important thing, so do not change the fundamental goal or purpose of the prompt. All product, question, and note context should be used to enhance the prompt, but the prompt should be the main thing. Do not fundamentally change the prompt, but add more details and context to help the AI understand the user's intent, based on the product, question, and note context.
 
 DO NOT:
 - Change the fundamental goal or purpose of the prompt

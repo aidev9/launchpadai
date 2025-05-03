@@ -1,8 +1,7 @@
 "use client";
 
-import { Metadata } from "next";
-import { RotateCcw } from "lucide-react";
-import { useState, useCallback } from "react";
+import { RotateCcw, Copy, Download, ArrowLeft } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
 import { readStreamableValue } from "ai/rsc";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,16 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { CodeViewer } from "./components/code-viewer";
 import { MaxLengthSelector } from "./components/maxlength-selector";
 import { ModelSelector } from "./components/model-selector";
-import { PresetActions } from "./components/preset-actions";
-import { PresetSave } from "./components/preset-save";
-import { PresetSelector } from "./components/preset-selector";
-import { PresetShare } from "./components/preset-share";
+import { ProductSelector } from "./components/product-selector";
 import { TemperatureSelector } from "./components/temperature-selector";
 import { TopPSelector } from "./components/top-p-selector";
-import { presets } from "./data/presets";
 import { Prompt } from "@/lib/firebase/schema";
 import { useAtom } from "jotai";
 import { selectedPromptAtom } from "@/lib/store/prompt-store";
@@ -35,17 +29,26 @@ import {
   topPAtom,
   availableModels,
 } from "@/lib/store/ai-settings-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { MODEL_SELECTOR_TYPES } from "@/utils/constants";
 import { CompleteIcon, InsertIcon, EditIcon } from "./components/svgIcons";
-
-export const metadata: Metadata = {
-  title: "Playground",
-  description: "The OpenAI Playground built using the components.",
-};
+import MDEditor from "@uiw/react-md-editor";
+import rehypeSanitize from "rehype-sanitize";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Playground({ prompt }: { prompt: Prompt }) {
   // Selection atoms
   const [selectedPrompt, setSelectedPrompt] = useAtom(selectedPromptAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
+  const { toast } = useToast();
+
+  // Store original prompt when the component is first mounted
+  const [originalPrompt, setOriginalPrompt] = useState<Prompt | null>(null);
+
+  // Store original prompt body for reset functionality
+  const [originalPromptBody, setOriginalPromptBody] = useState(
+    selectedPrompt?.body || ""
+  );
 
   // State for enhanced prompts
   const [insertResult, setInsertResult] = useState("");
@@ -54,11 +57,95 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [instructions, setInstructions] = useState("");
 
+  // Initialize original prompt on component mount
+  useEffect(() => {
+    // Save the original prompt when the component is first mounted or when prompt id changes
+    setOriginalPrompt(selectedPrompt);
+    setOriginalPromptBody(selectedPrompt?.body || "");
+    console.log("[useEffect] prompt", prompt);
+  }, []);
+
   // AI Settings atoms
   const [selectedModel, setSelectedModel] = useAtom(selectedModelAtom);
   const [temperature, setTemperature] = useAtom(temperatureAtom);
   const [maxLength, setMaxLength] = useAtom(maxLengthAtom);
   const [topP, setTopP] = useAtom(topPAtom);
+
+  // Handle resetting prompt body to original version
+  const handleReset = useCallback(() => {
+    if (!selectedPrompt || !originalPrompt) return;
+
+    const updatedPrompt = {
+      ...selectedPrompt,
+      body: originalPrompt.body, // Reset to the original prompt body
+    };
+
+    setSelectedPrompt(updatedPrompt);
+
+    toast({
+      title: "Reset",
+      description: "Prompt has been reset to its original content",
+    });
+  }, [selectedPrompt, originalPrompt, setSelectedPrompt, toast]);
+
+  // Handler for copy to clipboard
+  const handleCopyToClipboard = useCallback(() => {
+    if (!selectedPrompt) return;
+
+    navigator.clipboard.writeText(selectedPrompt.body);
+    toast({
+      title: "Copied",
+      description: "Prompt content copied to clipboard",
+    });
+  }, [selectedPrompt, toast]);
+
+  // Handler for downloading the prompt
+  const handleDownload = useCallback(() => {
+    if (!selectedPrompt) return;
+
+    const blob = new Blob([selectedPrompt.body], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${selectedPrompt.title || "prompt"}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Downloaded",
+      description: "Prompt content downloaded as text file",
+    });
+  }, [selectedPrompt, toast]);
+
+  // Handle keeping enhanced result
+  const handleKeepResult = useCallback(() => {
+    if (!selectedPrompt) return;
+
+    const resultText = activeTab === "edit" ? editResult : insertResult;
+    if (!resultText.trim()) return;
+
+    const updatedPrompt = {
+      ...selectedPrompt,
+      body: resultText,
+    };
+    setSelectedPrompt(updatedPrompt);
+
+    toast({
+      title: "Updated",
+      description: "Prompt updated to enhanced prompt",
+    });
+  }, [
+    selectedPrompt,
+    activeTab,
+    editResult,
+    insertResult,
+    setSelectedPrompt,
+    toast,
+  ]);
 
   // Handle model selection change
   const handleModelChange = useCallback(
@@ -95,20 +182,23 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
         topP: topP,
       };
 
-      // Call our server action with the prompt text, optional instructions, and model settings
-      const { output } = await enhancePromptStream(
-        selectedPrompt.body,
-        currentInstructions,
-        modelSettings
-      );
-
-      // Reset the result for a fresh start
+      // Clear previous results
       setInsertResult("");
       setEditResult("");
 
+      // Make a copy of the selectedProduct to ensure we're using the current value
+      const productToUse = selectedProduct ? { ...selectedProduct } : undefined;
+
+      // Call our server action with the prompt text, optional instructions, model settings, and product
+      const { output } = await enhancePromptStream(
+        selectedPrompt.body,
+        currentInstructions,
+        modelSettings,
+        productToUse
+      );
+
       // Process the streamable value
       for await (const delta of readStreamableValue(output)) {
-        // Update both result fields as we receive streaming content
         setInsertResult((current) => current + delta);
         setEditResult((current) => current + delta);
       }
@@ -126,35 +216,36 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
     temperature,
     maxLength,
     topP,
+    selectedProduct,
   ]);
 
   // Handle tab change
-  const handleTabChange = useCallback(
-    (value: string) => {
-      setActiveTab(value);
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+    // Remove automatic enhancement when changing tabs
+  }, []);
 
-      // If changing to insert or edit tab, automatically trigger enhancement if no results yet
-      if (value === "insert" && !insertResult) {
-        handleEnhancePrompt();
-      } else if (value === "edit" && !editResult) {
-        handleEnhancePrompt();
-      }
-    },
-    [insertResult, editResult, handleEnhancePrompt]
-  );
+  const shouldShowButtons = activeTab === "edit" || activeTab === "insert";
 
   return (
     <div>
       <div className="flex flex-col items-start justify-between space-y-2 py-4 sm:flex-row sm:items-center sm:space-y-0 md:h-16">
         <h2 className="text-lg font-semibold w-48">Prompt Playground</h2>
         <div className="ml-auto flex w-full space-x-2 sm:justify-end">
-          <PresetSelector presets={presets} />
-          <PresetSave />
+          {/* <PresetSelector presets={presets} /> */}
+          <ProductSelector />
+          <Button variant="outline" onClick={handleCopyToClipboard}>
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" onClick={handleDownload}>
+            <Download className="h-4 w-4" />
+          </Button>
+          {/* <PresetSave />
           <div className="hidden space-x-2 md:flex">
             <CodeViewer />
             <PresetShare />
           </div>
-          <PresetActions />
+          <PresetActions /> */}
         </div>
       </div>
       <Separator />
@@ -218,17 +309,20 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
             <div className="md:order-1">
               <TabsContent value="complete" className="mt-0 border-0 p-0">
                 <div className="flex h-full flex-col space-y-4">
-                  <Textarea
-                    placeholder="Prompt body"
+                  <MDEditor
                     value={prompt.body}
+                    previewOptions={{
+                      rehypePlugins: [[rehypeSanitize]],
+                    }}
                     onChange={(e) => {
                       const updatedPrompt = {
                         ...prompt,
-                        body: e.target.value,
+                        body: e || "",
                       };
                       setSelectedPrompt(updatedPrompt);
                     }}
-                    className="min-h-[400px] flex-1 p-4 md:min-h-[400px] lg:min-h-[400px]"
+                    height={400}
+                    preview="edit"
                   />
                   <div className="flex items-center space-x-2">
                     <Button
@@ -237,27 +331,26 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
                     >
                       {isEnhancing ? "Enhancing..." : "Enhance Prompt"}
                     </Button>
-                    <Button variant="secondary">
-                      <span className="sr-only">Show history</span>
-                      <RotateCcw />
-                    </Button>
                   </div>
                 </div>
               </TabsContent>
               <TabsContent value="insert" className="mt-0 border-0 p-0">
                 <div className="flex flex-col space-y-4">
                   <div className="grid h-full grid-rows-2 gap-6 lg:grid-cols-2 lg:grid-rows-1">
-                    <Textarea
-                      placeholder="Prompt body"
+                    <MDEditor
                       value={prompt.body}
+                      previewOptions={{
+                        rehypePlugins: [[rehypeSanitize]],
+                      }}
                       onChange={(e) => {
                         const updatedPrompt = {
                           ...prompt,
-                          body: e.target.value,
+                          body: e || "",
                         };
                         setSelectedPrompt(updatedPrompt);
                       }}
-                      className="h-full min-h-[300px] lg:min-h-[400px] xl:min-h-[400px]"
+                      height={400}
+                      preview="edit"
                     />
                     <div className="rounded-md bg-muted">
                       <Textarea
@@ -276,10 +369,18 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
                     >
                       {isEnhancing ? "Enhancing..." : "Enhance Prompt"}
                     </Button>
-                    <Button variant="secondary">
-                      <span className="sr-only">Show history</span>
-                      <RotateCcw />
-                    </Button>
+                    {shouldShowButtons && (
+                      <>
+                        <Button variant="secondary" onClick={handleKeepResult}>
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Update
+                        </Button>
+                        <Button variant="secondary" onClick={handleReset}>
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          Reset
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -289,18 +390,20 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
                     <div className="flex flex-col space-y-4">
                       <div className="flex flex-1 flex-col space-y-2">
                         <Label htmlFor="input">Prompt</Label>
-                        <Textarea
-                          id="input"
-                          placeholder="Prompt body"
+                        <MDEditor
                           value={prompt.body}
+                          previewOptions={{
+                            rehypePlugins: [[rehypeSanitize]],
+                          }}
                           onChange={(e) => {
                             const updatedPrompt = {
                               ...prompt,
-                              body: e.target.value,
+                              body: e || "",
                             };
                             setSelectedPrompt(updatedPrompt);
                           }}
-                          className="flex-1 lg:min-h-[280px] resize-y"
+                          height={280}
+                          preview="edit"
                         />
                       </div>
                       <div className="flex flex-col space-y-2">
@@ -330,10 +433,18 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
                     >
                       {isEnhancing ? "Enhancing..." : "Enhance Prompt"}
                     </Button>
-                    <Button variant="secondary">
-                      <span className="sr-only">Show history</span>
-                      <RotateCcw />
-                    </Button>
+                    {shouldShowButtons && (
+                      <>
+                        <Button variant="secondary" onClick={handleKeepResult}>
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Update
+                        </Button>
+                        <Button variant="secondary" onClick={handleReset}>
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          Reset
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </TabsContent>

@@ -9,6 +9,13 @@ import { questions as staticQuestions } from "@/app/(protected)/answer_questions
 import { initializeProductAssets } from "./initialize-assets";
 import { awardXpPoints } from "@/xp/server-actions";
 
+// Import Jotai atoms
+import {
+  productCountAtom,
+  productCountLoadedAtom,
+} from "../store/product-store";
+import { getDefaultStore } from "jotai";
+
 // Root products collection reference
 // const productsCollection = adminDb.collection("products");
 
@@ -74,8 +81,6 @@ export async function createProduct(data: ProductInput) {
     // Add to Firestore
     const docRef = await productsRef.add(productData);
     const productId = docRef.id;
-
-    console.log(`Created product with ID: ${productId}`);
 
     try {
       // Create questions for this product in the questions collection
@@ -350,31 +355,6 @@ export async function getProduct(id: string) {
     console.error(`Failed to fetch product ${id}:`, error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-/**
- * Count products for the current user
- */
-export async function countProducts() {
-  try {
-    const userId = await getCurrentUserId();
-    const productsRef = getUserProductsRef(userId);
-
-    const snapshot = await productsRef.count().get();
-    const count = snapshot.data().count;
-
-    return {
-      success: true,
-      count,
-    };
-  } catch (error) {
-    console.error("Failed to count products:", error);
-    return {
-      success: false,
-      count: 0,
       error: error instanceof Error ? error.message : String(error),
     };
   }

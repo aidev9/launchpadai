@@ -29,5 +29,15 @@ export const selectedProductAtom = atom<Product | null>(null);
 // Store all products
 export const productsAtom = atom<Product[]>([]);
 
+// Store product count
+// export const productCountAtom = atom<number | null>(null);
+
+// Create a derived atom for product count that automatically updates
+// whenever the products array changes
+export const productCountAtom = atom((get) => get(productsAtom).length);
+
 // Filtering state for products list view
 export const productFilterAtom = atom<string>("");
+
+// Flag to track if product count has been loaded
+export const productCountLoadedAtom = atom<boolean>(false);
