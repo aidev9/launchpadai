@@ -76,12 +76,14 @@ export default function StepContent({
               <FormItem>
                 <FormLabel>Module Content</FormLabel>
                 <FormControl>
-                  <MDEditor
-                    value={field.value}
-                    onChange={(value) => field.onChange(value || "")}
-                    height={200}
-                    preview="edit"
-                  />
+                  <div data-color-mode="light">
+                    <MDEditor
+                      value={field.value}
+                      onChange={(value) => field.onChange(value || "")}
+                      height={200}
+                      preview="edit"
+                    />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

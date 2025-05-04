@@ -173,11 +173,9 @@ export function NotesDialogs({
   }
 
   async function handleUpdateWithServerAction(formData: FormData) {
-    // Use the userId prop passed from the parent instead of relying on the user object
-    if (!selectedProductId || !userId || !selectedNote?.id) {
+    if (!selectedProductId || !selectedNote?.id) {
       console.error("Missing required data for update: ", {
         selectedProductId,
-        userId,
         noteId: selectedNote?.id,
       });
       return;

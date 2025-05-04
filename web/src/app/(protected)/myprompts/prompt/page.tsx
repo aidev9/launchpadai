@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Main } from "@/components/layout/main";
-import { Copy, Download, Edit, Trash } from "lucide-react";
+import { Copy, Download, Edit, Trash, Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getPhaseColor } from "@/components/prompts/phase-filter";
@@ -86,6 +86,51 @@ export default function UserPromptDetail() {
   const handleDelete = () => {
     if (!prompt) return;
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleSavePrompt = async () => {
+    if (!prompt || !prompt.id) return;
+
+    setIsSubmitting(true);
+    try {
+      // Use the same action as the edit form but with the current state
+      const result = await updatePromptAction(prompt.id, {
+        title: prompt.title,
+        body: prompt.body,
+        phaseTags: prompt.phaseTags,
+        productTags: prompt.productTags,
+        tags: prompt.tags,
+      });
+
+      if (result.success && result.prompt) {
+        // Update both the selected prompt and the prompts list
+        updatePrompt(result.prompt);
+        setSelectedPrompt(result.prompt);
+
+        toast({
+          title: "Success",
+          description: "Prompt saved successfully",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save prompt",
+          variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmitPrompt = async (data: PromptInput, _promptId?: string) => {
@@ -206,17 +251,26 @@ export default function UserPromptDetail() {
           <h1 className="text-2xl font-bold tracking-tight">{prompt.title}</h1>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={handleCopyToClipboard}>
+            {/* <Button variant="outline" onClick={handleCopyToClipboard}>
               <Copy className="mr-2 h-4 w-4" />
               Copy
             </Button>
             <Button variant="outline" onClick={handleDownload}>
               <Download className="mr-2 h-4 w-4" />
               Download
-            </Button>
+            </Button> */}
             <Button variant="outline" onClick={handleEdit}>
               <Edit className="mr-2 h-4 w-4" />
               Edit
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-blue-50 dark:bg-blue-900/20"
+              onClick={handleSavePrompt}
+              disabled={isSubmitting}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {isSubmitting ? "Saving..." : "Save"}
             </Button>
             <Button
               variant="outline"

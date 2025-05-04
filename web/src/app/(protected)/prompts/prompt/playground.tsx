@@ -13,6 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { MaxLengthSelector } from "./components/maxlength-selector";
 import { ModelSelector } from "./components/model-selector";
 import { ProductSelector } from "./components/product-selector";
@@ -316,34 +321,7 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
             <div className="md:order-1">
               <TabsContent value="complete" className="mt-0 border-0 p-0">
                 <div className="flex h-full flex-col space-y-4">
-                  <MDEditor
-                    value={prompt.body}
-                    previewOptions={{
-                      rehypePlugins: [[rehypeSanitize]],
-                    }}
-                    onChange={(e) => {
-                      const updatedPrompt = {
-                        ...prompt,
-                        body: e || "",
-                      };
-                      setSelectedPrompt(updatedPrompt);
-                    }}
-                    height={400}
-                    preview="edit"
-                  />
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      onClick={handleEnhancePrompt}
-                      disabled={isEnhancing}
-                    >
-                      {isEnhancing ? "Enhancing..." : "Enhance Prompt"}
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
-              <TabsContent value="insert" className="mt-0 border-0 p-0">
-                <div className="flex flex-col space-y-4">
-                  <div className="grid h-full grid-rows-2 gap-6 lg:grid-cols-2 lg:grid-rows-1">
+                  <div data-color-mode="light">
                     <MDEditor
                       value={prompt.body}
                       previewOptions={{
@@ -359,16 +337,61 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
                       height={400}
                       preview="edit"
                     />
-                    <div className="rounded-md bg-muted">
-                      <Textarea
-                        id="result"
-                        placeholder="Results"
-                        className="h-full"
-                        value={insertResult}
-                        readOnly
-                      />
-                    </div>
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={handleEnhancePrompt}
+                      disabled={isEnhancing}
+                    >
+                      {isEnhancing ? "Enhancing..." : "Enhance Prompt"}
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="insert" className="mt-0 border-0 p-0">
+                <div className="flex flex-col space-y-4">
+                  <ResizablePanelGroup
+                    direction="horizontal"
+                    className="min-h-[400px]"
+                  >
+                    <ResizablePanel defaultSize={50}>
+                      <div data-color-mode="light" className="h-full p-2">
+                        <div className="border rounded-md overflow-hidden h-full">
+                          <MDEditor
+                            value={prompt.body}
+                            previewOptions={{
+                              rehypePlugins: [[rehypeSanitize]],
+                            }}
+                            onChange={(e) => {
+                              const updatedPrompt = {
+                                ...prompt,
+                                body: e || "",
+                              };
+                              setSelectedPrompt(updatedPrompt);
+                            }}
+                            height="380px"
+                            preview="edit"
+                          />
+                        </div>
+                      </div>
+                    </ResizablePanel>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={50}>
+                      <div data-color-mode="light" className="h-full p-2">
+                        <div className="border rounded-md overflow-hidden h-full">
+                          <MDEditor
+                            id="result"
+                            value={insertResult}
+                            previewOptions={{
+                              rehypePlugins: [[rehypeSanitize]],
+                            }}
+                            height="380px"
+                            preview="edit"
+                          />
+                        </div>
+                      </div>
+                    </ResizablePanel>
+                  </ResizablePanelGroup>
                   <div className="flex items-center space-x-2">
                     <Button
                       onClick={handleEnhancePrompt}
@@ -393,46 +416,65 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
               </TabsContent>
               <TabsContent value="edit" className="mt-0 border-0 p-0">
                 <div className="flex flex-col space-y-4">
-                  <div className="grid h-full gap-6 lg:grid-cols-2">
-                    <div className="flex flex-col space-y-4">
-                      <div className="flex flex-1 flex-col space-y-2">
-                        <Label htmlFor="input">Prompt</Label>
-                        <MDEditor
-                          value={prompt.body}
-                          previewOptions={{
-                            rehypePlugins: [[rehypeSanitize]],
-                          }}
-                          onChange={(e) => {
-                            const updatedPrompt = {
-                              ...prompt,
-                              body: e || "",
-                            };
-                            setSelectedPrompt(updatedPrompt);
-                          }}
-                          height={280}
-                          preview="edit"
-                        />
+                  <ResizablePanelGroup
+                    direction="horizontal"
+                    className="min-h-[400px]"
+                  >
+                    <ResizablePanel defaultSize={50}>
+                      <div className="flex flex-col space-y-4 h-full p-2">
+                        <div className="flex flex-1 flex-col space-y-2">
+                          <div
+                            data-color-mode="light"
+                            className="flex-1 border rounded-md overflow-hidden"
+                          >
+                            <MDEditor
+                              value={prompt.body}
+                              previewOptions={{
+                                rehypePlugins: [[rehypeSanitize]],
+                              }}
+                              onChange={(e) => {
+                                const updatedPrompt = {
+                                  ...prompt,
+                                  body: e || "",
+                                };
+                                setSelectedPrompt(updatedPrompt);
+                              }}
+                              height="280px"
+                              preview="edit"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-col space-y-2">
+                          <Label htmlFor="instructions">Instructions</Label>
+                          <Textarea
+                            id="instructions"
+                            placeholder="Improve the prompt by adding more details"
+                            value={instructions}
+                            onChange={(e) => setInstructions(e.target.value)}
+                          />
+                        </div>
                       </div>
-                      <div className="flex flex-col space-y-2">
-                        <Label htmlFor="instructions">Instructions</Label>
-                        <Textarea
-                          id="instructions"
-                          placeholder="Improve the prompt by adding more details"
-                          value={instructions}
-                          onChange={(e) => setInstructions(e.target.value)}
-                        />
+                    </ResizablePanel>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={50}>
+                      <div className="h-full p-2">
+                        <div
+                          data-color-mode="light"
+                          className="h-full border rounded-md overflow-hidden"
+                        >
+                          <MDEditor
+                            id="result"
+                            value={editResult}
+                            previewOptions={{
+                              rehypePlugins: [[rehypeSanitize]],
+                            }}
+                            height="380px"
+                            preview="edit"
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-[21px] min-h-[380px] rounded-md border-0 bg-muted lg:min-h-[380px]">
-                      <Textarea
-                        id="result"
-                        placeholder="Results"
-                        className="h-full"
-                        value={editResult}
-                        readOnly
-                      />
-                    </div>
-                  </div>
+                    </ResizablePanel>
+                  </ResizablePanelGroup>
                   <div className="flex items-center space-x-2">
                     <Button
                       onClick={handleEnhancePrompt}
