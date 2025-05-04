@@ -15,7 +15,10 @@ import {
   selectedNoteAtom,
   allNotesAtom,
 } from "./notes-store";
-import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import {
+  getCurrentUnixTimestamp,
+  TOAST_DEFAULT_DURATION,
+} from "@/utils/constants";
 import { createNote, updateNote } from "../actions";
 import {
   Dialog,
@@ -25,6 +28,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { clientAuth } from "@/lib/firebase/client";
+import { get } from "http";
 
 const userId = clientAuth.currentUser?.uid;
 
@@ -117,8 +121,8 @@ export function NotesDialogs({
                 : Date.now().toString(),
             note_body: result.note?.note_body || noteBody,
             tags: result.note?.tags || tags,
-            createdAt: result.note?.createdAt || Date.now(),
-            updatedAt: result.note?.updatedAt || Date.now(),
+            createdAt: result.note?.createdAt || getCurrentUnixTimestamp(),
+            updatedAt: result.note?.updatedAt || getCurrentUnixTimestamp(),
           };
 
           // Update the allNotes atom directly

@@ -73,6 +73,15 @@ export const sidebarData: SidebarData = {
               url: "/myprompts",
               icon: IconPlaylistAdd,
             },
+            ...(isDev
+              ? [
+                  {
+                    title: "My Stacks",
+                    url: "/mystacks",
+                    icon: IconCube,
+                  },
+                ]
+              : []),
             {
               title: "Notes",
               url: "/notes",

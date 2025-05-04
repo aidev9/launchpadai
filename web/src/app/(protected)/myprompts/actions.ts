@@ -18,10 +18,11 @@ export async function createPromptAction(promptData: PromptInput) {
     }
 
     // Prepare data for Firestore
+    const timestamp = getCurrentUnixTimestamp();
     const promptToAdd = {
       ...promptData,
-      createdAt: getCurrentUnixTimestamp(),
-      updatedAt: getCurrentUnixTimestamp(),
+      createdAt: timestamp,
+      updatedAt: timestamp,
       // Add user as a tag to identify it as a user prompt
       tags: [...promptData.tags, "user"],
     };
@@ -71,9 +72,10 @@ export async function updatePromptAction(
     }
 
     // Prepare update data
+    const timestamp = getCurrentUnixTimestamp();
     const updateData = {
       ...promptData,
-      updatedAt: getCurrentUnixTimestamp(),
+      updatedAt: timestamp,
     };
 
     // Update the document

@@ -162,3 +162,74 @@ export interface Model<Type = string> {
   active?: boolean;
 }
 // END: MODELS
+
+// START: TECH STACKS
+export interface TechStack {
+  id?: string;
+  userId?: string;
+  appType: string;
+  frontEndStack: string;
+  backendStack: string;
+  database: string;
+  aiAgentStack: string[];
+  integrations: string[];
+  deploymentStack: string;
+  name: string;
+  description: string;
+  tags: string[];
+  phase: string[];
+  createdAt?: number | string;
+  updatedAt?: number | string;
+}
+
+/**
+ * Zod schema for tech stack validation
+ */
+export const techStackInputSchema = z.object({
+  appType: z.string().min(1, "App type is required"),
+  frontEndStack: z.string().min(1, "Front end stack is required"),
+  backendStack: z.string().min(1, "Backend stack is required"),
+  database: z.string().min(1, "Database is required"),
+  aiAgentStack: z
+    .array(z.string())
+    .min(1, "Select at least one AI agent technology"),
+  integrations: z.array(z.string()).min(1, "Select at least one integration"),
+  deploymentStack: z.string().min(1, "Deployment stack is required"),
+  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+  description: z.string().optional(),
+  tags: z.array(z.string()),
+  phase: z.array(z.string()).min(1, "Select at least one phase"),
+});
+
+export type TechStackInput = z.infer<typeof techStackInputSchema>;
+
+// Tech Stack Asset types
+export interface TechStackAsset {
+  id?: string;
+  title: string;
+  body: string;
+  tags: string[];
+  assetType: "PRD" | "Architecture" | "Tasks" | "Rules" | "Prompt" | "Custom";
+  techStackId: string;
+  createdAt?: number;
+  updatedAt?: number;
+  isGenerating?: boolean;
+}
+
+export const techStackAssetInputSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  body: z.string().min(1, "Body is required"),
+  tags: z.array(z.string()),
+  assetType: z.enum([
+    "PRD",
+    "Architecture",
+    "Tasks",
+    "Rules",
+    "Prompt",
+    "Custom",
+  ]),
+  techStackId: z.string(),
+});
+
+export type TechStackAssetInput = z.infer<typeof techStackAssetInputSchema>;
+// END: TECH STACKS
