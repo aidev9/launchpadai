@@ -12,6 +12,8 @@ import {
   Table as TableIcon,
   XCircle,
   Trash,
+  Copy,
+  Download,
 } from "lucide-react";
 import { usePrompts } from "@/hooks/usePrompts";
 import { PhaseFilter, getPhaseColor } from "@/components/prompts/phase-filter";
@@ -19,13 +21,6 @@ import { PromptCard } from "@/components/prompts/prompt-card";
 import { Prompt, PromptInput } from "@/lib/firebase/schema";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { PromptTable } from "./components/prompt-table";
 import { PromptForm } from "./components/prompt-form";
@@ -67,7 +62,6 @@ export default function MyPrompts() {
   const router = useRouter();
   const { toast } = useToast();
   const [layoutView, setLayoutView] = useAtom(layoutViewAtom);
-  const [expandedPrompt, setExpandedPrompt] = useState<Prompt | null>(null);
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -149,17 +143,10 @@ export default function MyPrompts() {
     }
   };
 
-  const handleExpandPrompt = (prompt: Prompt) => {
-    setExpandedPrompt(prompt);
-  };
-
   const handleSubmitPrompt = async (data: PromptInput, promptId?: string) => {
     setIsSubmitting(true);
     try {
       if (promptId) {
-        // Update existing prompt
-        console.log("Updating prompt with ID:", promptId, data);
-
         // Optimistic update
         if (editingPrompt) {
           const optimisticPrompt = {
@@ -333,18 +320,6 @@ export default function MyPrompts() {
     }
   };
 
-  // Listen for Escape key to close expanded prompt
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && expandedPrompt) {
-        setExpandedPrompt(null);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [expandedPrompt]);
-
   return (
     <Main>
       <div className="space-y-6">
@@ -482,7 +457,6 @@ export default function MyPrompts() {
                   onEdit={handleEditPrompt}
                   onDelete={handleDeletePrompt}
                   onTagClick={handleTagClick}
-                  onExpand={handleExpandPrompt}
                 />
               ))}
             </div>
@@ -501,44 +475,6 @@ export default function MyPrompts() {
               onClick={handlePromptClick}
             />
           )}
-
-        {/* Expanded prompt overlay */}
-        {expandedPrompt && (
-          <div
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={() => setExpandedPrompt(null)}
-          >
-            <div
-              className="bg-background rounded-lg p-6 w-full max-w-3xl max-h-[80vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-2xl font-bold">{expandedPrompt.title}</h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setExpandedPrompt(null)}
-                >
-                  <XCircle className="h-5 w-5" />
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mb-4">
-                {expandedPrompt.phaseTags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className={getPhaseColor(tag)}
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-
-              <div className="whitespace-pre-wrap">{expandedPrompt.body}</div>
-            </div>
-          </div>
-        )}
 
         {/* Prompt edit/create modal */}
         <PromptForm

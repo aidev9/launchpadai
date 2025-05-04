@@ -9,6 +9,9 @@ import { PhaseFilter } from "@/components/prompts/phase-filter";
 import { PromptCard } from "@/components/prompts/prompt-card";
 import { Prompt } from "@/lib/firebase/schema";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { toast } from "@/hooks/use-toast";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import { copyPromptToUserCollectionAction } from "@/lib/firebase/actions/prompts";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -18,6 +21,7 @@ export default function PromptsBrowse() {
   const {
     prompts,
     isLoading,
+    setIsLoading,
     error,
     phaseFilter,
     setPhaseFilter,
@@ -29,6 +33,53 @@ export default function PromptsBrowse() {
   const handlePromptClick = (prompt: Prompt) => {
     setSelectedPrompt(prompt);
     router.push("/prompts/prompt");
+  };
+
+  const handleUseAsTemplate = async (prompt: Prompt) => {
+    if (!prompt) return;
+
+    setIsLoading(true);
+    try {
+      // Copy the prompt to the user's collection, using the current prompt body from atom
+      // which might contain enhanced content if user clicked "Keep"
+      const result = await copyPromptToUserCollectionAction(
+        prompt.id!,
+        prompt.body
+      );
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Prompt copied to your collection",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+
+        // Set the current prompt in the atom
+        setSelectedPrompt(result.prompt as Prompt);
+
+        // Navigate to /myprompts
+        router.push("/myprompts/prompt");
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to copy prompt",
+          variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -105,6 +156,7 @@ export default function PromptsBrowse() {
                 key={prompt.id}
                 prompt={prompt}
                 onClick={handlePromptClick}
+                onUseAsTemplate={(prompt) => handleUseAsTemplate(prompt)}
               />
             ))}
           </div>

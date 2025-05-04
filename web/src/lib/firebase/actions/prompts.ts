@@ -450,10 +450,16 @@ export async function copyPromptToUserCollectionAction(
       updatedAt: getCurrentUnixTimestamp(),
     });
 
+    const newPrompt = await newPromptRef.get();
+
     // Revalidate paths
     revalidatePath("/myprompts");
 
-    return { success: true, promptId: newPromptRef.id };
+    return {
+      success: true,
+      promptId: newPromptRef.id,
+      prompt: { id: newPromptRef.id, ...newPrompt.data() } as Prompt,
+    };
   } catch (error) {
     console.error("Error copying prompt:", error);
     return {

@@ -1,16 +1,23 @@
-import { MouseEvent } from "react";
+import { MouseEvent, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Prompt } from "@/lib/firebase/schema";
 import { getPhaseColor } from "./phase-filter";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Maximize } from "lucide-react";
+import {
+  MoreHorizontal,
+  Maximize,
+  Download,
+  XCircle,
+  Copy,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast } from "@/hooks/use-toast";
 
 interface PromptCardProps {
   prompt: Prompt;
@@ -19,6 +26,7 @@ interface PromptCardProps {
   onDelete?: (prompt: Prompt) => void;
   onTagClick?: (tag: string) => void;
   onExpand?: (prompt: Prompt) => void;
+  onUseAsTemplate?: (prompt: Prompt) => void;
 }
 
 export function PromptCard({
@@ -27,8 +35,22 @@ export function PromptCard({
   onEdit,
   onDelete,
   onTagClick,
-  onExpand,
+  onUseAsTemplate,
 }: PromptCardProps) {
+  const [expandedPrompt, setExpandedPrompt] = useState<Prompt | null>(null);
+
+  // Listen for Escape key to close expanded prompt
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && expandedPrompt) {
+        setExpandedPrompt(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [expandedPrompt]);
+
   // Prevent event bubbling for menu actions
   const handleMenuClick = (e: MouseEvent) => {
     e.stopPropagation();
@@ -43,7 +65,7 @@ export function PromptCard({
   // Handle expand button click
   const handleExpandClick = (e: MouseEvent) => {
     e.stopPropagation();
-    onExpand?.(prompt);
+    setExpandedPrompt(prompt);
   };
 
   // Handle edit menu item click
@@ -56,6 +78,12 @@ export function PromptCard({
   const handleDeleteClick = (e: MouseEvent) => {
     e.stopPropagation();
     onDelete?.(prompt);
+  };
+
+  // Handle use as template menu item click
+  const handleUseAsTemplateClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    onUseAsTemplate?.(prompt);
   };
 
   return (
@@ -85,21 +113,100 @@ export function PromptCard({
                 Delete
               </DropdownMenuItem>
             )}
+            {onUseAsTemplate && (
+              <DropdownMenuItem onClick={handleUseAsTemplateClick}>
+                Use as Template
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       {/* Expand button */}
-      {onExpand && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute bottom-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={handleExpandClick}
-          title="Expand"
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute bottom-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={handleExpandClick}
+        title="Expand"
+      >
+        <Maximize className="h-4 w-4" />
+      </Button>
+
+      {/* Expanded prompt overlay */}
+      {expandedPrompt && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setExpandedPrompt(null)}
         >
-          <Maximize className="h-4 w-4" />
-        </Button>
+          <div
+            className="bg-background rounded-lg p-6 w-full max-w-3xl max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-2xl font-bold">{prompt.title}</h2>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(prompt.body);
+                    toast({
+                      title: "Copied!",
+                      description: "Prompt copied to clipboard",
+                      duration: 2000,
+                    });
+                  }}
+                  title="Copy to clipboard"
+                >
+                  <Copy className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const blob = new Blob([prompt.body], {
+                      type: "text/plain",
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `${prompt.title.replace(/\s+/g, "-")}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  }}
+                  title="Download as text file"
+                >
+                  <Download className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setExpandedPrompt(null)}
+                  title="Close"
+                >
+                  <XCircle className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+              {expandedPrompt.phaseTags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className={getPhaseColor(tag)}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+
+            <div className="whitespace-pre-wrap">{expandedPrompt.body}</div>
+          </div>
+        </div>
       )}
 
       <h3 className="font-semibold text-lg mb-2 line-clamp-1 pr-6">

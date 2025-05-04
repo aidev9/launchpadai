@@ -18,6 +18,7 @@ import {
   getUserPromptsAction,
 } from "@/lib/firebase/actions/prompts";
 import { Prompt } from "@/lib/firebase/schema";
+import { se } from "date-fns/locale";
 
 interface UsePromptsProps {
   userPromptsOnly?: boolean;
@@ -188,6 +189,7 @@ export function usePrompts({
   return {
     prompts: filteredPrompts,
     isLoading,
+    setIsLoading,
     error,
     fetchAllPrompts,
     fetchUserPrompts,

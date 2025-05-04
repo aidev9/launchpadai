@@ -14,12 +14,15 @@ import { useState } from "react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import Playground from "./playground";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import { usePrompts } from "@/hooks/usePrompts";
+import { Prompt } from "@/lib/firebase/schema";
 
 export default function PromptDetail() {
   const router = useRouter();
   const { toast } = useToast();
   const [prompt] = useAtom(selectedPromptAtom);
   const [isCopying, setIsCopying] = useState(false);
+  const { setSelectedPrompt } = usePrompts();
 
   const handleUseAsTemplate = async () => {
     if (!prompt) return;
@@ -39,6 +42,9 @@ export default function PromptDetail() {
           description: "Prompt copied to your collection",
           duration: TOAST_DEFAULT_DURATION,
         });
+
+        // Set the current prompt in the atom
+        setSelectedPrompt(result.prompt as Prompt);
 
         // Navigate to /myprompts
         router.push("/myprompts/prompt");

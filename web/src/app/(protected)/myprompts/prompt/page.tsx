@@ -206,14 +206,14 @@ export default function UserPromptDetail() {
           <h1 className="text-2xl font-bold tracking-tight">{prompt.title}</h1>
 
           <div className="flex flex-wrap gap-2">
-            {/* <Button variant="outline" onClick={handleCopyToClipboard}>
+            <Button variant="outline" onClick={handleCopyToClipboard}>
               <Copy className="mr-2 h-4 w-4" />
               Copy
             </Button>
             <Button variant="outline" onClick={handleDownload}>
               <Download className="mr-2 h-4 w-4" />
               Download
-            </Button> */}
+            </Button>
             <Button variant="outline" onClick={handleEdit}>
               <Edit className="mr-2 h-4 w-4" />
               Edit
