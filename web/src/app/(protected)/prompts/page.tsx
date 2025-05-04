@@ -3,7 +3,13 @@
 import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
 import { Input } from "@/components/ui/input";
-import { Search as SearchIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Search as SearchIcon,
+  LayoutGrid,
+  Table as TableIcon,
+  X,
+} from "lucide-react";
 import { usePrompts } from "@/hooks/usePrompts";
 import { PhaseFilter } from "@/components/prompts/phase-filter";
 import { PromptCard } from "@/components/prompts/prompt-card";
@@ -12,6 +18,10 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/hooks/use-toast";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { copyPromptToUserCollectionAction } from "@/lib/firebase/actions/prompts";
+import { useState, useEffect } from "react";
+import { useAtom } from "jotai";
+import { layoutViewAtom } from "@/lib/store/prompt-store";
+import { PromptTable } from "./components/prompt-table";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -29,6 +39,13 @@ export default function PromptsBrowse() {
     setSearchQuery,
     setSelectedPrompt,
   } = usePrompts();
+
+  const [layoutView, setLayoutView] = useAtom(layoutViewAtom);
+
+  // Initialize to card view by default when component mounts
+  useEffect(() => {
+    setLayoutView("card");
+  }, [setLayoutView]);
 
   const handlePromptClick = (prompt: Prompt) => {
     setSelectedPrompt(prompt);
@@ -82,6 +99,10 @@ export default function PromptsBrowse() {
     }
   };
 
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
+
   return (
     <Main>
       <div className="space-y-6">
@@ -108,15 +129,48 @@ export default function PromptsBrowse() {
             </div>
           </div>
 
-          {/* Search bar */}
-          <div className="relative w-full md:w-72 flex-shrink-0">
-            <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Filter prompts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          {/* Search bar and view toggles */}
+          <div className="flex gap-2 w-full md:w-auto">
+            {/* Search bar */}
+            <div className="relative w-full md:w-[18rem] flex-shrink-0">
+              <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Filter prompts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              {searchQuery && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* View toggle buttons */}
+            <div className="flex border rounded-md">
+              <Button
+                variant={layoutView === "card" ? "default" : "ghost"}
+                size="icon"
+                onClick={() => setLayoutView("card")}
+                className="rounded-r-none"
+                title="Card View"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={layoutView === "table" ? "default" : "ghost"}
+                size="icon"
+                onClick={() => setLayoutView("table")}
+                className="rounded-l-none"
+                title="Table View"
+              >
+                <TableIcon className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -149,18 +203,33 @@ export default function PromptsBrowse() {
         )}
 
         {/* Prompt cards grid */}
-        {!isLoading && !error && prompts.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {prompts.map((prompt) => (
-              <PromptCard
-                key={prompt.id}
-                prompt={prompt}
-                onClick={handlePromptClick}
-                onUseAsTemplate={(prompt) => handleUseAsTemplate(prompt)}
-              />
-            ))}
-          </div>
-        )}
+        {!isLoading &&
+          !error &&
+          prompts.length > 0 &&
+          layoutView === "card" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {prompts.map((prompt) => (
+                <PromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  onClick={handlePromptClick}
+                  onUseAsTemplate={(prompt) => handleUseAsTemplate(prompt)}
+                />
+              ))}
+            </div>
+          )}
+
+        {/* Prompt table view */}
+        {!isLoading &&
+          !error &&
+          prompts.length > 0 &&
+          layoutView === "table" && (
+            <PromptTable
+              prompts={prompts}
+              onClick={handlePromptClick}
+              onUseAsTemplate={handleUseAsTemplate}
+            />
+          )}
       </div>
     </Main>
   );

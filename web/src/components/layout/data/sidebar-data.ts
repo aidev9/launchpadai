@@ -92,7 +92,7 @@ export const sidebarData: SidebarData = {
       items: [
         {
           title: "Product Templates",
-          url: "/dashboard",
+          url: "/welcome",
           icon: IconCube,
         },
         {
