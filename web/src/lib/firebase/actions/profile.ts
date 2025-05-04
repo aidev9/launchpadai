@@ -54,7 +54,9 @@ export async function fetchUserProfile(): Promise<{
 
     // Get the current user data before incrementing
     const currentData = userDoc.data() || {};
-    const currentXp = currentData.xp || 0;
+    const currentXp = currentData.xp;
+
+    console.log("currentXp:::", currentXp);
 
     // Calculate the new XP value. Default to current XP if award is not positive.
     let newXp = currentXp;

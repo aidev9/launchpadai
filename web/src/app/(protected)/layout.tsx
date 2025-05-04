@@ -17,6 +17,7 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { motion } from "framer-motion";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { set } from "nprogress";
 
 const topNav = [
   {
@@ -144,17 +145,6 @@ export default function RootLayout({
             const isAdmin =
               profileResult.profile.userType === "admin" ||
               profileResult.profile.userType === "superadmin";
-
-            // Only redirect once to avoid infinite loops
-            // if (
-            //   isAdmin &&
-            //   !redirectedToAdmin &&
-            //   !window.location.pathname.startsWith("/admin")
-            // ) {
-            //   setRedirectedToAdmin(true);
-            //   router.push("/admin");
-            //   return;
-            // }
           } else {
             setUserProfile(null); // Ensure atom is null if profile fetch fails
           }
@@ -184,15 +174,10 @@ export default function RootLayout({
             "Failed to create a valid session or load profile. Please sign in again."
           );
           // Wait a bit before redirecting to allow user to see the error
-          setTimeout(() => {
-            router.push("/auth/signin");
-          }, 1500);
+          router.push("/auth/signin");
         }
       } else {
         console.log("User is signed out");
-        // User is signed out, clear the selected product ID
-        // Clear profile on sign out detection
-        // Call server action to delete the session cookie
         await fetch("/api/auth/session", {
           method: "DELETE",
           headers: {
@@ -270,7 +255,7 @@ export default function RootLayout({
         <AppSidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header>
-            <TopNav links={topNav} />
+            {/* <TopNav links={topNav} /> */}
             <div className="ml-auto flex items-center space-x-4">
               <Search />
               <ThemeSwitch />

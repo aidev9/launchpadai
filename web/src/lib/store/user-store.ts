@@ -17,7 +17,6 @@ export interface UserProfile {
   level?: number;
   hasAnsweredTimelineQuestion?: boolean;
   hasCompletedOnboarding?: boolean;
-  lastLogin?: string;
   completedQuests?: string[];
   bio?: string;
   urls?: { value: string }[];

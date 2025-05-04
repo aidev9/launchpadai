@@ -8,6 +8,7 @@ import {
   signInWithPopup,
 } from "firebase/auth";
 import { clientAuth, signOutUser } from "@/lib/firebase/client";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 /**
  * Creates a session for a user after successful authentication.
@@ -128,7 +129,7 @@ export async function handleSocialSignIn(
       throw new Error("No user data received from provider");
     }
 
-    // Check if the user exists in Firestore
+    // Ensure the user record exists in Firestore
     await ensureUserInFirestore(result.user, provider);
 
     // Create session using our dedicated function
@@ -167,68 +168,30 @@ async function ensureUserInFirestore(
   provider: "google" | "facebook" | "twitter" | "github"
 ) {
   try {
-    // Get the ID token from the authenticated user
-    const idToken = await user.getIdToken();
+    // Import the server action dynamically to prevent SSR issues
+    const { ensureUserInFirestoreAction } = await import(
+      "@/lib/firebase/actions/user"
+    );
 
-    // Use the API endpoint to ensure the user record exists in Firestore
-    const response = await fetch("/api/users/ensure-user-record", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        idToken, // Pass the ID token for authentication
-        userId: user.uid,
-        userData: {
-          name: user.displayName || "",
-          email: user.email || "",
-          photoURL: user.photoURL || "",
-          provider,
-          xp: 0,
-          createdAt: new Date().toISOString(),
-        },
-        force: true, // Force creation even in development
-      }),
+    // Call the server action directly
+    const result = await ensureUserInFirestoreAction(user.uid, {
+      name: user.displayName || "",
+      email: user.email || "",
+      photoURL: user.photoURL || "",
+      provider,
+      createdAt: getCurrentUnixTimestamp(),
     });
 
-    if (response.ok) {
-      const result = await response.json();
-
-      // If the user was just created (didn't previously exist), award XP points
-      if (!result.existed) {
-        try {
-          const xpResponse = await fetch("/api/xp/award", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              actionId: "signup",
-              idToken, // Pass the ID token for authentication here too
-            }),
-          });
-
-          if (xpResponse.ok) {
-            // Do nothing, XP points awarded successfully
-          } else {
-            console.warn("Failed to award XP points:", await xpResponse.text());
-          }
-        } catch (xpError) {
-          console.error("Error awarding XP points:", xpError);
-          // Non-critical, so we don't throw the error
-        }
-      }
-    } else {
-      console.warn(
-        "Failed to ensure user record via API:",
-        response.status,
-        await response.text()
-      );
-      // Continue the sign-in process anyway, as this is not critical
+    // Log the result for debugging
+    if (!result.success) {
+      console.warn("Failed to ensure user record:", result.error);
     }
+
+    return result;
   } catch (error) {
     console.error("Error ensuring user in Firestore:", error);
     // Don't throw the error as we want the sign-in to continue
     // even if the user record creation fails
+    return { success: false, error: String(error) };
   }
 }
