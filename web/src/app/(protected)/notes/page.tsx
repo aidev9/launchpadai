@@ -1,7 +1,6 @@
 "use client";
 import { Main } from "@/components/layout/main";
-import { createStore } from "jotai";
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback, useEffect, use } from "react";
 import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { toast } from "@/components/ui/use-toast";
@@ -18,7 +17,13 @@ import {
 } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Note, rowSelectionAtom } from "./components/notes-store";
+import {
+  Note,
+  rowSelectionAtom,
+  allNotesAtom,
+  deleteNoteModalOpenAtom,
+  selectedNoteAtom,
+} from "./components/notes-store";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import React from "react";
 import {
@@ -32,94 +37,69 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast as showToast } from "@/hooks/use-toast";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import { fetchNotes, deleteNotes } from "./actions";
+import { clientAuth } from "@/lib/firebase/client";
 
-// Replace direct server function calls with API fetches
-async function fetchNotes(productId: string) {
-  const res = await fetch(`/api/notes?productId=${productId}`);
-  if (!res.ok) {
-    console.error(`Error fetching notes: ${res.status} ${res.statusText}`);
-    // Optionally throw an error or return a specific error object
-    throw new Error(`Failed to fetch notes: ${res.statusText}`);
-  }
-  return await res.json();
-}
-
-async function deleteNotes(productId: string, noteIds: string[]) {
-  if (noteIds.length === 0) return { success: true };
-
-  const res = await fetch(`/api/notes`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ productId, noteIds }),
-  });
-  return await res.json();
-}
+const userId = clientAuth.currentUser?.uid;
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
 
 export default function NotesPage() {
-  // Create a fresh store for the notes page to avoid sharing state between pages
-  const store = React.useMemo(() => {
-    const newStore = createStore();
-    newStore.set(rowSelectionAtom, {});
-    return newStore;
-  }, []);
-
   const { products, productsLoading } = useFetchProducts();
   const [selectedProductId, setSelectedProductId] = useAtom(
     selectedProductIdAtom
   );
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [notes, setNotes] = useAtom(allNotesAtom);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useAtom(
+    deleteNoteModalOpenAtom
+  );
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedNote, setSelectedNote] = useAtom(selectedNoteAtom);
+  const [rowSelection, setRowSelection] = useAtom(rowSelectionAtom);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Custom function to update selectedRows state that ensures latest state is reflected
   const updateSelectedRows = useCallback((rows: string[]) => {
     setSelectedRows(rows);
   }, []);
 
-  const loadNotes = useCallback(async () => {
-    if (!selectedProductId) {
-      return;
-    }
-    setSelectedRows([]); // Clear selected rows when loading new notes
-    store.set(rowSelectionAtom, {}); // Also clear the row selection in the store
-    try {
-      const response = await fetchNotes(selectedProductId);
-      if (response.success && response.notes) {
-        setNotes(response.notes);
-      } else {
+  useEffect(() => {
+    const loadNotes = async () => {
+      setSelectedRows([]); // Clear selected rows when loading new notes
+
+      try {
+        const response = await fetchNotes({
+          productId: selectedProductId,
+        });
+        console.log("fetchNotes response:::", response);
+
+        if (response.success && response.notes) {
+          setNotes(response.notes);
+          setIsLoading(false);
+        } else {
+          toast({
+            title: "Error loading notes",
+            description: response.error || "Failed to load notes",
+            variant: "destructive",
+            duration: TOAST_DEFAULT_DURATION,
+          });
+        }
+      } catch (error) {
         toast({
           title: "Error loading notes",
-          description: response.error || "Failed to load notes",
+          description: error instanceof Error ? error.message : "Unknown error",
           variant: "destructive",
           duration: TOAST_DEFAULT_DURATION,
         });
       }
-    } catch (error) {
-      toast({
-        title: "Error loading notes",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-        duration: TOAST_DEFAULT_DURATION,
-      });
+    };
+
+    if (selectedProductId) {
+      loadNotes();
     }
-  }, [selectedProductId, store]);
-
-  // Debounced version of loadNotes to prevent rapid UI changes
-  // const debouncedLoadNotes = useDebounce(loadNotes, 300);
-
-  // Add a function for optimistic updates when adding new notes
-  const handleNoteAdded = useCallback((newNote: Note) => {
-    // Add the new note to the top of the list
-    setNotes((prevNotes) => [newNote, ...prevNotes]);
-  }, []);
-
-  useEffect(() => {
-    loadNotes();
-  }, [loadNotes]);
+  }, [selectedProductId]);
 
   const handleProductChange = (productId: string) => {
     setSelectedProductId(productId);
@@ -137,38 +117,43 @@ export default function NotesPage() {
     }
 
     // Open the delete confirmation dialog
-    setDeleteDialogOpen(true);
+    setDeleteModalOpen(true);
   };
 
   const confirmDelete = async () => {
     setIsDeleting(true);
     try {
-      // Type guard to ensure selectedProductId is not null
-      if (!selectedProductId) {
-        throw new Error("No product selected");
-      }
+      // Determine which note(s) to delete - either the single note from action menu or selected rows
+      const noteIdsToDelete = selectedNote
+        ? [selectedNote.id]
+        : [...selectedRows];
 
       // Optimistic update - remove selected notes from UI immediately
-      const noteIdsToDelete = [...selectedRows];
       const updatedNotes = notes.filter(
         (note) => !noteIdsToDelete.includes(note.id)
       );
       setNotes(updatedNotes);
-      setSelectedRows([]);
-      store.set(rowSelectionAtom, {});
-      setDeleteDialogOpen(false);
 
-      // Actually perform the deletion on the server
-      const response = await deleteNotes(selectedProductId, noteIdsToDelete);
+      // Clear selections
+      setSelectedRows([]);
+      setRowSelection({});
+      setDeleteModalOpen(false);
+      setSelectedNote(null);
+
+      // Create FormData for the server action
+      const formData = new FormData();
+      formData.append("productId", selectedProductId ?? "");
+      formData.append("noteIds", JSON.stringify(noteIdsToDelete));
+
+      // Call the server action
+      const response = await deleteNotes(formData);
 
       if (response.success) {
         // Use the handler function instead of calling toast directly
         showToastHandler({
           title: `${noteIdsToDelete.length} note${noteIdsToDelete.length > 1 ? "s" : ""} deleted`,
-          // description: "Successfully removed from the system.", // Optional: Add description if desired
           duration: TOAST_DEFAULT_DURATION,
         });
-        // No need to reload the entire list since we already updated the UI
       } else {
         // Use the handler for error toast too
         showToastHandler({
@@ -176,7 +161,6 @@ export default function NotesPage() {
           description: response.error || "Failed to delete notes",
           variant: "destructive",
         });
-        loadNotes(); // Reload on error
       }
     } catch (error) {
       console.error("Error during delete API call:", error);
@@ -187,7 +171,6 @@ export default function NotesPage() {
         variant: "destructive",
       });
       // Reload notes to ensure UI is in sync with server state
-      loadNotes();
     } finally {
       setIsDeleting(false);
     }
@@ -242,6 +225,10 @@ export default function NotesPage() {
   const selectedProduct = products.find((p) => p.id === selectedProductId);
   const productName = selectedProduct?.name || "Notes";
 
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <>
       <Main>
@@ -257,9 +244,9 @@ export default function NotesPage() {
               </div>
               <div className="flex items-start mt-6 md:mt-0">
                 <NotesPrimaryButtons
-                  selectedProductId={selectedProductId}
-                  onDelete={handleDeleteNotes}
                   selectedRows={selectedRows}
+                  onDelete={handleDeleteNotes}
+                  selectedProductId={selectedProductId}
                 />
               </div>
             </div>
@@ -267,33 +254,51 @@ export default function NotesPage() {
             <div className="flex-grow overflow-auto">
               <NoteTable data={notes} setSelectedRows={updateSelectedRows} />
             </div>
-
-            <NotesDialogs
-              onSuccess={loadNotes}
-              onOptimisticAdd={handleNoteAdded}
-              onShowToast={showToastHandler}
-            />
           </>
         ) : (
           renderProductSelector()
         )}
       </Main>
 
+      <NotesDialogs
+        onSuccess={() => {
+          // Use the existing note atom instead of fetching all notes again
+          if (selectedProductId) {
+            // No need to make another API call, the optimistic updates and atom state
+            // should already handle the table refresh
+            // This will trigger a re-render of the table without additional data fetching
+          }
+        }}
+        onOptimisticAdd={(note: Note) => {
+          setNotes((prevNotes) => [note, ...prevNotes]);
+        }}
+        onShowToast={showToastHandler}
+      />
+
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog
+        open={deleteModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteModalOpen(false);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Notes</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {selectedRows.length} note
-              {selectedRows.length > 1 ? "s" : ""}? This action cannot be
-              undone.
+              Are you sure you want to delete{" "}
+              {selectedNote
+                ? "this note"
+                : `${selectedRows.length} note${selectedRows.length > 1 ? "s" : ""}`}
+              ? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
+              onClick={() => setDeleteModalOpen(false)}
               disabled={isDeleting}
             >
               Cancel

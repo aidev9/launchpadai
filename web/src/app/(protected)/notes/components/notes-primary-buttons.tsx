@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { memo } from "react";
 import React from "react";
+import { useAtom } from "jotai";
+import { addNoteModalOpenAtom } from "./notes-store";
 
 interface NotesPrimaryButtonsProps {
   onRefresh?: () => void;
@@ -16,6 +18,8 @@ function NotesPrimaryButtonsComponent({
   selectedRows,
   selectedProductId,
 }: NotesPrimaryButtonsProps) {
+  const [_, setAddNoteModalOpen] = useAtom(addNoteModalOpenAtom);
+
   // Calculate whether the button should be disabled
   const isDeleteDisabled = !selectedRows || selectedRows.length === 0;
   const isAddNoteDisabled = !selectedProductId;
@@ -30,25 +34,25 @@ function NotesPrimaryButtonsComponent({
     onDelete();
   };
 
+  const handleAddNote = () => {
+    setAddNoteModalOpen(true);
+  };
+
   return (
     <div className="flex gap-2">
       {/* Only render delete button when there are rows selected */}
       {selectedRows.length > 0 && (
         <Button
           onClick={handleDelete}
-          variant="outline"
-          size="sm"
-          className="h-9 gap-1"
+          className="h-9 gap-2 bg-red-500 hover:bg-red-600 text-white"
         >
           <Trash2 className="h-4 w-4" />
-          Delete Selected ({selectedRows.length})
+          Delete Selected
         </Button>
       )}
 
       <Button
-        onClick={() =>
-          window.dispatchEvent(new CustomEvent("open-add-note-dialog"))
-        }
+        onClick={handleAddNote}
         size="sm"
         className="h-9 gap-1"
         disabled={isAddNoteDisabled}
@@ -59,26 +63,5 @@ function NotesPrimaryButtonsComponent({
   );
 }
 
-// Use memo to prevent unnecessary re-renders
-export const NotesPrimaryButtons = memo(
-  NotesPrimaryButtonsComponent,
-  (prevProps, nextProps) => {
-    // Log the comparison
-    const rowsEqual =
-      JSON.stringify(prevProps.selectedRows) ===
-      JSON.stringify(nextProps.selectedRows);
-    const productEqual =
-      prevProps.selectedProductId === nextProps.selectedProductId;
-
-    console.log("NotesPrimaryButtons memo comparison:", {
-      prevRows: prevProps.selectedRows,
-      nextRows: nextProps.selectedRows,
-      prevProduct: prevProps.selectedProductId,
-      nextProduct: nextProps.selectedProductId,
-      equal: rowsEqual && productEqual,
-    });
-
-    // Only re-render when selectedRows actually changes
-    return rowsEqual && productEqual;
-  }
-);
+// Export the component as NotesPrimaryButtons
+export const NotesPrimaryButtons = memo(NotesPrimaryButtonsComponent);

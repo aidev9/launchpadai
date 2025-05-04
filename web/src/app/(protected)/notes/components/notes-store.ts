@@ -7,7 +7,8 @@ export interface Note {
   id: string;
   note_body: string;
   tags: string[];
-  last_modified: string;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 // Table state atoms
@@ -23,3 +24,12 @@ export const tableInstanceAtom = atom<TableInstance<Note> | null>(null);
 export const searchFilterAtom = atom("");
 export const dateFilterAtom = atom<string[]>([]);
 export const tagsFilterAtom = atom<string[]>([]);
+
+// Modal atoms
+export const addNoteModalOpenAtom = atom<boolean>(false);
+export const editNoteModalOpenAtom = atom<boolean>(false);
+export const deleteNoteModalOpenAtom = atom<boolean>(false);
+export const selectedNoteAtom = atom<Note | null>(null);
+
+// Notes data atom
+export const allNotesAtom = atom<Note[]>([]);

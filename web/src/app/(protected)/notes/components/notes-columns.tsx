@@ -2,11 +2,63 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Note } from "./notes-store";
+import {
+  Note,
+  editNoteModalOpenAtom,
+  selectedNoteAtom,
+  deleteNoteModalOpenAtom,
+} from "./notes-store";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { useSetAtom } from "jotai";
+
+// This provides access to the atom setters without causing unnecessary rerenders
+const ActionsCell = ({ note }: { note: Note }) => {
+  const setSelectedNote = useSetAtom(selectedNoteAtom);
+  const setEditNoteModalOpen = useSetAtom(editNoteModalOpenAtom);
+  const setDeleteNoteModalOpen = useSetAtom(deleteNoteModalOpenAtom);
+
+  const handleEdit = () => {
+    setSelectedNote(note);
+    setEditNoteModalOpen(true);
+  };
+
+  const handleDelete = () => {
+    setSelectedNote(note);
+    setDeleteNoteModalOpen(true);
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <span className="sr-only">Open menu</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleEdit}>
+          <Pencil className="h-4 w-4 mr-2" />
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleDelete}>
+          <Trash2 className="h-4 w-4 mr-2" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 export const columns: ColumnDef<Note>[] = [
   {
@@ -69,8 +121,12 @@ export const columns: ColumnDef<Note>[] = [
 
       return (
         <div className="flex flex-wrap gap-1">
-          {tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="px-2 py-0.5 text-xs">
+          {tags.map((tag, index) => (
+            <Badge
+              key={index}
+              variant="outline"
+              className="px-2 py-0.5 text-xs"
+            >
               {tag}
             </Badge>
           ))}
@@ -87,18 +143,23 @@ export const columns: ColumnDef<Note>[] = [
     },
   },
   {
-    accessorKey: "last_modified",
+    accessorKey: "updatedAt",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Last Modified" />
     ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("last_modified"));
-      return (
-        <div className="font-medium">{format(date, "MMM d, yyyy, h:mm a")}</div>
+      const date = format(
+        new Date((row.getValue("updatedAt") as number) * 1000),
+        "MM/dd/yyyy HH:mm"
       );
+      return <div className="font-medium">{date}</div>;
     },
     meta: {
       className: "whitespace-nowrap",
     },
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => <ActionsCell note={row.original} />,
   },
 ];

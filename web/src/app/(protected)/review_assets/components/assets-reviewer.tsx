@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { v4 as uuidv4 } from "uuid";
-import { ErrorBoundary } from "react-error-boundary";
 import { newlyCreatedAssetIdAtom } from "./add-asset-button";
 import { FirestoreAsset } from "@/lib/firebase/initialize-assets";
 import {
@@ -52,43 +51,6 @@ interface Note {
 // Interface for AssetsReviewerContent props
 interface AssetsReviewerContentProps {
   onShowToast: (options: ShowToastOptions) => void;
-}
-
-// Loading skeleton component
-// function AssetsReviewerSkeleton() {
-//   return (
-//     <div className="w-full p-4 space-y-4">
-//       <div className="h-10 bg-gray-200 dark:bg-gray-800 rounded animate-pulse"></div>
-//       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-//         {Array(6)
-//           .fill(0)
-//           .map((_, i) => (
-//             <div
-//               key={i}
-//               className="h-64 bg-gray-200 dark:bg-gray-800 rounded animate-pulse"
-//             ></div>
-//           ))}
-//       </div>
-//     </div>
-//   );
-// }
-
-// Error fallback component
-function ErrorFallback({ error }: { error: Error }) {
-  return (
-    <div className="p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-      <h2 className="text-xl font-semibold text-red-700 dark:text-red-400 mb-2">
-        Something went wrong loading the assets reviewer
-      </h2>
-      <p className="text-red-600 dark:text-red-400 mb-4">{error.message}</p>
-      <button
-        onClick={() => window.location.reload()}
-        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
-      >
-        Try again
-      </button>
-    </div>
-  );
 }
 
 // Main component
@@ -1004,9 +966,5 @@ interface AssetsReviewerProps {
 
 // Export the component with error boundary
 export default function AssetsReviewer({ onShowToast }: AssetsReviewerProps) {
-  return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <AssetsReviewerContent onShowToast={onShowToast} />
-    </ErrorBoundary>
-  );
+  return <AssetsReviewerContent onShowToast={onShowToast} />;
 }
