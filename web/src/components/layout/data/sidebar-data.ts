@@ -29,8 +29,14 @@ import {
   IconReportAnalytics,
   IconNotes,
   IconPlaylistAdd,
+  IconCreditCard,
 } from "@tabler/icons-react";
-import { AudioWaveform, Command, GalleryVerticalEnd } from "lucide-react";
+import {
+  AudioWaveform,
+  Command,
+  GalleryVerticalEnd,
+  LucideCreditCard,
+} from "lucide-react";
 import { type SidebarData } from "../types";
 
 // Determine if we're in development mode
@@ -73,15 +79,12 @@ export const sidebarData: SidebarData = {
               url: "/myprompts",
               icon: IconPlaylistAdd,
             },
-            ...(isDev
-              ? [
-                  {
-                    title: "My Stacks",
-                    url: "/mystacks",
-                    icon: IconCube,
-                  },
-                ]
-              : []),
+            {
+              title: "My Stacks",
+              url: "/mystacks",
+              icon: IconCube,
+            },
+            ...(isDev ? [] : []),
             {
               title: "Notes",
               url: "/notes",
@@ -212,6 +215,11 @@ export const sidebarData: SidebarData = {
               title: "Account",
               url: "/settings/account",
               icon: IconTool,
+            },
+            {
+              title: "Subscription",
+              url: "/settings/subscription",
+              icon: IconCreditCard,
             },
             // {
             //   title: "Appearance",

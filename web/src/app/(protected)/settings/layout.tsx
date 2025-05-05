@@ -2,6 +2,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarNav } from "./components/sidebar-nav";
 import {
   BellIcon,
+  CreditCardIcon,
   MonitorIcon,
   PaletteIcon,
   UserIcon,
@@ -20,6 +21,11 @@ const sidebarNavItems = [
     title: "Account",
     href: "/settings/account",
     icon: <WrenchIcon className="h-4 w-4" />,
+  },
+  {
+    title: "Subscription",
+    href: "/settings/subscription",
+    icon: <CreditCardIcon className="h-4 w-4" />,
   },
   // Empty placeholder for future settings
   {

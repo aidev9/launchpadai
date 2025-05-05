@@ -32,7 +32,12 @@ import {
 } from "@/lib/firebase/clientAuth";
 import { useRouter } from "next/navigation";
 
-type UserAuthFormProps = HTMLAttributes<HTMLDivElement>;
+interface UserAuthFormProps extends HTMLAttributes<HTMLDivElement> {
+  defaultEmail?: string;
+  isUpgrade?: boolean;
+  planType?: string;
+  billingCycle?: string;
+}
 
 const formSchema = z.object({
   email: z
@@ -49,14 +54,21 @@ const formSchema = z.object({
     }),
 });
 
-export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
+export function UserAuthForm({
+  className,
+  defaultEmail = "",
+  isUpgrade = false,
+  planType,
+  billingCycle,
+  ...props
+}: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
+      email: defaultEmail,
       password: "",
     },
   });
@@ -77,7 +89,12 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
     setIsLoading(true);
     handleEmailPasswordSignIn(data.email, data.password)
       .then(() => {
-        router.push("/ftux");
+        // If this is an upgrade flow, redirect to upgrade page
+        if (isUpgrade) {
+          router.push("/upgrade");
+        } else {
+          router.push("/ftux");
+        }
       })
       .catch((error) => {
         console.error("Error signing in:", error);
@@ -86,6 +103,27 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         setIsLoading(false);
       });
   }
+
+  // Social sign-in handler that respects upgrade flow
+  const handleSocialAuth = async (
+    provider: "google" | "facebook" | "twitter" | "github"
+  ) => {
+    try {
+      setIsLoading(true);
+      await handleSocialSignIn(provider);
+
+      // Redirect based on whether this is an upgrade flow
+      if (isUpgrade) {
+        router.push("/upgrade");
+      } else {
+        router.push("/ftux");
+      }
+    } catch (error) {
+      console.log("error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
@@ -156,17 +194,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 className="w-full"
                 type="button"
                 disabled={isLoading}
-                onClick={async () => {
-                  try {
-                    setIsLoading(true);
-                    await handleSocialSignIn("google");
-                    router.push("/ftux");
-                  } catch (error) {
-                    console.log("error:", error);
-                  } finally {
-                    setIsLoading(false);
-                  }
-                }}
+                onClick={() => handleSocialAuth("google")}
               >
                 <IconBrandGoogle className="h-4 w-4" /> Google
               </Button>
@@ -175,9 +203,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 className="w-full"
                 type="button"
                 disabled={true || isLoading}
-                onClick={() => {
-                  handleSocialSignIn("facebook");
-                }}
+                onClick={() => handleSocialAuth("facebook")}
               >
                 <IconBrandFacebook className="h-4 w-4" /> Facebook
               </Button>
@@ -186,9 +212,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 className="w-full"
                 type="button"
                 disabled={true || isLoading}
-                onClick={() => {
-                  handleSocialSignIn("twitter");
-                }}
+                onClick={() => handleSocialAuth("twitter")}
               >
                 <IconBrandTwitter className="h-4 w-4" /> X
               </Button>
@@ -197,9 +221,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 className="w-full"
                 type="button"
                 disabled={true || isLoading}
-                onClick={() => {
-                  handleSocialSignIn("github");
-                }}
+                onClick={() => handleSocialAuth("github")}
               >
                 <IconBrandGithub className="h-4 w-4" /> GitHub
               </Button>

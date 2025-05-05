@@ -13,10 +13,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import { SignOutHelper } from "@/lib/firebase/client";
-import { Compass } from "lucide-react";
+import { Compass, Star } from "lucide-react";
 import XpDisplay from "@/xp/xp-display";
 import { useAtomValue } from "jotai";
 import { userProfileAtom } from "@/lib/store/user-store";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { PlanType } from "@/stores/subscriptionStore";
 
 function getInitials(displayName: string | null | undefined): string {
   if (!displayName) {
@@ -32,9 +38,34 @@ export function ProfileDropdown() {
   const signOutAndClearProfile = SignOutHelper();
   const userProfile = useAtomValue(userProfileAtom);
 
+  // Check if user has a free plan or needs upgrade
+  const subscription = userProfile?.subscription as string | undefined;
+  const isPremiumPlan =
+    subscription === "builder" || subscription === "accelerator";
+  const needsUpgrade = !isPremiumPlan;
+
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3">
       <XpDisplay />
+
+      {needsUpgrade && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 rounded-full bg-gradient-to-r from-amber-200 to-amber-400 text-amber-950 hover:from-amber-300 hover:to-amber-500 border-amber-400"
+              onClick={() => router.push("/upgrade")}
+            >
+              <Star className="h-3.5 w-3.5 mr-1 fill-amber-500" />
+              <span className="text-xs font-medium">Upgrade</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Upgrade your subscription for more features!</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
 
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
@@ -83,6 +114,11 @@ export function ProfileDropdown() {
             <DropdownMenuItem>
               <Link href="/settings" className="flex w-full">
                 Settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Link href="/settings/subscription" className="flex w-full">
+                Subscription
               </Link>
             </DropdownMenuItem>
           </DropdownMenuGroup>

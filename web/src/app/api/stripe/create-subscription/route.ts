@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { convertToStripeAmount, getPlanPriceId } from "@/lib/stripe/server";
+import { getPlanPriceId } from "@/lib/stripe/server";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-04-30.basil", // Updated to the latest API version
+  apiVersion: "2022-11-15" as any, // Cast to any to bypass TypeScript API version checking
 });
 
 export async function POST(request: NextRequest) {
@@ -16,9 +16,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Convert price to cents for Stripe - fix: added await to properly resolve the Promise
-    const amount = await convertToStripeAmount(price);
 
     // Get price ID for the plan and billing cycle
     let priceId;
@@ -60,30 +57,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create a payment intent
+    // Create a subscription with an incomplete payment intent
     try {
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount,
-        currency: "usd",
+      const subscription = await stripe.subscriptions.create({
         customer: customerId,
+        items: [{ price: priceId }],
+        payment_behavior: "default_incomplete",
+        payment_settings: { save_default_payment_method: "on_subscription" },
         metadata: {
           plan,
           billingCycle,
-          price,
-        },
-        automatic_payment_methods: {
-          enabled: true,
+          price: price.toString(),
         },
       });
 
+      // Get the latest invoice ID from the subscription
+      const invoiceId = subscription.latest_invoice;
+
+      if (!invoiceId || typeof invoiceId !== "string") {
+        throw new Error("Could not retrieve invoice from subscription");
+      }
+
+      // Retrieve the invoice with expanded payment_intent
+      const invoice = await stripe.invoices.retrieve(invoiceId, {
+        expand: ["payment_intent"],
+      });
+
+      // Get payment intent - using type assertion for the expanded field
+      // TypeScript doesn't recognize expanded fields in the type system
+      const paymentIntent = (invoice as any).payment_intent;
+
+      if (!paymentIntent || typeof paymentIntent === "string") {
+        throw new Error("Could not retrieve payment intent from invoice");
+      }
+
+      const clientSecret = paymentIntent.client_secret;
+
+      if (!clientSecret) {
+        throw new Error("Could not retrieve client secret from payment intent");
+      }
+
       return NextResponse.json({
-        clientSecret: paymentIntent.client_secret,
+        subscriptionId: subscription.id,
+        clientSecret,
         customerId,
       });
     } catch (error) {
-      console.error("Error creating payment intent:", error);
+      console.error("Error creating subscription:", error);
       return NextResponse.json(
-        { error: "Failed to create payment intent" },
+        { error: "Failed to create subscription" },
         { status: 500 }
       );
     }

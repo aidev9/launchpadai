@@ -28,7 +28,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PaymentForm } from "@/components/stripe/payment-form";
 import { SubscriptionPlan } from "@/stores/subscriptionStore";
-import { createSubscriptionAction } from "@/app/auth/signup_plan/actions";
+import { createSubscriptionAction, checkEmailExists } from "../actions";
+import { handleEmailPasswordSignIn } from "@/lib/firebase/clientAuth";
+import Link from "next/link";
+import { set } from "nprogress";
 
 // Form schema
 const formSchema = z.object({
@@ -55,7 +58,8 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("account");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [customerId, setCustomerId] = useState<string | null>(null); // Add customerId state
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Initialize form
@@ -71,19 +75,19 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
     },
   });
 
-  // Initialize payment intent when form is valid
+  // Initialize subscription when form is valid
   useEffect(() => {
     // Only proceed if we're on the payment tab and don't already have a client secret
     if (activeTab === "payment" && !clientSecret && form.formState.isValid) {
-      const createIntent = async () => {
+      const createSubscription = async () => {
         try {
           setIsLoading(true);
 
           // Get form data
           const data = form.getValues();
 
-          // Create a payment intent on the server
-          const response = await fetch("/api/stripe/create-payment-intent", {
+          // Create a subscription on the server
+          const response = await fetch("/api/stripe/create-subscription", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -103,29 +107,69 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
             setError(responseData.error);
           } else {
             setClientSecret(responseData.clientSecret);
-            setCustomerId(responseData.customerId); // Store the customerId
+            setCustomerId(responseData.customerId);
+            setSubscriptionId(responseData.subscriptionId);
           }
         } catch (err) {
-          setError("Failed to initialize payment. Please try again.");
-          console.error("Payment intent creation error:", err);
+          setError("Failed to initialize subscription. Please try again.");
+          console.error("Subscription creation error:", err);
         } finally {
           setIsLoading(false);
         }
       };
 
-      createIntent();
+      createSubscription();
     }
   }, [activeTab, clientSecret, form, plan]);
+
+  // useEffect for errors
+  useEffect(() => {
+    if (error) {
+      setError(error);
+      setIsLoading(true);
+    }
+  }, [error]);
 
   // Handle form submission
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     if (activeTab === "account") {
-      // Move to payment tab after account info is completed
-      setActiveTab("payment");
+      // Check if email already exists before proceeding to payment
+      setIsLoading(true);
+
+      try {
+        // Use the server action to check if email exists
+        const result = await checkEmailExists({
+          email: data.email,
+        });
+
+        if (result?.data?.data?.exists === true) {
+          setError(
+            "This email is already in use. Please try another email or sign in to continue."
+          );
+          // Optionally set form error for the email field
+          form.setError("email", {
+            type: "manual",
+            message: "This email is already in use.",
+          });
+        } else {
+          setError(null); // Clear global error if email is okay
+          setIsLoading(false); // Reset loading state
+        }
+
+        // Email doesn't exist, proceed to payment tab
+        setActiveTab("payment");
+      } catch (err) {
+        setError(
+          "An error occurred while checking your email. Please try again."
+        );
+        console.error("Email check error:", err);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  // Handle payment success - updated to accept customerId
+  // Handle payment success - updated to work with subscription flow
   const handlePaymentSuccess = async (
     paymentIntent: any,
     stripeCustomerId: string
@@ -142,7 +186,7 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
           ? "Explorer"
           : (plan.planType as "Explorer" | "Builder" | "Accelerator");
 
-      // Create user account and subscription
+      // Create user account and link to subscription
       const result = await createSubscriptionAction({
         name: data.name,
         email: data.email,
@@ -154,13 +198,29 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
         billingCycle: plan.billingCycle,
         price: plan.price,
         paymentIntentId: paymentIntent.id,
-        paymentMethodId: paymentIntent.payment_method,
-        stripeCustomerId: stripeCustomerId, // Pass the existing customerId
+        stripeCustomerId: stripeCustomerId,
+        stripeSubscriptionId: subscriptionId || "",
       });
 
       if (result?.data?.success) {
-        // Redirect to FTUX
-        router.push("/ftux");
+        // Sign in the user on the client-side before redirecting
+        try {
+          await handleEmailPasswordSignIn(data.email, data.password);
+          // Redirect to FTUX after successful sign-in
+          router.push("/ftux");
+        } catch (signInError) {
+          console.error(
+            "Error signing in after account creation:",
+            signInError
+          );
+          // Show error but still navigate to sign-in page as fallback
+          setError(
+            "Account created, but couldn't log in automatically. Please sign in manually."
+          );
+          setTimeout(() => {
+            router.push(`/auth/signin?email=${encodeURIComponent(data.email)}`);
+          }, 2000);
+        }
       } else {
         setError(result?.data?.error || "Failed to create account");
       }
@@ -190,6 +250,19 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
       </TabsList>
 
       <TabsContent value="account" className="mt-4">
+        {error && (
+          <div className="mb-4 py-3 text-sm rounded">
+            <div className="mb-4 p-3 text-sm text-white bg-destructive rounded">
+              {error}
+            </div>
+            <Link
+              href="/auth/signin?upgrade"
+              className="text-sm hover:underline"
+            >
+              Already have an account? Sign in
+            </Link>
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -222,6 +295,60 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
                         autoComplete="email"
                         placeholder="name@example.com"
                         {...field}
+                        onBlur={async (e) => {
+                          field.onBlur(); // Call the original onBlur from react-hook-form
+                          console.log("e", e.target.value);
+                          // Only check email if the field is valid so far
+                          if (
+                            e.target.value &&
+                            !form.getFieldState("email").invalid
+                          ) {
+                            setIsLoading(true); // Set loading state for email check
+                            try {
+                              const result = await checkEmailExists({
+                                email: e.target.value,
+                              });
+                              console.log("result", result);
+                              // Check the structure of the result correctly
+                              if (result?.data?.data?.exists === true) {
+                                setError(
+                                  "This email is already in use. Please try another email or sign in to continue."
+                                );
+                                // Optionally set form error for the email field
+                                form.setError("email", {
+                                  type: "manual",
+                                  message: "This email is already in use.",
+                                });
+                              } else {
+                                setError(null); // Clear global error if email is okay
+                                setIsLoading(false); // Reset loading state
+                                // Clear potential previous manual error if email is now valid
+                                if (
+                                  form.getFieldState("email").error?.type ===
+                                  "manual"
+                                ) {
+                                  form.clearErrors("email");
+                                }
+                              }
+                            } catch (err) {
+                              console.error("Email check failed:", err);
+                              setError(
+                                "Failed to verify email. Please try again."
+                              );
+                            } finally {
+                              setIsLoading(false); // Reset loading state after check
+                            }
+                          } else {
+                            // If field is invalid or empty, clear previous custom errors but let RHF handle validation messages
+                            if (
+                              form.getFieldState("email").error?.type ===
+                              "manual"
+                            ) {
+                              form.clearErrors("email");
+                            }
+                            setError(null); // Clear global error if field is invalid/empty
+                          }
+                        }}
                       />
                     </FormControl>
                     <FormMessage />

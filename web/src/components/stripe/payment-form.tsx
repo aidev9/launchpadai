@@ -48,17 +48,25 @@ export function PaymentForm({
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
+          // Redirect is only needed for additional authentication steps
           return_url: `${window.location.origin}/auth/signup_plan/success`,
         },
         redirect: "if_required",
       });
 
       if (error) {
+        // Show error to your customer
         setErrorMessage(error.message || "An unexpected error occurred.");
         onError(error.message || "An unexpected error occurred.");
       } else if (paymentIntent && paymentIntent.status === "succeeded") {
+        // Payment succeeded, notify the parent component
         onSuccess(paymentIntent, customerId);
+      } else if (paymentIntent && paymentIntent.status === "requires_action") {
+        // If payment requires additional action, redirect will happen automatically
+        // due to 'redirect: "if_required"'
+        console.log("Payment requires additional action");
       } else {
+        // Handle any other status
         setErrorMessage("Something went wrong with your payment.");
         onError("Something went wrong with your payment.");
       }

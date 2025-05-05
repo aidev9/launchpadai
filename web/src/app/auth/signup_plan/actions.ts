@@ -9,6 +9,7 @@ import { Resend } from "resend";
 import SubscriptionConfirmation from "@/lib/emails/subscription-confirmation";
 
 import Stripe from "stripe";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-04-30.basil",
@@ -34,8 +35,8 @@ const subscriptionFormSchema = z.object({
   billingCycle: z.enum(["monthly", "annual"]),
   price: z.number(),
   paymentIntentId: z.string(),
-  paymentMethodId: z.string(),
-  stripeCustomerId: z.string(), // Add stripeCustomerId field
+  stripeCustomerId: z.string(),
+  stripeSubscriptionId: z.string(),
 });
 
 export type SubscriptionFormData = z.infer<typeof subscriptionFormSchema>;
@@ -55,8 +56,8 @@ export const createSubscriptionAction = actionClient
         billingCycle,
         price,
         paymentIntentId,
-        paymentMethodId,
         stripeCustomerId,
+        stripeSubscriptionId,
       },
     }: {
       parsedInput: SubscriptionFormData;
@@ -71,9 +72,8 @@ export const createSubscriptionAction = actionClient
 
         const uid = userRecord.uid;
 
-        // 2. Use the existing Stripe customer ID that was passed in
+        // 2. Update the Stripe customer with Firebase UID
         try {
-          // Verify the customer exists and update their metadata with Firebase UID
           await stripe.customers.update(stripeCustomerId, {
             metadata: {
               firebaseUid: uid,
@@ -85,78 +85,71 @@ export const createSubscriptionAction = actionClient
           await adminAuth.deleteUser(uid);
           return {
             success: false,
-            error: "Failed to find or update payment account.",
+            error: "Failed to update payment account.",
           };
         }
 
-        // 3. Create a subscription in Stripe (no need to attach payment method, it's already attached)
-        const priceId = await getPlanPriceId(planType, billingCycle);
-
+        // 3. Update the subscription metadata with Firebase UID
         try {
-          // Create the subscription using the existing customer and payment method
-          const subscription = await stripe.subscriptions.create({
-            customer: stripeCustomerId,
-            items: [{ price: priceId }],
-            payment_behavior: "default_incomplete",
-            expand: ["latest_invoice.payment_intent"],
+          await stripe.subscriptions.update(stripeSubscriptionId, {
             metadata: {
               firebaseUid: uid,
             },
           });
-
-          // 4. Update Firestore with user data and subscription info
-          await adminDb.collection("users").doc(uid).set({
-            name,
-            email,
-            company,
-            role,
-            phone,
-            provider: "email",
-            userType: "user",
-            subscription: planType.toLowerCase(),
-            billingCycle,
-            stripeCustomerId,
-            stripeSubscriptionId: subscription.id,
-            subscriptionStatus: subscription.status,
-            xp: 0,
-            createdAt: new Date().toISOString(),
-          });
-
-          // 5. Send confirmation email
-          try {
-            await resend.emails.send({
-              from: process.env.EMAIL_FROM || "noreply@launchpadai.com",
-              to: email,
-              subject: "Welcome to LaunchpadAI - Subscription Confirmation",
-              react: SubscriptionConfirmation({
-                name,
-                planType,
-                price,
-                billingCycle,
-              }),
-            });
-          } catch (emailError) {
-            console.error("Email sending error:", emailError);
-            // Don't fail the whole process if just the email fails
-          }
-
-          // 6. Award XP for signing up
-          await awardXpPoints("signup", uid);
-
-          return {
-            success: true,
-            message: "Your account has been created successfully.",
-            userId: uid,
-          };
         } catch (subscriptionError) {
-          console.error("Subscription error:", subscriptionError);
-          // Delete the Firebase user if subscription fails
+          console.error("Subscription update error:", subscriptionError);
+          // Delete the Firebase user if subscription update fails
           await adminAuth.deleteUser(uid);
           return {
             success: false,
-            error: "Failed to create subscription.",
+            error: "Failed to update subscription.",
           };
         }
+
+        // 4. Update Firestore with user data and subscription info
+        await adminDb.collection("users").doc(uid).set({
+          name,
+          email,
+          company,
+          role,
+          phone,
+          provider: "email",
+          userType: "user",
+          subscription: planType.toLowerCase(),
+          billingCycle,
+          stripeCustomerId,
+          stripeSubscriptionId,
+          subscriptionStatus: "incomplete", // Will be updated by webhook
+          xp: 0,
+          createdAt: getCurrentUnixTimestamp(),
+        });
+
+        // 5. Send confirmation email
+        try {
+          await resend.emails.send({
+            from: process.env.EMAIL_FROM || "noreply@launchpadai.io",
+            to: email,
+            subject: "Welcome to LaunchpadAI - Subscription Confirmation",
+            react: SubscriptionConfirmation({
+              name,
+              planType,
+              price,
+              billingCycle,
+            }),
+          });
+        } catch (emailError) {
+          console.error("Email sending error:", emailError);
+          // Don't fail the whole process if just the email fails
+        }
+
+        // 6. Award XP for signing up
+        await awardXpPoints("signup", uid);
+
+        return {
+          success: true,
+          message: "Your account has been created successfully.",
+          userId: uid,
+        };
       } catch (error) {
         console.error("Error in createSubscriptionAction:", error);
         return {
@@ -169,3 +162,34 @@ export const createSubscriptionAction = actionClient
       }
     }
   );
+
+// Define type for the email check response
+type EmailCheckResponse =
+  | { data: { exists: boolean }; error?: undefined }
+  | { error: string; data?: undefined };
+
+export const checkEmailExists = actionClient
+  .schema(z.object({ email: z.string().email() }))
+  .action(async ({ parsedInput: { email } }): Promise<EmailCheckResponse> => {
+    try {
+      // Attempt to get user by email - if this succeeds, the user exists
+      try {
+        const userRecord = await adminAuth.getUserByEmail(email);
+        // If the code reaches here without throwing an error, the user exists
+        return { data: { exists: true } };
+      } catch (authError: any) {
+        // If the specific error is user-not-found, the email is available
+        if (authError.code === "auth/user-not-found") {
+          return { data: { exists: false } };
+        }
+
+        // For other Firebase Auth errors, rethrow to be caught by outer try/catch
+        throw authError;
+      }
+    } catch (error) {
+      console.error("Error checking email existence:", error);
+      return {
+        error: "Failed to verify email availability. Please try again.",
+      };
+    }
+  });
