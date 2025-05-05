@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Define authentication paths
-const authPaths = ["/auth/signin", "/auth/signup", "/auth/forgot-password"];
+const authPaths = [
+  "/auth/signin",
+  "/auth/signup",
+  "/auth/forgot-password",
+  "/auth/signup_plan",
+];
 
 // Define admin paths
 const adminPaths = ["/admin"];

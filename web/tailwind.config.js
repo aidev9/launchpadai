@@ -19,6 +19,9 @@ export default {
       },
     },
     extend: {
+      screens: {
+        xs: "480px",
+      },
       fontFamily: {
         inter: ["Inter", ...fontFamily.sans],
         manrope: ["Manrope", ...fontFamily.sans],

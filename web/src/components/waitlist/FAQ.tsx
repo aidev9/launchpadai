@@ -42,7 +42,7 @@ export default function FAQ() {
     <section className="py-16 md:py-24 bg-white">
       <div className="container mx-auto px-6">
         <AnimatedElement>
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
+          <h2 className="text-2xl md:text-4xl font-bold">
             Frequently Asked Questions
           </h2>
         </AnimatedElement>
