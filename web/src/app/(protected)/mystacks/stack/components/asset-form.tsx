@@ -12,6 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TechStackAsset } from "@/lib/firebase/schema";
+import { TagInput } from "@/components/ui/tag-input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface AssetFormProps {
   isOpen: boolean;
@@ -53,10 +61,10 @@ const extractTextContent = (content: string): string => {
 export function AssetForm({ isOpen, onClose, onSave, asset }: AssetFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    title: asset?.title || "",
-    body: asset?.body ? extractTextContent(asset.body) : "",
-    tags: asset?.tags.join(", ") || "",
-    assetType: (asset?.assetType || "Custom") as
+    title: "",
+    body: "",
+    tags: [] as string[],
+    assetType: "Custom" as
       | "PRD"
       | "Architecture"
       | "Tasks"
@@ -71,7 +79,7 @@ export function AssetForm({ isOpen, onClose, onSave, asset }: AssetFormProps) {
       setFormData({
         title: asset.title || "",
         body: asset.body ? extractTextContent(asset.body) : "",
-        tags: asset.tags.join(", ") || "",
+        tags: asset.tags || [],
         assetType: (asset.assetType || "Custom") as
           | "PRD"
           | "Architecture"
@@ -80,10 +88,24 @@ export function AssetForm({ isOpen, onClose, onSave, asset }: AssetFormProps) {
           | "Prompt"
           | "Custom",
       });
+    } else {
+      // Reset form when opening for a new asset
+      setFormData({
+        title: "",
+        body: "",
+        tags: [],
+        assetType: "Custom" as
+          | "PRD"
+          | "Architecture"
+          | "Tasks"
+          | "Rules"
+          | "Prompt"
+          | "Custom",
+      });
     }
-  }, [asset]);
+  }, [asset, isOpen]);
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | string[]) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -95,10 +117,7 @@ export function AssetForm({ isOpen, onClose, onSave, asset }: AssetFormProps) {
     try {
       await onSave({
         ...formData,
-        tags: formData.tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+        tags: formData.tags,
       });
       onClose();
     } catch (error) {
@@ -132,43 +151,48 @@ export function AssetForm({ isOpen, onClose, onSave, asset }: AssetFormProps) {
             <label htmlFor="assetType" className="text-right">
               Asset Type
             </label>
-            <select
-              id="assetType"
-              value={formData.assetType}
-              onChange={(e) =>
-                handleChange(
-                  "assetType",
-                  e.target.value as
-                    | "PRD"
-                    | "Architecture"
-                    | "Tasks"
-                    | "Rules"
-                    | "Prompt"
-                    | "Custom"
-                )
-              }
-              className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="PRD">PRD</option>
-              <option value="Architecture">Architecture</option>
-              <option value="Tasks">Tasks</option>
-              <option value="Rules">Rules</option>
-              <option value="Prompt">Prompt</option>
-              <option value="Custom">Custom</option>
-            </select>
+            <div className="col-span-3">
+              <Select
+                value={formData.assetType}
+                onValueChange={(value) =>
+                  handleChange(
+                    "assetType",
+                    value as
+                      | "PRD"
+                      | "Architecture"
+                      | "Tasks"
+                      | "Rules"
+                      | "Prompt"
+                      | "Custom"
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select asset type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PRD">PRD</SelectItem>
+                  <SelectItem value="Architecture">Architecture</SelectItem>
+                  <SelectItem value="Tasks">Tasks</SelectItem>
+                  <SelectItem value="Rules">Rules</SelectItem>
+                  <SelectItem value="Prompt">Prompt</SelectItem>
+                  <SelectItem value="Custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="tags" className="text-right">
               Tags
             </label>
-            <Input
-              id="tags"
-              value={formData.tags}
-              onChange={(e) => handleChange("tags", e.target.value)}
-              placeholder="Comma-separated tags"
-              className="col-span-3"
-            />
+            <div className="col-span-3">
+              <TagInput
+                value={formData.tags}
+                onChange={(tags) => handleChange("tags", tags)}
+                placeholder="Type and press Enter to add tags"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-4 gap-4">

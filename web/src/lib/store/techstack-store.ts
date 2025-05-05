@@ -62,6 +62,8 @@ export const techStackWizardStateAtom = atom<TechStack>({
   description: "",
   tags: [],
   phase: [],
+  prompt: "",
+  documentationLinks: [],
 });
 
 // Current step atom

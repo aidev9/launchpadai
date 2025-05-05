@@ -56,6 +56,10 @@ export default function TechStackDetail() {
     setGeneratingAssets,
   } = useTechStackDetail();
 
+  // State for asset deletion confirmation
+  const [isAssetDeleteDialogOpen, setIsAssetDeleteDialogOpen] = useState(false);
+  const [assetToDelete, setAssetToDelete] = useState<any>(null);
+
   // Use our handlers
   const { handleBack, handleEdit, handleDelete, handleDownloadAssets } =
     useTechStackHandlers(
@@ -70,6 +74,7 @@ export default function TechStackDetail() {
     handleEditAsset,
     handleSaveAsset,
     handleDeleteAsset,
+    confirmDeleteAsset,
     handleGenerateContent,
     handleCopyAsset,
     handleDownloadAsset,
@@ -83,7 +88,11 @@ export default function TechStackDetail() {
     isGeneratingContent,
     setIsGeneratingContent,
     generatingAssets,
-    setGeneratingAssets
+    setGeneratingAssets,
+    isAssetDeleteDialogOpen,
+    setIsAssetDeleteDialogOpen,
+    assetToDelete,
+    setAssetToDelete
   );
 
   if (isLoading) {
@@ -119,7 +128,7 @@ export default function TechStackDetail() {
           <div className="flex items-center gap-2">
             <Breadcrumbs
               items={[
-                { label: "My Stacks", href: "/mystacks" },
+                { label: "My Tech Stacks", href: "/mystacks" },
                 { label: selectedTechStack.name, href: "#" },
               ]}
             />
@@ -221,6 +230,31 @@ export default function TechStackDetail() {
         onSave={handleSaveAsset}
         asset={selectedAsset}
       />
+
+      {/* Asset Delete Confirmation Dialog */}
+      <AlertDialog
+        open={isAssetDeleteDialogOpen}
+        onOpenChange={setIsAssetDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Asset</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this asset? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteAsset}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Main>
   );
 }

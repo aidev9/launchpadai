@@ -178,6 +178,8 @@ export interface TechStack {
   description: string;
   tags: string[];
   phase: string[];
+  prompt?: string;
+  documentationLinks?: string[];
   createdAt?: number | string;
   updatedAt?: number | string;
 }
@@ -186,18 +188,20 @@ export interface TechStack {
  * Zod schema for tech stack validation
  */
 export const techStackInputSchema = z.object({
-  appType: z.string().min(1, "App type is required"),
-  frontEndStack: z.string().min(1, "Front end stack is required"),
-  backendStack: z.string().min(1, "Backend stack is required"),
-  database: z.string().min(1, "Database is required"),
+  appType: z.string().default(""),
+  frontEndStack: z.string().default(""),
+  backendStack: z.string().default(""),
+  database: z.string().default(""),
   // Make these fields optional
   aiAgentStack: z.array(z.string()).default([]),
   integrations: z.array(z.string()).default([]),
   deploymentStack: z.string().default(""),
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
   description: z.string().min(1, "Description is required"),
-  tags: z.array(z.string()),
-  phase: z.array(z.string()).min(1, "Select at least one phase"),
+  tags: z.array(z.string()).default([]),
+  phase: z.array(z.string()).default([]),
+  prompt: z.string().optional(),
+  documentationLinks: z.array(z.string()).default([]),
 });
 
 export type TechStackInput = z.infer<typeof techStackInputSchema>;

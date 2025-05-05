@@ -66,6 +66,30 @@ export const xpActions: XpAction[] = [
     description: "Added a new question to guide asset generation.",
     points: 5,
   },
+  {
+    id: "create_prompt",
+    name: "Create Prompt",
+    description: "Create a new prompt",
+    points: 30,
+  },
+  {
+    id: "use_prompt_template",
+    name: "Use Prompt Template",
+    description: "Use an existing prompt as a template",
+    points: 30,
+  },
+  {
+    id: "create_stack",
+    name: "Create Stack",
+    description: "Create a new stack",
+    points: 75,
+  },
+  {
+    id: "create_stack_asset",
+    name: "Create Stack Asset",
+    description: "Create a new asset in a stack",
+    points: 15,
+  },
 ];
 
 export default xpActions;

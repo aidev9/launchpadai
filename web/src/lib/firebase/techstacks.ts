@@ -49,7 +49,7 @@ export async function createTechStack(data: TechStackInput) {
     );
 
     // Revalidate relevant paths
-    revalidatePath("/techstack");
+    revalidatePath("/mystacks/create");
     revalidatePath("/mystacks");
 
     return {
@@ -172,7 +172,7 @@ export async function updateTechStack(
       .update(updateData);
 
     // Revalidate relevant paths
-    revalidatePath("/techstack");
+    revalidatePath("/mystacks/create");
     revalidatePath("/mystacks");
 
     return {
@@ -214,7 +214,7 @@ export async function deleteTechStack(id: string) {
     await productsRef.doc("stacks").collection("stacks").doc(id).delete();
 
     // Revalidate relevant paths
-    revalidatePath("/techstack");
+    revalidatePath("/mystacks/create");
     revalidatePath("/mystacks");
 
     return {
@@ -256,7 +256,7 @@ export async function deleteMultipleTechStacks(ids: string[]) {
     await batch.commit();
 
     // Revalidate relevant paths
-    revalidatePath("/techstack");
+    revalidatePath("/mystacks/create");
     revalidatePath("/mystacks");
 
     return {

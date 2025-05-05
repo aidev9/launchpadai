@@ -1,6 +1,7 @@
 import { useState, Dispatch, SetStateAction } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { TechStack, TechStackAsset } from "@/lib/firebase/schema";
+import { useXp } from "@/xp/useXp";
 import {
   createTechStackAsset,
   updateTechStackAsset,
@@ -21,9 +22,14 @@ export function useAssetHandlers(
   generatingAssets: Record<string, boolean>,
   setGeneratingAssets: React.Dispatch<
     React.SetStateAction<Record<string, boolean>>
-  >
+  >,
+  isDeleteDialogOpen: boolean,
+  setIsDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>,
+  assetToDelete: TechStackAsset | null,
+  setAssetToDelete: React.Dispatch<React.SetStateAction<TechStackAsset | null>>
 ) {
   const { toast } = useToast();
+  const { awardXp } = useXp();
 
   const handleCreateAsset = () => {
     setSelectedAsset(null);
@@ -63,12 +69,20 @@ export function useAssetHandlers(
       }
 
       if (result.success) {
-        toast({
-          title: "Success",
-          description: selectedAsset
-            ? "Asset updated successfully"
-            : "Asset created successfully",
-        });
+        // Award XP only for creating new assets, not for updates
+        if (!selectedAsset) {
+          await awardXp("create_stack_asset");
+
+          toast({
+            title: "Success",
+            description: "Asset created successfully (+15 XP)",
+          });
+        } else {
+          toast({
+            title: "Success",
+            description: "Asset updated successfully",
+          });
+        }
 
         // Refresh assets
         const assetsResult = await getTechStackAssets(selectedTechStack.id);
@@ -96,11 +110,20 @@ export function useAssetHandlers(
     }
   };
 
-  const handleDeleteAsset = async (asset: TechStackAsset) => {
-    if (!selectedTechStack?.id || !asset.id) return;
+  const handleDeleteAsset = (asset: TechStackAsset) => {
+    // Set the asset to delete and open the confirmation dialog
+    setAssetToDelete(asset);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteAsset = async () => {
+    if (!selectedTechStack?.id || !assetToDelete?.id) return;
 
     try {
-      const result = await deleteTechStackAsset(selectedTechStack.id, asset.id);
+      const result = await deleteTechStackAsset(
+        selectedTechStack.id,
+        assetToDelete.id
+      );
       if (result.success) {
         toast({
           title: "Success",
@@ -109,11 +132,11 @@ export function useAssetHandlers(
 
         // Remove asset from state
         setAssets((prev: TechStackAsset[]) =>
-          prev.filter((a: TechStackAsset) => a.id !== asset.id)
+          prev.filter((a: TechStackAsset) => a.id !== assetToDelete.id)
         );
 
         // Clear selected asset if it was deleted
-        if (selectedAsset?.id === asset.id) {
+        if (selectedAsset?.id === assetToDelete.id) {
           setSelectedAsset(null);
         }
       } else {
@@ -324,6 +347,7 @@ export function useAssetHandlers(
     handleEditAsset,
     handleSaveAsset,
     handleDeleteAsset,
+    confirmDeleteAsset,
     handleGenerateContent,
     handleCopyAsset,
     handleDownloadAsset,

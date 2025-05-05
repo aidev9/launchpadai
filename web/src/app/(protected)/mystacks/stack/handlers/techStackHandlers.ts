@@ -20,7 +20,7 @@ export function useTechStackHandlers(
     if (!selectedTechStack?.id) return;
 
     // Navigate to the tech stack wizard with the tech stack ID as a query parameter
-    router.push(`/techstack?id=${selectedTechStack.id}`);
+    router.push(`/mystacks/create?id=${selectedTechStack.id}`);
   };
 
   const handleDelete = async () => {

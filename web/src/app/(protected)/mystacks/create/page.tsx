@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAtom } from "jotai";
+import { useXp } from "@/xp/useXp";
 import {
   currentWizardStepAtom,
   techStackWizardStateAtom,
@@ -29,19 +30,21 @@ import {
 } from "@/lib/firebase/techstacks";
 import { ArrowRight } from "lucide-react";
 
-// Import step components (we'll create these next)
-import { AppTypeStep } from "@/app/(protected)/techstack/components/steps/app-type-step";
-import { FrontEndStep } from "@/app/(protected)/techstack/components/steps/frontend-step";
-import { BackendStep } from "@/app/(protected)/techstack/components/steps/backend-step";
-import { DatabaseStep } from "@/app/(protected)/techstack/components/steps/database-step";
-import { AIAgentStep } from "@/app/(protected)/techstack/components/steps/ai-agent-step";
-import { IntegrationsStep } from "@/app/(protected)/techstack/components/steps/integrations-step";
-import { DeploymentStep } from "@/app/(protected)/techstack/components/steps/deployment-step";
-import { AppDetailsStep } from "@/app/(protected)/techstack/components/steps/app-details-step";
-import { ReviewStep } from "@/app/(protected)/techstack/components/steps/review-step";
+// Import step components
+import { AppTypeStep } from "./components/steps/app-type-step";
+import { FrontEndStep } from "./components/steps/frontend-step";
+import { BackendStep } from "./components/steps/backend-step";
+import { DatabaseStep } from "./components/steps/database-step";
+import { AIAgentStep } from "./components/steps/ai-agent-step";
+import { IntegrationsStep } from "./components/steps/integrations-step";
+import { DeploymentStep } from "./components/steps/deployment-step";
+import { AppDetailsStep } from "./components/steps/app-details-step";
+import { PromptStep } from "./components/steps/prompt-step";
+import { DocumentationLinksStep } from "./components/steps/documentation-links-step";
+import { ReviewStep } from "./components/steps/review-step";
 
-// Import our new step indicator component
-import { StepIndicator } from "@/app/(protected)/techstack/components/step-indicator";
+// Import our step indicator component
+import { StepIndicator } from "./components/step-indicator";
 
 export default function TechStackWizard() {
   const [currentStep, setCurrentStep] = useAtom(currentWizardStepAtom);
@@ -55,6 +58,7 @@ export default function TechStackWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { awardXp } = useXp();
 
   // Check if we're in edit mode by looking for an ID in the URL
   useEffect(() => {
@@ -81,6 +85,8 @@ export default function TechStackWizard() {
               description: result.techStack.description || "",
               tags: result.techStack.tags || [],
               phase: result.techStack.phase || [],
+              prompt: result.techStack.prompt || "",
+              documentationLinks: result.techStack.documentationLinks || [],
             });
           } else {
             toast({
@@ -125,7 +131,7 @@ export default function TechStackWizard() {
     router,
   ]);
 
-  const totalSteps = 9;
+  const totalSteps = 11;
 
   // Navigate to next step
   const goToNextStep = () => {
@@ -158,6 +164,8 @@ export default function TechStackWizard() {
       case 6: // AI Agent Stack (optional)
       case 7: // Integrations (optional)
       case 8: // Deployment Stack (optional)
+      case 9: // Prompt (optional)
+      case 10: // Documentation Links (optional)
         return true; // All other steps are optional
       default:
         return true;
@@ -227,7 +235,8 @@ export default function TechStackWizard() {
         description: wizardState.description,
         tags: wizardState.tags,
         phase: wizardState.phase,
-        documentationLinks: [], // Add missing property, assuming it's not collected in the wizard
+        prompt: wizardState.prompt || undefined,
+        documentationLinks: wizardState.documentationLinks || [],
       };
 
       let result;
@@ -247,10 +256,13 @@ export default function TechStackWizard() {
         result = await createTechStack(techStackData);
 
         if (result.success) {
+          // Award XP for creating a new stack
+          await awardXp("create_stack");
+
           toast({
             title: "Success",
             description:
-              "Tech stack created successfully. Assets are being generated in the background.",
+              "Tech stack created successfully (+75 XP). Assets are being generated in the background.",
           });
 
           // Store the ID of the newly created tech stack
@@ -274,6 +286,8 @@ export default function TechStackWizard() {
           description: "",
           tags: [],
           phase: [],
+          prompt: "",
+          documentationLinks: [],
         });
 
         // Reset the current step and edit mode
@@ -327,6 +341,10 @@ export default function TechStackWizard() {
       case 8:
         return <DeploymentStep />;
       case 9:
+        return <PromptStep />;
+      case 10:
+        return <DocumentationLinksStep />;
+      case 11:
         return <ReviewStep onSubmit={handleSubmit} />;
       default:
         return null;
@@ -346,8 +364,9 @@ export default function TechStackWizard() {
               <Breadcrumbs
                 items={[
                   { label: "Home", href: "/dashboard" },
+                  { label: "My Tech Stacks", href: "/mystacks" },
                   {
-                    label: isEditMode ? "Edit Tech Stack" : "Tech Stack Wizard",
+                    label: isEditMode ? "Edit Tech Stack" : "Create Tech Stack",
                     href: "",
                     isCurrentPage: true,
                   },
@@ -378,12 +397,14 @@ export default function TechStackWizard() {
               "AI Agent",
               "Integrations",
               "Deployment",
+              "Prompt",
+              "Documentation",
               "Review",
             ]}
             onStepClick={handleStepClick}
           />
 
-          <Card className="mb-8 max-w-[70%]">
+          <Card className="mb-8 max-w-[90%]">
             <CardHeader>
               <CardTitle>
                 {currentStep === 1 && "App Details"}
@@ -394,7 +415,9 @@ export default function TechStackWizard() {
                 {currentStep === 6 && "Choose AI Agent Stack (Optional)"}
                 {currentStep === 7 && "Choose Integrations (Optional)"}
                 {currentStep === 8 && "Choose Deployment Stack (Optional)"}
-                {currentStep === 9 && "Review Your Tech Stack"}
+                {currentStep === 9 && "Add Prompt (Optional)"}
+                {currentStep === 10 && "Add Documentation Links (Optional)"}
+                {currentStep === 11 && "Review Your Tech Stack"}
               </CardTitle>
               <CardDescription>
                 {currentStep === 1 && "Provide details about your application."}
@@ -413,6 +436,10 @@ export default function TechStackWizard() {
                 {currentStep === 8 &&
                   "Select your preferred deployment platform."}
                 {currentStep === 9 &&
+                  "Add a prompt you've already generated for this project."}
+                {currentStep === 10 &&
+                  "Add links to online documentation for your project."}
+                {currentStep === 11 &&
                   "Review your selections before creating your tech stack."}
               </CardDescription>
             </CardHeader>

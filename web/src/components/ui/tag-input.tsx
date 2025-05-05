@@ -69,42 +69,51 @@ export function TagInput({
   };
 
   return (
-    <div
-      onClick={handleFocus}
-      className={`flex flex-wrap gap-2 p-2 border rounded-md ${
-        disabled ? "opacity-50 cursor-not-allowed" : "cursor-text"
-      }`}
-    >
-      {value.map((tag) => (
-        <Badge
-          key={tag}
-          variant="secondary"
-          className="rounded hover:bg-secondary"
-        >
-          {tag}
-          {!disabled && (
-            <button
-              type="button"
-              className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeTag(tag);
-              }}
+    <div className="space-y-2">
+      {/* Tags displayed above the input */}
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {value.map((tag, index) => (
+            <Badge
+              key={`${tag}-${index}`}
+              variant="secondary"
+              className="rounded hover:bg-secondary"
             >
-              <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-            </button>
-          )}
-        </Badge>
-      ))}
-      <Input
-        ref={inputRef}
-        value={inputValue}
-        onChange={handleInputChange}
-        onKeyDown={handleKeyDown}
-        placeholder={value.length === 0 ? placeholder : ""}
-        disabled={disabled}
-        className="border-0 p-0 focus-visible:ring-0 h-7 min-w-[120px] flex-1"
-      />
+              {tag}
+              {!disabled && (
+                <button
+                  type="button"
+                  className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeTag(tag);
+                  }}
+                >
+                  <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                </button>
+              )}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Input field below the tags */}
+      <div
+        onClick={handleFocus}
+        className={`flex items-center p-2 border rounded-md ${
+          disabled ? "opacity-50 cursor-not-allowed" : "cursor-text"
+        }`}
+      >
+        <Input
+          ref={inputRef}
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="ring-0 border-0 shadow-none p-1 focus-visible:ring-0 focus-visible:border-0 focus-visible:shadow-none h-5 w-full"
+        />
+      </div>
     </div>
   );
 }

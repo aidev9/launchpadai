@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useXp } from "@/xp/useXp";
 import {
   Plus,
   Search as SearchIcon,
@@ -61,6 +62,7 @@ export const dynamic = "force-dynamic";
 export default function MyPrompts() {
   const router = useRouter();
   const { toast } = useToast();
+  const { awardXp } = useXp();
   const [layoutView, setLayoutView] = useAtom(layoutViewAtom);
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
@@ -185,9 +187,12 @@ export default function MyPrompts() {
           // Optimistic update - add the new prompt
           addPrompt(result.prompt);
 
+          // Award XP for creating a new prompt
+          await awardXp("create_prompt");
+
           toast({
             title: "Success",
-            description: "Prompt created successfully",
+            description: "Prompt created successfully (+30 XP)",
             duration: TOAST_DEFAULT_DURATION,
           });
           setIsPromptModalOpen(false);

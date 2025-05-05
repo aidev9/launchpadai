@@ -86,7 +86,7 @@ export default function MyTechStacks() {
   });
 
   const handleCreateTechStack = () => {
-    router.push("/techstack");
+    router.push("/mystacks/create");
   };
 
   const handleTechStackClick = (techStack: TechStack) => {

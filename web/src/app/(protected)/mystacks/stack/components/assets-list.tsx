@@ -18,10 +18,7 @@ export function AssetsList({
 }: AssetsListProps) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Available Assets</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 mt-4">
         {assets.length === 0 ? (
           <p className="text-muted-foreground">No assets available</p>
         ) : (

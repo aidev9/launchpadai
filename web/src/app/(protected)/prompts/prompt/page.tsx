@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getPhaseColor } from "@/components/prompts/phase-filter";
 import { copyPromptToUserCollectionAction } from "@/lib/firebase/actions/prompts";
+import { useXp } from "@/xp/useXp";
 import { useAtom } from "jotai";
 import { selectedPromptAtom } from "@/lib/store/prompt-store";
 import { useState } from "react";
@@ -20,6 +21,7 @@ import { Prompt } from "@/lib/firebase/schema";
 export default function PromptDetail() {
   const router = useRouter();
   const { toast } = useToast();
+  const { awardXp } = useXp();
   const [prompt] = useAtom(selectedPromptAtom);
   const [isCopying, setIsCopying] = useState(false);
   const { setSelectedPrompt } = usePrompts();
@@ -37,9 +39,12 @@ export default function PromptDetail() {
       );
 
       if (result.success) {
+        // Award XP for using a prompt as template
+        await awardXp("use_prompt_template");
+
         toast({
           title: "Success",
-          description: "Prompt copied to your collection",
+          description: "Prompt copied to your collection (+30 XP)",
           duration: TOAST_DEFAULT_DURATION,
         });
 
