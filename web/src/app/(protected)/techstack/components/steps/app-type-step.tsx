@@ -2,19 +2,48 @@
 
 import { useAtom } from "jotai";
 import { techStackWizardStateAtom } from "@/lib/store/techstack-store";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { CardRadio } from "@/app/(protected)/techstack/components/card-radio";
+
+interface AppTypeOption {
+  value: string;
+  label: string;
+  subtitle: string;
+  footer: string;
+}
 
 export function AppTypeStep() {
   const [wizardState, setWizardState] = useAtom(techStackWizardStateAtom);
-  const [showOther, setShowOther] = useState(
-    wizardState.appType &&
+  const [showOther, setShowOther] = useState<boolean>(
+    !!wizardState.appType &&
       !["Full-stack web app", "Mobile app", "AI Agent"].includes(
         wizardState.appType
       )
   );
+
+  const appTypeOptions: AppTypeOption[] = [
+    {
+      value: "Full-stack web app",
+      label: "Full-stack web app",
+      subtitle: "Web application with frontend and backend",
+      footer: "Best for web platforms and SaaS",
+    },
+    {
+      value: "Mobile app",
+      label: "Mobile app",
+      subtitle: "Native or cross-platform mobile application",
+      footer: "For iOS, Android or both",
+    },
+    {
+      value: "AI Agent",
+      label: "AI Agent",
+      subtitle: "Autonomous AI application",
+      footer: "For automation and smart assistants",
+    },
+  ];
 
   const handleAppTypeChange = (value: string) => {
     if (value === "Other") {
@@ -35,25 +64,29 @@ export function AppTypeStep() {
       <RadioGroup
         value={showOther ? "Other" : wizardState.appType || undefined}
         onValueChange={handleAppTypeChange}
-        className="grid grid-cols-1 gap-4"
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
-        {["Full-stack web app", "Mobile app", "AI Agent"].map((option) => (
-          <div
-            key={option}
-            className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-accent"
-          >
-            <RadioGroupItem value={option} id={option} />
-            <Label htmlFor={option} className="flex-1 cursor-pointer">
-              {option}
-            </Label>
-          </div>
+        {appTypeOptions.map((option) => (
+          <CardRadio
+            key={option.value}
+            value={option.value}
+            id={option.value}
+            label={option.label}
+            subtitle={option.subtitle}
+            footer={option.footer}
+            checked={!showOther && wizardState.appType === option.value}
+            onValueChange={handleAppTypeChange}
+          />
         ))}
-        <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-accent">
-          <RadioGroupItem value="Other" id="Other" />
-          <Label htmlFor="Other" className="flex-1 cursor-pointer">
-            Other
-          </Label>
-        </div>
+        <CardRadio
+          value="Other"
+          id="Other"
+          label="Other"
+          subtitle="Custom application type"
+          footer="For specialized use cases"
+          checked={showOther === true}
+          onValueChange={handleAppTypeChange}
+        />
       </RadioGroup>
 
       {showOther && (

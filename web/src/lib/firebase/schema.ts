@@ -190,13 +190,12 @@ export const techStackInputSchema = z.object({
   frontEndStack: z.string().min(1, "Front end stack is required"),
   backendStack: z.string().min(1, "Backend stack is required"),
   database: z.string().min(1, "Database is required"),
-  aiAgentStack: z
-    .array(z.string())
-    .min(1, "Select at least one AI agent technology"),
-  integrations: z.array(z.string()).min(1, "Select at least one integration"),
-  deploymentStack: z.string().min(1, "Deployment stack is required"),
+  // Make these fields optional
+  aiAgentStack: z.array(z.string()).default([]),
+  integrations: z.array(z.string()).default([]),
+  deploymentStack: z.string().default(""),
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  description: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
   tags: z.array(z.string()),
   phase: z.array(z.string()).min(1, "Select at least one phase"),
 });

@@ -2,16 +2,43 @@
 
 import { useAtom } from "jotai";
 import { techStackWizardStateAtom } from "@/lib/store/techstack-store";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { CardCheckbox } from "@/app/(protected)/techstack/components/card-checkbox";
+
+interface AIAgentOption {
+  value: string;
+  label: string;
+  subtitle: string;
+  footer: string;
+}
 
 export function AIAgentStep() {
   const [wizardState, setWizardState] = useAtom(techStackWizardStateAtom);
   const [otherValue, setOtherValue] = useState("");
-  const options = ["LangChain/Graph", "Autogen", "PydanticAI"];
+
+  const aiAgentOptions: AIAgentOption[] = [
+    {
+      value: "LangChain/Graph",
+      label: "LangChain/Graph",
+      subtitle: "Framework for LLM applications",
+      footer: "Composable tools for AI apps",
+    },
+    {
+      value: "Autogen",
+      label: "Autogen",
+      subtitle: "Multi-agent conversation framework",
+      footer: "Build conversational AI systems",
+    },
+    {
+      value: "PydanticAI",
+      label: "PydanticAI",
+      subtitle: "Type-safe AI interactions",
+      footer: "Structured data validation for AI",
+    },
+  ];
 
   const handleCheckboxChange = (option: string, checked: boolean) => {
     if (checked) {
@@ -55,33 +82,29 @@ export function AIAgentStep() {
 
   // Filter out standard options to get custom options
   const customOptions = wizardState.aiAgentStack.filter(
-    (option) => !options.includes(option)
+    (option) => !aiAgentOptions.map((opt) => opt.value).includes(option)
   );
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
-        {options.map((option) => (
-          <div
-            key={option}
-            className="flex items-center space-x-2 border rounded-lg p-4"
-          >
-            <Checkbox
-              id={option}
-              checked={wizardState.aiAgentStack.includes(option)}
-              onCheckedChange={(checked) =>
-                handleCheckboxChange(option, checked === true)
-              }
-            />
-            <Label htmlFor={option} className="flex-1 cursor-pointer">
-              {option}
-            </Label>
-          </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {aiAgentOptions.map((option) => (
+          <CardCheckbox
+            key={option.value}
+            id={option.value}
+            label={option.label}
+            subtitle={option.subtitle}
+            footer={option.footer}
+            checked={wizardState.aiAgentStack.includes(option.value)}
+            onCheckedChange={(checked) =>
+              handleCheckboxChange(option.value, checked)
+            }
+          />
         ))}
       </div>
 
       {/* Other option with text input */}
-      <div className="border rounded-lg p-4 space-y-4">
+      <div className="p-0 space-y-0">
         <Label htmlFor="other-ai-agent">Add Other AI Agent Technology</Label>
         <div className="flex space-x-2">
           <Textarea

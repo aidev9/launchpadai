@@ -7,11 +7,39 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { CardCheckbox } from "@/app/(protected)/techstack/components/card-checkbox";
+
+interface IntegrationOption {
+  value: string;
+  label: string;
+  subtitle: string;
+  footer: string;
+}
 
 export function IntegrationsStep() {
   const [wizardState, setWizardState] = useAtom(techStackWizardStateAtom);
   const [otherValue, setOtherValue] = useState("");
-  const options = ["Payments", "Email", "APIs"];
+
+  const integrationOptions: IntegrationOption[] = [
+    {
+      value: "Payments",
+      label: "Payments",
+      subtitle: "Payment processing integration",
+      footer: "Stripe, PayPal, or custom solutions",
+    },
+    {
+      value: "Email",
+      label: "Email",
+      subtitle: "Email delivery services",
+      footer: "Transactional and marketing emails",
+    },
+    {
+      value: "APIs",
+      label: "APIs",
+      subtitle: "Third-party API integrations",
+      footer: "Connect with external services",
+    },
+  ];
 
   const handleCheckboxChange = (option: string, checked: boolean) => {
     if (checked) {
@@ -55,33 +83,29 @@ export function IntegrationsStep() {
 
   // Filter out standard options to get custom options
   const customOptions = wizardState.integrations.filter(
-    (option) => !options.includes(option)
+    (option) => !integrationOptions.map((opt) => opt.value).includes(option)
   );
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
-        {options.map((option) => (
-          <div
-            key={option}
-            className="flex items-center space-x-2 border rounded-lg p-4"
-          >
-            <Checkbox
-              id={option}
-              checked={wizardState.integrations.includes(option)}
-              onCheckedChange={(checked) =>
-                handleCheckboxChange(option, checked === true)
-              }
-            />
-            <Label htmlFor={option} className="flex-1 cursor-pointer">
-              {option}
-            </Label>
-          </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {integrationOptions.map((option) => (
+          <CardCheckbox
+            key={option.value}
+            id={option.value}
+            label={option.label}
+            subtitle={option.subtitle}
+            footer={option.footer}
+            checked={wizardState.integrations.includes(option.value)}
+            onCheckedChange={(checked) =>
+              handleCheckboxChange(option.value, checked)
+            }
+          />
         ))}
       </div>
 
       {/* Other option with text input */}
-      <div className="border rounded-lg p-4 space-y-4">
+      <div className="p-0 space-y-0">
         <Label htmlFor="other-integration">Add Other Integration</Label>
         <div className="flex space-x-2">
           <Textarea

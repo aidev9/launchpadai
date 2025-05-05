@@ -27,7 +27,7 @@ import {
   getTechStack,
   updateTechStack,
 } from "@/lib/firebase/techstacks";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 // Import step components (we'll create these next)
 import { AppTypeStep } from "@/app/(protected)/techstack/components/steps/app-type-step";
@@ -39,6 +39,9 @@ import { IntegrationsStep } from "@/app/(protected)/techstack/components/steps/i
 import { DeploymentStep } from "@/app/(protected)/techstack/components/steps/deployment-step";
 import { AppDetailsStep } from "@/app/(protected)/techstack/components/steps/app-details-step";
 import { ReviewStep } from "@/app/(protected)/techstack/components/steps/review-step";
+
+// Import our new step indicator component
+import { StepIndicator } from "@/app/(protected)/techstack/components/step-indicator";
 
 export default function TechStackWizard() {
   const [currentStep, setCurrentStep] = useAtom(currentWizardStepAtom);
@@ -146,24 +149,50 @@ export default function TechStackWizard() {
   // Validate current step
   const validateCurrentStep = () => {
     switch (currentStep) {
-      case 1: // App Type
-        return !!wizardState.appType;
-      case 2: // Front End Stack
-        return !!wizardState.frontEndStack;
-      case 3: // Backend Stack
-        return !!wizardState.backendStack;
-      case 4: // Database
-        return !!wizardState.database;
-      case 5: // AI Agent Stack
-        return wizardState.aiAgentStack.length > 0;
-      case 6: // Integrations
-        return wizardState.integrations.length > 0;
-      case 7: // Deployment Stack
-        return !!wizardState.deploymentStack;
-      case 8: // App Details
-        return !!wizardState.name;
+      case 1: // App Details (now first step)
+        return !!wizardState.name && !!wizardState.description;
+      case 2: // App Type (optional)
+      case 3: // Front End Stack (optional)
+      case 4: // Backend Stack (optional)
+      case 5: // Database (optional)
+      case 6: // AI Agent Stack (optional)
+      case 7: // Integrations (optional)
+      case 8: // Deployment Stack (optional)
+        return true; // All other steps are optional
       default:
         return true;
+    }
+  };
+
+  // Validate all steps up to the target step
+  const validateStepsUpTo = (targetStep: number) => {
+    // Only validate step 1 (App Details) as it's the only required step
+    if (targetStep > 1) {
+      setCurrentStep(1);
+      if (!validateCurrentStep()) {
+        toast({
+          title: "Validation Error",
+          description:
+            "Please provide both app name and description before proceeding.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Handle step click for navigation
+  const handleStepClick = (step: number) => {
+    // Only validate if moving forward and past step 1
+    if (step > currentStep && step > 1) {
+      if (validateStepsUpTo(2)) {
+        // Only need to validate step 1
+        setCurrentStep(step);
+      }
+    } else {
+      // Moving backward or to step 1 doesn't require validation
+      setCurrentStep(step);
     }
   };
 
@@ -171,16 +200,31 @@ export default function TechStackWizard() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      // Validate required fields before submission
+      if (!wizardState.name || !wizardState.description) {
+        toast({
+          title: "Validation Error",
+          description:
+            "Please provide both app name and description before submitting.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const techStackData: TechStackInput = {
         appType: wizardState.appType,
         frontEndStack: wizardState.frontEndStack,
         backendStack: wizardState.backendStack,
         database: wizardState.database,
-        aiAgentStack: wizardState.aiAgentStack,
-        integrations: wizardState.integrations,
-        deploymentStack: wizardState.deploymentStack,
+        // Use empty arrays for optional fields if not provided
+        aiAgentStack:
+          wizardState.aiAgentStack.length > 0 ? wizardState.aiAgentStack : [],
+        integrations:
+          wizardState.integrations.length > 0 ? wizardState.integrations : [],
+        deploymentStack: wizardState.deploymentStack || "None specified",
         name: wizardState.name,
-        description: wizardState.description || "",
+        description: wizardState.description,
         tags: wizardState.tags,
         phase: wizardState.phase,
       };
@@ -266,21 +310,21 @@ export default function TechStackWizard() {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        return <AppTypeStep />;
-      case 2:
-        return <FrontEndStep />;
-      case 3:
-        return <BackendStep />;
-      case 4:
-        return <DatabaseStep />;
-      case 5:
-        return <AIAgentStep />;
-      case 6:
-        return <IntegrationsStep />;
-      case 7:
-        return <DeploymentStep />;
-      case 8:
         return <AppDetailsStep />;
+      case 2:
+        return <AppTypeStep />;
+      case 3:
+        return <FrontEndStep />;
+      case 4:
+        return <BackendStep />;
+      case 5:
+        return <DatabaseStep />;
+      case 6:
+        return <AIAgentStep />;
+      case 7:
+        return <IntegrationsStep />;
+      case 8:
+        return <DeploymentStep />;
       case 9:
         return <ReviewStep onSubmit={handleSubmit} />;
       default:
@@ -320,67 +364,53 @@ export default function TechStackWizard() {
             </p>
           </div>
 
-          {/* Progress Indicator */}
-          <div className="flex items-center justify-between mb-8 max-w-[70%]">
-            <div className="flex items-center w-full">
-              {Array.from({ length: totalSteps }).map((_, index) => (
-                <React.Fragment key={`step-group-${index + 1}`}>
-                  <div
-                    key={`step-${index + 1}`}
-                    className={`flex items-center justify-center h-10 w-10 rounded-full ${
-                      currentStep >= index + 1
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    }`}
-                  >
-                    {currentStep > index + 1 ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      index + 1
-                    )}
-                  </div>
-                  {index < totalSteps - 1 && (
-                    <div
-                      key={`line-${index + 1}`}
-                      className={`flex-1 h-1 ${
-                        currentStep > index + 1 ? "bg-primary" : "bg-muted"
-                      }`}
-                    ></div>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
+          {/* Enhanced Step Indicator */}
+          <StepIndicator
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            stepNames={[
+              "App Details",
+              "App Type",
+              "Front End",
+              "Backend",
+              "Database",
+              "AI Agent",
+              "Integrations",
+              "Deployment",
+              "Review",
+            ]}
+            onStepClick={handleStepClick}
+          />
 
           <Card className="mb-8 max-w-[70%]">
             <CardHeader>
               <CardTitle>
-                {currentStep === 1 && "Choose App Type"}
-                {currentStep === 2 && "Choose Front End Stack"}
-                {currentStep === 3 && "Choose Backend Stack"}
-                {currentStep === 4 && "Choose Database"}
-                {currentStep === 5 && "Choose AI Agent Stack"}
-                {currentStep === 6 && "Choose Integrations"}
-                {currentStep === 7 && "Choose Deployment Stack"}
-                {currentStep === 8 && "App Details"}
+                {currentStep === 1 && "App Details"}
+                {currentStep === 2 && "Choose App Type (Optional)"}
+                {currentStep === 3 && "Choose Front End Stack (Optional)"}
+                {currentStep === 4 && "Choose Backend Stack (Optional)"}
+                {currentStep === 5 && "Choose Database (Optional)"}
+                {currentStep === 6 && "Choose AI Agent Stack (Optional)"}
+                {currentStep === 7 && "Choose Integrations (Optional)"}
+                {currentStep === 8 && "Choose Deployment Stack (Optional)"}
                 {currentStep === 9 && "Review Your Tech Stack"}
               </CardTitle>
               <CardDescription>
-                {currentStep === 1 &&
-                  "Select the type of application you want to build."}
+                {currentStep === 1 && "Provide details about your application."}
                 {currentStep === 2 &&
-                  "Choose your preferred front-end technology."}
+                  "Select the type of application you want to build."}
                 {currentStep === 3 &&
-                  "Choose your preferred backend technology."}
+                  "Choose your preferred front-end technology."}
                 {currentStep === 4 &&
-                  "Select the database type for your application."}
+                  "Choose your preferred backend technology."}
                 {currentStep === 5 &&
-                  "Select AI agent technologies to include."}
+                  "Select the database type for your application."}
                 {currentStep === 6 &&
-                  "Choose integrations for your application."}
+                  "Select AI agent technologies to include."}
                 {currentStep === 7 &&
+                  "Choose integrations for your application."}
+                {currentStep === 8 &&
                   "Select your preferred deployment platform."}
-                {currentStep === 8 && "Provide details about your application."}
                 {currentStep === 9 &&
                   "Review your selections before creating your tech stack."}
               </CardDescription>

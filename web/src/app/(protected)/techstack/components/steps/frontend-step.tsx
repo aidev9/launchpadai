@@ -6,6 +6,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { CardRadio } from "@/app/(protected)/techstack/components/card-radio";
+
+interface FrontendOption {
+  value: string;
+  label: string;
+  subtitle: string;
+  footer: string;
+}
 
 export function FrontEndStep() {
   const [wizardState, setWizardState] = useAtom(techStackWizardStateAtom);
@@ -15,6 +23,33 @@ export function FrontEndStep() {
         wizardState.frontEndStack
       )
   );
+
+  const frontendOptions: FrontendOption[] = [
+    {
+      value: "React/NextJS",
+      label: "React/NextJS",
+      subtitle: "Modern React framework",
+      footer: "Best for dynamic web applications",
+    },
+    {
+      value: "Flask/Django",
+      label: "Flask/Django",
+      subtitle: "Python-based web frameworks",
+      footer: "Great for data-heavy applications",
+    },
+    {
+      value: "Angular",
+      label: "Angular",
+      subtitle: "TypeScript-based framework",
+      footer: "Full-featured for enterprise apps",
+    },
+    {
+      value: "Vue.js",
+      label: "Vue.js",
+      subtitle: "Progressive JavaScript framework",
+      footer: "Balance of simplicity and power",
+    },
+  ];
 
   const handleFrontEndChange = (value: string) => {
     if (value === "Other") {
@@ -35,25 +70,29 @@ export function FrontEndStep() {
       <RadioGroup
         value={showOther ? "Other" : wizardState.frontEndStack || undefined}
         onValueChange={handleFrontEndChange}
-        className="grid grid-cols-1 gap-4"
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
-        {["React/NextJS", "Flask/Django", "Angular", "Vue.js"].map((option) => (
-          <div
-            key={option}
-            className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-accent"
-          >
-            <RadioGroupItem value={option} id={option} />
-            <Label htmlFor={option} className="flex-1 cursor-pointer">
-              {option}
-            </Label>
-          </div>
+        {frontendOptions.map((option) => (
+          <CardRadio
+            key={option.value}
+            value={option.value}
+            id={option.value}
+            label={option.label}
+            subtitle={option.subtitle}
+            footer={option.footer}
+            checked={!showOther && wizardState.frontEndStack === option.value}
+            onValueChange={handleFrontEndChange}
+          />
         ))}
-        <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-accent">
-          <RadioGroupItem value="Other" id="Other" />
-          <Label htmlFor="Other" className="flex-1 cursor-pointer">
-            Other
-          </Label>
-        </div>
+        <CardRadio
+          value="Other"
+          id="Other"
+          label="Other"
+          subtitle="Custom frontend framework"
+          footer="For specialized requirements"
+          checked={showOther === true}
+          onValueChange={handleFrontEndChange}
+        />
       </RadioGroup>
 
       {showOther && (
