@@ -54,7 +54,7 @@ export function ProfileDropdown() {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 rounded-full bg-gradient-to-r from-amber-200 to-amber-400 text-amber-950 hover:from-amber-300 hover:to-amber-500 border-amber-400"
+              className="h-7 px-2 rounded-full bg-gradient-to-r text-amber-950 hover:from-amber-100 hover:to-amber-200 border-amber-400"
               onClick={() => router.push("/upgrade")}
             >
               <Star className="h-3.5 w-3.5 mr-1 fill-amber-500" />

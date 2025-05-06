@@ -70,7 +70,6 @@ export default function Playground({ prompt }: { prompt: Prompt }) {
     // Save the original prompt when the component is first mounted or when prompt id changes
     setOriginalPrompt(selectedPrompt);
     setOriginalPromptBody(selectedPrompt?.body || "");
-    console.log("[useEffect] prompt", prompt);
   }, []);
 
   // AI Settings atoms

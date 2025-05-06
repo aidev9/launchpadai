@@ -15,6 +15,7 @@ import {
   Trash,
   Copy,
   Download,
+  Sparkles,
 } from "lucide-react";
 import { usePrompts } from "@/hooks/usePrompts";
 import { PhaseFilter, getPhaseColor } from "@/components/prompts/phase-filter";
@@ -349,6 +350,13 @@ export default function MyPrompts() {
                 <Trash className="h-4 w-4 mr-2" /> Delete Selected
               </Button>
             )}
+            <Button
+              onClick={() => router.push("/myprompts/pace")}
+              variant="outline"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Create PACE Prompt
+            </Button>
             <Button onClick={handleCreatePrompt}>
               <Plus className="h-4 w-4 mr-2" />
               Create New Prompt
