@@ -22,7 +22,7 @@ import { PhaseFilter, getPhaseColor } from "@/components/prompts/phase-filter";
 import { PromptCard } from "@/components/prompts/prompt-card";
 import { Prompt, PromptInput } from "@/lib/firebase/schema";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { PromptTable } from "./components/prompt-table";
 import { PromptForm } from "./components/prompt-form";
@@ -54,6 +54,7 @@ import {
   deletePromptAtom,
   deleteMultiplePromptsAtom,
   addPromptAtom,
+  highlightedPromptIdAtom,
 } from "@/lib/store/prompt-store";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
@@ -72,6 +73,10 @@ export default function MyPrompts() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMultipleDeleteDialogOpen, setIsMultipleDeleteDialogOpen] =
     useState(false);
+  const [highlightedPromptId, setHighlightedPromptId] = useAtom(
+    highlightedPromptIdAtom
+  );
+  const highlightedCardRef = useRef<HTMLDivElement>(null);
 
   // Add atoms for optimistic updates
   const updatePrompt = useSetAtom(updatePromptAtom);
@@ -93,7 +98,80 @@ export default function MyPrompts() {
     setSearchQuery,
     setSelectedPrompt,
     fetchUserPrompts,
-  } = usePrompts({ userPromptsOnly: true });
+    fetchPromptById,
+  } = usePrompts({
+    userPromptsOnly: true,
+  });
+
+  // Sort prompts to show newest first
+  const sortedPrompts = [...prompts].sort((a, b) => {
+    // Sort by creation date descending (newest first)
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  });
+
+  // Only fetch prompts on initial mount, not when highlighted prompt ID changes
+  useEffect(() => {
+    // Only fetch on initial mount if we don't have prompts yet
+    if (prompts.length === 0) {
+      fetchUserPrompts(true);
+    }
+  }, [fetchUserPrompts, prompts.length]);
+
+  // Check for highlighted prompt and scroll to it
+  useEffect(() => {
+    if (highlightedPromptId && sortedPrompts.length > 0) {
+      // Find the prompt in the sorted list
+      const highlightedPrompt = sortedPrompts.find(
+        (p) => p.id === highlightedPromptId
+      );
+
+      if (!highlightedPrompt) {
+        // If we can't find the prompt in the current list, fetch it
+        fetchUserPrompts(false).then(() => {
+          // The scroll effect will happen on the next render when the prompt is available
+        });
+        return;
+      }
+
+      // Scroll to the highlighted prompt after a short delay to ensure rendering
+      setTimeout(() => {
+        if (highlightedCardRef.current) {
+          highlightedCardRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+
+          // Add a temporary highlight effect with green border
+          highlightedCardRef.current.classList.add(
+            "ring-4",
+            "ring-green-500",
+            "ring-opacity-70",
+            "transition-all",
+            "duration-500"
+          );
+
+          // Remove the highlight effect after a delay
+          setTimeout(() => {
+            if (highlightedCardRef.current) {
+              highlightedCardRef.current.classList.remove(
+                "ring-4",
+                "ring-green-500",
+                "ring-opacity-70"
+              );
+
+              // Clear the highlighted prompt ID after the animation
+              setHighlightedPromptId(null);
+            }
+          }, 3000);
+        }
+      }, 300);
+    }
+  }, [
+    highlightedPromptId,
+    sortedPrompts,
+    setHighlightedPromptId,
+    fetchUserPrompts,
+  ]);
 
   const handlePromptClick = (prompt: Prompt) => {
     setSelectedPrompt(prompt);
@@ -177,8 +255,10 @@ export default function MyPrompts() {
             variant: "destructive",
             duration: TOAST_DEFAULT_DURATION,
           });
-          // Refresh to get correct data after failure
-          fetchUserPrompts(true);
+          // Only refresh the specific prompt that failed to update
+          if (editingPrompt?.id) {
+            fetchPromptById(editingPrompt.id);
+          }
         }
       } else {
         // Create new prompt
@@ -197,6 +277,10 @@ export default function MyPrompts() {
             duration: TOAST_DEFAULT_DURATION,
           });
           setIsPromptModalOpen(false);
+
+          // Navigate to the prompt detail page with the newly created prompt
+          setSelectedPrompt(result.prompt);
+          router.push("/myprompts/prompt");
         } else {
           toast({
             title: "Error",
@@ -216,8 +300,7 @@ export default function MyPrompts() {
             : "An unexpected error occurred",
         variant: "destructive",
       });
-      // Refresh to get correct data after failure
-      fetchUserPrompts(true);
+      // No need to refresh the entire list for a single prompt creation error
     } finally {
       setIsSubmitting(false);
     }
@@ -246,8 +329,11 @@ export default function MyPrompts() {
           variant: "destructive",
           duration: TOAST_DEFAULT_DURATION,
         });
-        // Refresh to get correct data after failure
-        fetchUserPrompts(true);
+        // If deletion failed, we need to add the prompt back to the UI
+        // We can do this by fetching just that prompt
+        if (promptToDelete?.id) {
+          fetchPromptById(promptToDelete.id);
+        }
       }
     } catch (error) {
       toast({
@@ -257,8 +343,10 @@ export default function MyPrompts() {
         variant: "destructive",
         duration: TOAST_DEFAULT_DURATION,
       });
-      // Refresh to get correct data after failure
-      fetchUserPrompts(true);
+      // If deletion failed, we need to add the prompt back to the UI
+      if (promptToDelete?.id) {
+        fetchPromptById(promptToDelete.id);
+      }
     } finally {
       setIsDeleteDialogOpen(false);
       setPromptToDelete(null);
@@ -311,6 +399,12 @@ export default function MyPrompts() {
           variant: "destructive",
           duration: TOAST_DEFAULT_DURATION,
         });
+
+        // Refresh the data to restore the deleted prompts
+        fetchUserPrompts(false);
+
+        // Refresh the data to restore the deleted prompts
+        fetchUserPrompts(false);
       }
     } catch (error) {
       toast({
@@ -462,15 +556,24 @@ export default function MyPrompts() {
           prompts.length > 0 &&
           layoutView === "card" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {prompts.map((prompt) => (
-                <PromptCard
+              {sortedPrompts.map((prompt) => (
+                <div
                   key={prompt.id}
-                  prompt={prompt}
-                  onClick={handlePromptClick}
-                  onEdit={handleEditPrompt}
-                  onDelete={handleDeletePrompt}
-                  onTagClick={handleTagClick}
-                />
+                  ref={
+                    prompt.id === highlightedPromptId
+                      ? highlightedCardRef
+                      : undefined
+                  }
+                  className={`transition-all duration-300 ${prompt.id === highlightedPromptId ? "scale-[1.02]" : ""}`}
+                >
+                  <PromptCard
+                    prompt={prompt}
+                    onClick={handlePromptClick}
+                    onEdit={handleEditPrompt}
+                    onDelete={handleDeletePrompt}
+                    onTagClick={handleTagClick}
+                  />
+                </div>
               ))}
             </div>
           )}
@@ -481,7 +584,7 @@ export default function MyPrompts() {
           prompts.length > 0 &&
           layoutView === "table" && (
             <PromptTable
-              data={prompts}
+              data={sortedPrompts}
               onEdit={handleEditPrompt}
               onDelete={handleDeletePrompt}
               onTagClick={handleTagClick}

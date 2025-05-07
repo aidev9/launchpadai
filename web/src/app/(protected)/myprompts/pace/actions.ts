@@ -28,12 +28,20 @@ When enhancing problem statements, follow these guidelines:
 5. Ensure the problem is framed in a way that leads to actionable solutions
 
 Provide 5 different suggestions for improving the problem statement, each taking a slightly different approach.
-Each suggestion should be a complete problem statement that the user can use directly.
-Make each suggestion distinct and valuable in its own way.
+Each suggestion should have a label that describes the approach and a body that contains the actual suggestion.
 
-Format your response as 5 separate suggestions, each on its own line.
-Do not include numbering, bullet points, or any other formatting - just the plain text of each suggestion.
-Each suggestion should be self-contained and ready to use.`;
+Your response must be a valid JSON object with the following structure:
+{
+  "suggestions": [
+    {
+      "label": "Short descriptive label for the approach (e.g., 'Business Challenge', 'Technical Perspective')",
+      "body": "Complete suggestion text that the user can apply directly"
+    },
+    // ... 4 more suggestions with the same structure
+  ]
+}
+
+Make each suggestion distinct and valuable in its own way. The labels should be concise (2-4 words) and descriptive of the approach taken.`;
 
 /**
  * System prompt for ask enhancement
@@ -50,12 +58,20 @@ When enhancing prompts, follow these guidelines:
 6. Remove unnecessary information
 
 Provide 5 different suggestions for improving the prompt, each taking a slightly different approach.
-Each suggestion should be a complete prompt that the user can use directly.
-Make each suggestion distinct and valuable in its own way.
+Each suggestion should have a label that describes the approach and a body that contains the actual suggestion.
 
-Format your response as 5 separate suggestions, each on its own line.
-Do not include numbering, bullet points, or any other formatting - just the plain text of each suggestion.
-Each suggestion should be self-contained and ready to use.`;
+Your response must be a valid JSON object with the following structure:
+{
+  "suggestions": [
+    {
+      "label": "Short descriptive label for the approach (e.g., 'Format-focused', 'Analytical approach')",
+      "body": "Complete suggestion text that the user can apply directly"
+    },
+    // ... 4 more suggestions with the same structure
+  ]
+}
+
+Make each suggestion distinct and valuable in its own way. The labels should be concise (2-4 words) and descriptive of the approach taken.`;
 
 /**
  * System prompt for chain variations
@@ -111,14 +127,16 @@ When evaluating prompts, consider these factors:
 5. Constraints: Does the prompt include appropriate constraints or requirements?
 6. Purpose: Is the goal or purpose of the prompt clear?
 
-Assign a score from 0 to 100 based on these factors, where:
-- 0-20: Very poor (vague, ambiguous, lacking context)
-- 21-40: Poor (unclear, minimal specificity)
-- 41-60: Average (somewhat clear but could be improved)
-- 61-80: Good (clear, specific, with some context)
-- 81-100: Excellent (very clear, highly specific, well-structured)
+Assign a score from 0 to 70 based on these factors, where:
+- 0-15: Very poor (vague, ambiguous, lacking context)
+- 16-30: Poor (unclear, minimal specificity)
+- 31-45: Average (somewhat clear but could be improved)
+- 46-60: Good (clear, specific, with some context)
+- 61-70: Excellent (very clear, highly specific, well-structured)
 
-Respond with ONLY a number between 0 and 100. Do not include any explanation or additional text.`;
+Be conservative in your scoring. Most prompts should fall in the 30-50 range unless they are exceptionally well-crafted.
+
+Respond with ONLY a number between 0 and 70. Do not include any explanation or additional text.`;
 
 /**
  * Generate suggestions for improving a problem statement
@@ -143,14 +161,62 @@ export async function generateProblemSuggestions(problemText: string) {
         topP: defaultSettings.topP,
       });
 
-      // Stream the text deltas to the client
-      const { textStream } = result;
-      for await (const delta of textStream) {
-        stream.update(delta);
+      // Collect the full response instead of streaming deltas
+      let fullResponse = "";
+      for await (const delta of result.textStream) {
+        fullResponse += delta;
       }
 
-      // Complete the stream
-      stream.done();
+      // Try to parse the response as JSON
+      try {
+        // Ensure the response is valid JSON
+        const jsonResponse = JSON.parse(fullResponse);
+
+        // Validate the structure
+        if (
+          !jsonResponse.suggestions ||
+          !Array.isArray(jsonResponse.suggestions)
+        ) {
+          throw new Error(
+            "Invalid response structure: missing suggestions array"
+          );
+        }
+
+        // Stream the validated JSON response
+        stream.update(JSON.stringify(jsonResponse));
+        stream.done();
+      } catch (jsonError) {
+        console.error("Error parsing AI response as JSON:", jsonError);
+
+        // Fallback: Try to convert plain text response to JSON format
+        try {
+          const lines = fullResponse
+            .split("\n")
+            .filter((line) => line.trim().length > 0);
+          const suggestions = lines.slice(0, 5).map((line, index) => {
+            // Use default labels if we can't parse JSON
+            const defaultLabels = [
+              "Business Challenge",
+              "Technical Perspective",
+              "User-Centered View",
+              "Scope Definition",
+              "Risk Assessment",
+            ];
+            return {
+              label:
+                index < defaultLabels.length
+                  ? defaultLabels[index]
+                  : `Suggestion ${index + 1}`,
+              body: line.trim(),
+            };
+          });
+
+          stream.update(JSON.stringify({ suggestions }));
+          stream.done();
+        } catch (fallbackError) {
+          stream.error("Failed to parse AI response as JSON");
+        }
+      }
     } catch (error) {
       console.error("Error generating problem suggestions:", error);
       stream.error(
@@ -187,14 +253,62 @@ export async function generateAskSuggestions(askText: string) {
         topP: defaultSettings.topP,
       });
 
-      // Stream the text deltas to the client
-      const { textStream } = result;
-      for await (const delta of textStream) {
-        stream.update(delta);
+      // Collect the full response instead of streaming deltas
+      let fullResponse = "";
+      for await (const delta of result.textStream) {
+        fullResponse += delta;
       }
 
-      // Complete the stream
-      stream.done();
+      // Try to parse the response as JSON
+      try {
+        // Ensure the response is valid JSON
+        const jsonResponse = JSON.parse(fullResponse);
+
+        // Validate the structure
+        if (
+          !jsonResponse.suggestions ||
+          !Array.isArray(jsonResponse.suggestions)
+        ) {
+          throw new Error(
+            "Invalid response structure: missing suggestions array"
+          );
+        }
+
+        // Stream the validated JSON response
+        stream.update(JSON.stringify(jsonResponse));
+        stream.done();
+      } catch (jsonError) {
+        console.error("Error parsing AI response as JSON:", jsonError);
+
+        // Fallback: Try to convert plain text response to JSON format
+        try {
+          const lines = fullResponse
+            .split("\n")
+            .filter((line) => line.trim().length > 0);
+          const suggestions = lines.slice(0, 5).map((line, index) => {
+            // Use default labels if we can't parse JSON
+            const defaultLabels = [
+              "Format-focused",
+              "Analytical approach",
+              "Creative exploration",
+              "Step-by-step guide",
+              "Comparative framework",
+            ];
+            return {
+              label:
+                index < defaultLabels.length
+                  ? defaultLabels[index]
+                  : `Suggestion ${index + 1}`,
+              body: line.trim(),
+            };
+          });
+
+          stream.update(JSON.stringify({ suggestions }));
+          stream.done();
+        } catch (fallbackError) {
+          stream.error("Failed to parse AI response as JSON");
+        }
+      }
     } catch (error) {
       console.error("Error generating ask suggestions:", error);
       stream.error(
@@ -278,12 +392,13 @@ export async function calculatePrecisionScore(
     scoreText = scoreText.trim();
     const score = parseInt(scoreText, 10);
 
-    // Return the score, or 50 if parsing fails
-    return isNaN(score) ? 50 : Math.max(0, Math.min(100, score));
+    // Return the score, or 35 if parsing fails
+    // Cap the score at 70 instead of 100
+    return isNaN(score) ? 35 : Math.max(0, Math.min(70, score));
   } catch (error) {
     console.error("Error calculating precision score:", error);
-    // Return a default score if there's an error
-    return 50;
+    // Return a default score if there's an error (lowered from 50 to 35)
+    return 35;
   }
 }
 
@@ -298,7 +413,7 @@ export async function testPrompt(
   try {
     // Create a system prompt based on the suggestion type
     let systemPrompt =
-      "You are an expert at enhancing prompts to make them more effective.";
+      "You are an expert at enhancing prompts to make them more effective. Provide a detailed, well-structured response in Markdown format. Use headings, bullet points, and other formatting to make your response clear and organized. Be comprehensive and thorough in your enhancement of the prompt. IMPORTANT: Do NOT include any prefacing text like 'Enhanced Prompt' or 'Enhanced Prompt for [topic]'. Do NOT include the original prompt or any sections labeled 'Original Prompt'. Start directly with the enhanced prompt content.";
 
     switch (suggestionType) {
       case "Format-focused":

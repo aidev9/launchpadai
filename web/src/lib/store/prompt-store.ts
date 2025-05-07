@@ -79,6 +79,9 @@ export const selectedPromptAtom = atom<Prompt | null>(null);
 // Atom for storing the current prompt ID
 export const selectedPromptIdAtom = atom<string | null>(null);
 
+// Atom for storing the highlighted prompt ID (used for highlighting newly created prompts)
+export const highlightedPromptIdAtom = atom<string | null>(null);
+
 // Action types for prompt state management
 export type PromptAction =
   | { type: "ADD"; prompt: Prompt }

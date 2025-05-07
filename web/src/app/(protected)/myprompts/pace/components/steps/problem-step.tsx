@@ -1,20 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAtom } from "jotai";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, RotateCcw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { readStreamableValue } from "ai/rsc";
 import { SuggestionButton } from "../suggestion-button";
 import { DefinitionScore } from "../definition-score";
 import { InstructionsBox } from "../instructions-box";
-import { AnimatedMDEditor } from "../animated-md-editor";
+import { AnimatedMDEditor, AnimatedMDEditorRef } from "../animated-md-editor";
 import {
   paceWizardStateAtom,
   problemSuggestionsAtom,
   suggestionsLoadingAtom,
   updatePaceFieldAtom,
+  ProblemSuggestion,
 } from "@/lib/store/pace-store";
 import {
   generateProblemSuggestions,
@@ -30,6 +32,11 @@ export function ProblemStep() {
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isScoreLoading, setIsScoreLoading] = useState(false);
   const [showEditorAnimation, setShowEditorAnimation] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [previousContent, setPreviousContent] = useState<string>("");
+  const [canUndo, setCanUndo] = useState(false);
+  const editorRef = useRef<AnimatedMDEditorRef>(null);
 
   // Reset animation flag after animation completes
   useEffect(() => {
@@ -40,6 +47,20 @@ export function ProblemStep() {
       return () => clearTimeout(timer);
     }
   }, [showEditorAnimation]);
+
+  // Focus on the editor when the component mounts
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+  }, []);
+
+  // Generate suggestions on page load if there's already content in the MDEditor
+  useEffect(() => {
+    if (wizardState.problem.trim() && suggestions.length === 0) {
+      handleGenerateSuggestions();
+    }
+  }, []);
 
   // Calculate definition score when the problem text changes
   useEffect(() => {
@@ -62,11 +83,12 @@ export function ProblemStep() {
           .filter((p) => p.trim().length > 0).length;
 
         // Calculate score based on content length and structure
+        // Make scoring less generous - cap at 70 instead of 99
         let score = Math.min(
-          Math.floor(wordCount / 5) + // 1 point per 5 words
-            sentenceCount * 3 + // 3 points per sentence
-            paragraphCount * 5, // 5 points per paragraph
-          99 // Cap at 99
+          Math.floor(wordCount / 8) + // 1 point per 8 words (was 5)
+            sentenceCount * 2 + // 2 points per sentence (was 3)
+            paragraphCount * 3, // 3 points per paragraph (was 5)
+          70 // Cap at 70 (was 99)
         );
 
         // Ensure minimum score of 10 if there's any content
@@ -89,11 +111,20 @@ export function ProblemStep() {
     return () => clearTimeout(timer);
   }, [wizardState.problem, updateField]);
 
+  // CSS class for the animated sparkle icon
+  const sparkleIconClass = cn(
+    "h-4 w-4 mr-1",
+    "transition-transform duration-300",
+    "hover:animate-spin",
+    isGenerating && "animate-spin"
+  );
+
   // Generate suggestions based on the current problem text
   const handleGenerateSuggestions = async () => {
     if (!wizardState.problem.trim() || isLoading) return;
 
     setIsLoading(true);
+    setIsGenerating(true);
     try {
       // Call the AI service to generate suggestions
       const currentPrompt = wizardState.problem.trim();
@@ -106,34 +137,51 @@ export function ProblemStep() {
       }
 
       if (fullOutput) {
-        // Split the output into separate suggestions
-        const aiSuggestions = fullOutput
-          .split("\n")
-          .filter((suggestion) => suggestion.trim().length > 0)
-          .slice(0, 5); // Ensure we have at most 5 suggestions
+        try {
+          // Parse the JSON response
+          const jsonResponse = JSON.parse(fullOutput);
 
-        // Format suggestions with appropriate prefixes
-        const formattedSuggestions = aiSuggestions.map((suggestion, index) => {
-          const prefixes = [
-            "Reframe as business challenge",
-            "Technical deep dive",
-            "User-centered perspective",
-            "Scope definition",
-            "Risk assessment lens",
-          ];
-
-          // Use the prefix if available, otherwise use a generic one
-          const prefix =
-            index < prefixes.length ? prefixes[index] : "Alternative approach";
-          return `${prefix}: "${currentPrompt}" - ${suggestion}`;
-        });
-
-        setSuggestions(formattedSuggestions);
+          // Validate and set the suggestions
+          if (
+            jsonResponse.suggestions &&
+            Array.isArray(jsonResponse.suggestions)
+          ) {
+            setSuggestions(jsonResponse.suggestions);
+          } else {
+            console.error("Invalid suggestions format:", jsonResponse);
+            setSuggestions([]);
+          }
+        } catch (jsonError) {
+          console.error("Error parsing suggestions JSON:", jsonError);
+          setSuggestions([]);
+        }
       }
     } catch (error) {
       console.error("Error generating suggestions:", error);
     } finally {
       setIsLoading(false);
+      setIsGenerating(false);
+    }
+  };
+
+  // Debounced handler for editor changes
+  const handleEditorChange = (value?: string) => {
+    // Update the field immediately
+    updateField({
+      problem: value || "",
+      unifiedPrompt: value || "",
+    });
+
+    // Clear any existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Set a new timer if there's content
+    if (value && value.trim()) {
+      debounceTimerRef.current = setTimeout(() => {
+        handleGenerateSuggestions();
+      }, 5000); // 5 seconds debounce
     }
   };
 
@@ -144,15 +192,37 @@ export function ProblemStep() {
     }
   };
 
-  // Apply a suggestion with AI enhancement
-  const handleApplySuggestion = async (suggestion: string) => {
-    setIsEnhancing(true);
-    try {
-      // Extract the suggestion type from the suggestion text
-      const suggestionType = suggestion.split(":")[0];
+  // Handle undo action
+  const handleUndo = () => {
+    if (previousContent) {
+      // Restore the previous content
+      updateField({
+        problem: previousContent,
+        unifiedPrompt: previousContent,
+      });
 
-      // Extract the actual suggestion content
-      const suggestionContent = suggestion.split(" - ")[1] || "";
+      // Trigger the animation
+      setShowEditorAnimation(true);
+
+      // Reset the undo state
+      setPreviousContent("");
+      setCanUndo(false);
+    }
+  };
+
+  // Apply a suggestion with AI enhancement
+  const handleApplySuggestion = async (suggestion: ProblemSuggestion) => {
+    setIsEnhancing(true);
+
+    // Save the current content for undo
+    const currentContent =
+      wizardState.unifiedPrompt.trim() || wizardState.problem.trim();
+    setPreviousContent(currentContent);
+    setCanUndo(true);
+    try {
+      // Extract the suggestion label and body
+      const suggestionType = suggestion.label;
+      const suggestionContent = suggestion.body;
 
       // Get the current prompt content - use unifiedPrompt if available, otherwise use problem
       const currentPrompt =
@@ -189,7 +259,9 @@ export function ProblemStep() {
       try {
         // Use the calculatePrecisionScore function to get a real score
         const newScore = await calculatePrecisionScore(enhancedPrompt);
-        updateField({ definitionScore: newScore });
+        // Ensure the score never goes down after using AI
+        const currentScore = wizardState.definitionScore || 0;
+        updateField({ definitionScore: Math.max(newScore, currentScore) });
       } catch (error) {
         console.error("Error calculating definition score:", error);
       } finally {
@@ -199,6 +271,7 @@ export function ProblemStep() {
       console.error("Error enhancing prompt:", error);
     } finally {
       setIsEnhancing(false);
+      setIsGenerating(false);
     }
   };
 
@@ -208,25 +281,38 @@ export function ProblemStep() {
       <div className="md:col-span-1 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium">AI Suggestions</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleGenerateSuggestions}
-            disabled={isLoading || !wizardState.problem.trim()}
-            className="flex items-center gap-1"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-1" />
-            )}
-            <span>{isLoading ? "Generating..." : "Generate"}</span>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleUndo}
+              disabled={!canUndo || isLoading || isEnhancing}
+              className="flex items-center gap-1 bg-gray-100 border-2 border-gray-300 hover:bg-gray-200"
+              title="Undo last change"
+            >
+              <RotateCcw className="h-4 w-4 mr-1" />
+              <span>Undo</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateSuggestions}
+              disabled={isLoading || !wizardState.problem.trim()}
+              className="flex items-center gap-1 bg-gray-100 border-2 border-gray-300 hover:bg-gray-200"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Sparkles className={sparkleIconClass} />
+              )}
+              <span>{isLoading ? "Generating..." : "Generate"}</span>
+            </Button>
+          </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 min-h-[380px] h-[380px] overflow-y-auto">
           {isLoading || isEnhancing ? (
-            <div className="flex items-center justify-center h-40">
+            <div className="flex items-center justify-center h-[380px]">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               <span className="ml-2 text-sm text-muted-foreground">
                 {isEnhancing
@@ -262,6 +348,18 @@ export function ProblemStep() {
             <DefinitionScore score={wizardState.definitionScore} />
           )}
         </div>
+
+        {/* Tips box moved to left column */}
+        <div className="bg-muted p-4 rounded-md mt-6">
+          <h4 className="font-medium">Tips for a good problem statement:</h4>
+          <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+            <li>Be specific about what you're trying to achieve</li>
+            <li>Include relevant context and constraints</li>
+            <li>Avoid vague or ambiguous language</li>
+            <li>Focus on the problem, not the solution</li>
+            <li>Consider who will be using the prompt and for what purpose</li>
+          </ul>
+        </div>
       </div>
 
       {/* Right column - Problem editor */}
@@ -276,33 +374,19 @@ export function ProblemStep() {
                   ? wizardState.problem
                   : String(wizardState.problem)
             }
-            onChange={(value) =>
-              updateField({
-                problem: value || "",
-                unifiedPrompt: value || "",
-              })
-            }
+            onChange={handleEditorChange}
             onBlur={handleEditorBlur}
-            height={300}
+            ref={editorRef}
+            height={640}
             preview="edit"
             showAnimation={showEditorAnimation}
+            autoFocus={true}
           />
           <p className="text-sm text-muted-foreground mt-2">
             Clearly define the problem you're trying to solve. What are you
             trying to achieve? What context is important? Be as specific as
             possible.
           </p>
-        </div>
-
-        <div className="bg-muted p-4 rounded-md">
-          <h4 className="font-medium">Tips for a good problem statement:</h4>
-          <ul className="list-disc list-inside text-sm space-y-1 mt-2">
-            <li>Be specific about what you're trying to achieve</li>
-            <li>Include relevant context and constraints</li>
-            <li>Avoid vague or ambiguous language</li>
-            <li>Focus on the problem, not the solution</li>
-            <li>Consider who will be using the prompt and for what purpose</li>
-          </ul>
         </div>
 
         {/* Instructions Box */}

@@ -1,6 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import {
+  highlightedPromptIdAtom,
+  selectedPromptAtom,
+} from "@/lib/store/prompt-store";
 import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -14,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { ArrowRight } from "lucide-react";
 
 // Import PACE store atoms
@@ -47,7 +51,20 @@ export default function PaceWizard() {
   const router = useRouter();
   const { toast } = useToast();
 
+  // Get the atom for highlighting prompts
+  const [, setHighlightedPromptId] = useAtom(highlightedPromptIdAtom);
+  // Get the atom for setting the selected prompt
+  const setSelectedPrompt = useSetAtom(selectedPromptAtom);
+
   const totalSteps = 6;
+
+  // Reset wizard state when component unmounts
+  useEffect(() => {
+    return () => {
+      // This cleanup function runs when the component unmounts
+      resetWizard();
+    };
+  }, [resetWizard]);
 
   // Navigate to next step
   const goToNextStep = () => {
@@ -110,6 +127,8 @@ export default function PaceWizard() {
     setCurrentStep(step);
   };
 
+  // This is now declared at the component level
+
   // Handle form submission
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -131,17 +150,26 @@ export default function PaceWizard() {
       // Create new prompt
       const result = await createPromptAction(promptData);
 
-      if (result.success) {
+      if (result.success && result.prompt) {
         toast({
           title: "Success",
           description: "PACE prompt created successfully.",
         });
 
-        // Reset the wizard state
-        resetWizard();
+        // Prepare for navigation without resetting state yet
+        // This prevents the momentary display of the first step
 
-        // Redirect to the prompts page
-        router.push("/myprompts");
+        // First disable any UI interactions to prevent further changes
+        setIsSubmitting(true);
+
+        // Set the selected prompt for the detail view
+        setSelectedPrompt(result.prompt);
+
+        // Navigate to the prompt detail page
+        router.push("/myprompts/prompt");
+
+        // We don't reset the wizard state here, as it would cause the UI to flash
+        // The state will be reset when the component unmounts or when the user returns
       } else {
         toast({
           title: "Error",
