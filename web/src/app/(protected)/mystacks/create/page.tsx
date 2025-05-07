@@ -21,6 +21,7 @@ import {
   techStackWizardStateAtom,
   selectedTechStackIdAtom,
   isEditModeAtom,
+  selectedTechStackAtom,
 } from "@/lib/store/techstack-store";
 import { TechStack, TechStackInput } from "@/lib/firebase/schema";
 import {
@@ -52,6 +53,7 @@ export default function TechStackWizard() {
   const [selectedTechStackId, setSelectedTechStackId] = useAtom(
     selectedTechStackIdAtom
   );
+  const [, setSelectedTechStack] = useAtom(selectedTechStackAtom);
   const [isEditMode, setIsEditMode] = useAtom(isEditModeAtom);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -207,6 +209,11 @@ export default function TechStackWizard() {
   // Handle form submission
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    let success = false;
+    let newStackIdForNavigation: string | undefined = undefined;
+    const editStackIdForNavigation =
+      isEditMode && selectedTechStackId ? selectedTechStackId : undefined;
+
     try {
       // Validate required fields before submission
       if (!wizardState.name || !wizardState.description) {
@@ -225,7 +232,6 @@ export default function TechStackWizard() {
         frontEndStack: wizardState.frontEndStack,
         backendStack: wizardState.backendStack,
         database: wizardState.database,
-        // Use empty arrays for optional fields if not provided
         aiAgentStack:
           wizardState.aiAgentStack.length > 0 ? wizardState.aiAgentStack : [],
         integrations:
@@ -239,73 +245,47 @@ export default function TechStackWizard() {
         documentationLinks: wizardState.documentationLinks || [],
       };
 
-      let result;
-
       if (isEditMode && selectedTechStackId) {
-        // Update existing tech stack
-        result = await updateTechStack(selectedTechStackId, techStackData);
-
+        const result = await updateTechStack(
+          selectedTechStackId,
+          techStackData
+        );
         if (result.success) {
           toast({
             title: "Success",
             description: "Tech stack updated successfully.",
           });
+          awardXp("editTechStack");
+          // For edit mode, selectedTechStackId is already set and correct.
+          // Optionally, clear the selectedTechStack object to force a full refetch if underlying data changed significantly.
+          // setSelectedTechStack(null);
+          success = true;
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to update tech stack",
+            variant: "destructive",
+          });
         }
       } else {
-        // Create new tech stack
-        result = await createTechStack(techStackData);
-
-        if (result.success) {
-          // Award XP for creating a new stack
-          await awardXp("create_stack");
-
+        const result = await createTechStack(techStackData);
+        if (result.success && result.id) {
           toast({
             title: "Success",
-            description:
-              "Tech stack created successfully (+75 XP). Assets are being generated in the background.",
+            description: "Tech stack created successfully.",
           });
-
-          // Store the ID of the newly created tech stack
-          if (result.id) {
-            setSelectedTechStackId(result.id);
-          }
+          awardXp("create_stack");
+          setSelectedTechStackId(result.id); // Set the ID of the newly created stack
+          setSelectedTechStack(null); // Clear the selected stack object to force refetch
+          newStackIdForNavigation = result.id;
+          success = true;
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to create tech stack",
+            variant: "destructive",
+          });
         }
-      }
-
-      if (result.success) {
-        // Reset the form state
-        setWizardState({
-          appType: "",
-          frontEndStack: "",
-          backendStack: "",
-          database: "",
-          aiAgentStack: [],
-          integrations: [],
-          deploymentStack: "",
-          name: "",
-          description: "",
-          tags: [],
-          phase: [],
-          prompt: "",
-          documentationLinks: [],
-        });
-
-        // Reset the current step and edit mode
-        setCurrentStep(1);
-        setIsEditMode(false);
-
-        // Redirect to the stack page
-        // The app uses Jotai state management to store the selected tech stack
-        // rather than URL parameters, so we just navigate to the stack page
-        router.push("/mystacks/stack");
-      } else {
-        toast({
-          title: "Error",
-          description:
-            result.error ||
-            `Failed to ${isEditMode ? "update" : "create"} tech stack`,
-          variant: "destructive",
-        });
       }
     } catch (error) {
       toast({
@@ -318,6 +298,13 @@ export default function TechStackWizard() {
       });
     } finally {
       setIsSubmitting(false);
+      if (success) {
+        if (newStackIdForNavigation) {
+          router.push(`/mystacks/stack`);
+        } else if (editStackIdForNavigation) {
+          router.push(`/mystacks/stack`);
+        }
+      }
     }
   };
 

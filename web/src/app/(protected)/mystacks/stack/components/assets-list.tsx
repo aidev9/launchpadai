@@ -9,12 +9,14 @@ interface AssetsListProps {
   assets: TechStackAsset[];
   selectedAsset: TechStackAsset | null;
   onSelectAsset: (asset: TechStackAsset) => void;
+  generatingAssets: Record<string, boolean>;
 }
 
 export function AssetsList({
   assets,
   selectedAsset,
   onSelectAsset,
+  generatingAssets,
 }: AssetsListProps) {
   return (
     <Card>
@@ -32,19 +34,51 @@ export function AssetsList({
             >
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  {asset.isGenerating && (
+                  {/* Use generatingAssets to determine if an asset is generating */}
+                  {asset.id && generatingAssets[asset.id] && (
                     <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
                   )}
+                  {asset.recentlyCompleted &&
+                    !(asset.id && generatingAssets[asset.id]) && (
+                      <div className="relative">
+                        <div className="animate-ping absolute h-4 w-4 rounded-full bg-green-400 opacity-75"></div>
+                        <div className="relative h-4 w-4 rounded-full bg-green-500"></div>
+                      </div>
+                    )}
+                  {asset.needsGeneration &&
+                    !(asset.id && generatingAssets[asset.id]) &&
+                    !asset.recentlyCompleted && (
+                      <div className="h-4 w-4 rounded-full border-2 border-amber-400"></div>
+                    )}
                   <h3 className="font-medium">{asset.title}</h3>
                 </div>
-                <Badge>{asset.assetType}</Badge>
+                <div className="flex items-center gap-2">
+                  {asset.needsGeneration &&
+                    !(asset.id && generatingAssets[asset.id]) && (
+                      <Badge
+                        variant="outline"
+                        className="text-amber-500 border-amber-500"
+                      >
+                        Draft
+                      </Badge>
+                    )}
+                  <Badge>{asset.assetType}</Badge>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {asset.tags.map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
+              <div className="flex flex-wrap gap-1 mt-2 justify-between items-center">
+                <div className="flex flex-wrap gap-1">
+                  {asset.tags.map((tag) => (
+                    <Badge key={tag} variant="outline" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                {/* Show green dot for generated assets */}
+                {asset.body &&
+                  !asset.needsGeneration &&
+                  !(asset.id && generatingAssets[asset.id]) && (
+                    <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                  )}
               </div>
             </div>
           ))

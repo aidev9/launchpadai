@@ -49,6 +49,13 @@ export const selectedTechStackAtom = atom<TechStack | null>(null);
 export const selectedTechStackIdAtom = atom<string | null>(null);
 export const isEditModeAtom = atom<boolean>(false);
 
+// Atom for persisting column visibility for the tech stack table
+export const stackTableColumnVisibilityAtom = atom<Record<string, boolean>>({});
+
+// Atoms for stack table state
+export const stackTableSortingAtom = atom<SortingState>([]);
+export const stackTableRowSelectionAtom = atom<Record<string, boolean>>({});
+
 // Form state atoms for wizard
 export const techStackWizardStateAtom = atom<TechStack>({
   appType: "",
@@ -70,8 +77,6 @@ export const techStackWizardStateAtom = atom<TechStack>({
 export const currentWizardStepAtom = atom<number>(1);
 
 // Table state atoms
-export const techStackRowSelectionAtom = atom<Record<string, boolean>>({});
-export const techStackColumnVisibilityAtom = atom<Record<string, boolean>>({});
 export const techStackColumnFiltersAtom = atom<ColumnFiltersState>([]);
 export const techStackSortingAtom = atom<SortingState>([
   { id: "updatedAt", desc: true },

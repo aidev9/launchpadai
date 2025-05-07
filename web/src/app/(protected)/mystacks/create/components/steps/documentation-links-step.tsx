@@ -76,7 +76,12 @@ export function DocumentationLinksStep() {
             }}
             onKeyDown={handleKeyDown}
           />
-          <Button type="button" onClick={handleAddLink} size="icon">
+          <Button
+            type="button"
+            onClick={handleAddLink}
+            size="icon"
+            data-testid="add-documentation-link"
+          >
             <Plus className="h-4 w-4" />
           </Button>
         </div>

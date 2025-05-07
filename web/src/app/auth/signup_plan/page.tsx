@@ -13,25 +13,73 @@ import { selectedPlanAtom } from "@/stores/subscriptionStore";
 import { useRouter } from "next/navigation";
 import { SignUpPlanForm } from "./components/sign-up-plan-form";
 import Link from "next/link";
+import { getSubscriptionPlans } from "./actions";
 
 export default function SignUpPlan() {
   const [selectedPlan] = useAtom(selectedPlanAtom);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Redirect to regular signup if no plan is selected
+  // Validate the selected plan against available plans
   useEffect(() => {
-    if (!selectedPlan || selectedPlan.planType === "Free") {
-      router.push("/");
-    } else {
-      setLoading(false);
+    async function validatePlan() {
+      if (!selectedPlan || selectedPlan.planType === "Free") {
+        router.push("/");
+        return;
+      }
+
+      try {
+        // Fetch available plans from the server
+        const planData = await getSubscriptionPlans();
+
+        if (planData.error || !planData.plans) {
+          setError("Error loading subscription data");
+          return;
+        }
+
+        // Validate that the selected plan exists in available plans
+        const planExists = planData.plans.some(
+          (plan) => plan.title === selectedPlan.planType
+        );
+
+        if (!planExists) {
+          router.push("/");
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Error validating plan:", err);
+        setError("Error loading plan data");
+      }
     }
+
+    validatePlan();
   }, [selectedPlan, router]);
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
         Loading...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Error</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <div className="mt-4">
+            <button
+              onClick={() => router.push("/")}
+              className="px-4 py-2 bg-primary text-white rounded-md"
+            >
+              Return to Home
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

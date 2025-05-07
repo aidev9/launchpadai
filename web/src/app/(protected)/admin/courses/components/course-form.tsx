@@ -42,7 +42,10 @@ import {
 } from "@/lib/store/course-store";
 import ImageUploadFormControl from "@/components/ui/imageUploadFormControl";
 import { clientAuth } from "@/lib/firebase/client";
-import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import {
+  getCurrentUnixTimestamp,
+  TOAST_DEFAULT_DURATION,
+} from "@/utils/constants";
 
 const userId = clientAuth.currentUser?.uid;
 const COURSE_ASSETS_PATH = `storage/${userId}/courses`;
@@ -112,7 +115,7 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
           const updatedCourse: Course = {
             ...selectedCourse,
             ...data,
-            updatedAt: new Date().toISOString(),
+            updatedAt: getCurrentUnixTimestamp(),
           };
 
           // Update the selected course atom to reflect changes
@@ -148,8 +151,8 @@ export function CourseForm({ isEdit = false }: CourseFormProps) {
             ...data,
             url: data.url ?? "",
             tags: data.tags,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            createdAt: getCurrentUnixTimestamp(),
+            updatedAt: getCurrentUnixTimestamp(),
           };
 
           toast({

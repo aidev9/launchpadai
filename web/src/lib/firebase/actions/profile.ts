@@ -2,7 +2,7 @@
 
 import { adminDb } from "../admin";
 import { getCurrentUserId } from "../adminAuth";
-import { UserProfile } from "@/lib/store/user-store";
+import { UserProfile } from "../schema";
 import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { xpActions } from "@/xp/points-schedule"; // Import the XP schedule
@@ -54,6 +54,7 @@ export async function fetchUserProfile(): Promise<{
 
     // Get the current user data before incrementing
     const currentData = userDoc.data() || {};
+
     const currentXp = currentData.xp;
 
     console.log("currentXp:::", currentXp);
@@ -82,10 +83,14 @@ export async function fetchUserProfile(): Promise<{
     }
 
     // Explicitly handle properties
-    // const xpValue = currentData?.xp ?? 0;
     const levelValue = currentData?.level ?? 1;
+
     // Create restOfCurrentData excluding known numeric/handled fields
-    const { xp: _xp, level: _level, ...restOfCurrentData } = currentData as any;
+    const {
+      xp: _xp,
+      level: _level,
+      ...restOfSerializedData
+    } = currentData as any;
 
     // Create a user profile object reflecting the potentially updated XP value
     const profile: UserProfile = {
@@ -94,7 +99,7 @@ export async function fetchUserProfile(): Promise<{
       xp: newXp,
       level: levelValue,
       // Spread the rest of the data, ensuring our new xp isn't overwritten
-      ...restOfCurrentData,
+      ...restOfSerializedData,
     };
 
     // Revalidate related paths to ensure fresh data

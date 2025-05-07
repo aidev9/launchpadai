@@ -30,6 +30,7 @@ import {
   IconNotes,
   IconPlaylistAdd,
   IconCreditCard,
+  IconStack,
 } from "@tabler/icons-react";
 import {
   AudioWaveform,
@@ -82,7 +83,7 @@ export const sidebarData: SidebarData = {
             {
               title: "My Stacks",
               url: "/mystacks",
-              icon: IconCube,
+              icon: IconStack,
             },
             ...(isDev ? [] : []),
             {

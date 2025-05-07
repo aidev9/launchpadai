@@ -7,11 +7,11 @@ import { PricingCard } from "./pricing-card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { selectedPlanAtom, BillingCycle } from "@/stores/subscriptionStore";
-import { getPricingData, PricingPlan } from "@/app/actions/pricing";
+import { getSubscriptionPlans } from "@/app/(protected)/upgrade/actions";
 
 export function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(false);
-  const [pricingPlans, setPricingPlans] = useState<PricingPlan[]>([]);
+  const [pricingPlans, setPricingPlans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const setSelectedPlan = useSetAtom(selectedPlanAtom);
   const router = useRouter();
@@ -22,8 +22,25 @@ export function PricingSection() {
       setIsLoading(true);
       try {
         const billingCycle: BillingCycle = isAnnual ? "annual" : "monthly";
-        const data = await getPricingData(billingCycle);
-        setPricingPlans(data.plans);
+        const result = await getSubscriptionPlans();
+
+        if (result.error || !result.plans) {
+          console.error("Error fetching pricing data:", result.error);
+          return;
+        }
+
+        // Transform subscription plans to pricing card format
+        const formattedPlans = result.plans.map((plan) => ({
+          title: plan.title,
+          price: isAnnual ? plan.annual.price : plan.monthly.price,
+          description: plan.description,
+          features: plan.features.map((feature) => ({ text: feature })),
+          buttonText: getButtonText(plan.title),
+          buttonVariant: plan.title === "Builder" ? "default" : "outline",
+          isPopular: plan.title === "Builder",
+        }));
+
+        setPricingPlans(formattedPlans);
       } catch (error) {
         console.error("Error fetching pricing data:", error);
       } finally {
@@ -33,6 +50,22 @@ export function PricingSection() {
 
     fetchPricingData();
   }, [isAnnual]);
+
+  // Get button text based on plan title
+  const getButtonText = (planTitle: string) => {
+    switch (planTitle) {
+      case "Free":
+        return "Start Free";
+      case "Explorer":
+        return "Get Started";
+      case "Builder":
+        return "Start Building";
+      case "Accelerator":
+        return "Scale Faster";
+      default:
+        return "Select Plan";
+    }
+  };
 
   // Handle plan selection
   const handlePlanSelection = (planTitle: string, price: number) => {

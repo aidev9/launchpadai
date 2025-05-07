@@ -1,8 +1,11 @@
-import { faker } from '@faker-js/faker'
+import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { faker } from "@faker-js/faker";
+import { get } from "http";
 
 export const users = Array.from({ length: 20 }, () => {
-  const firstName = faker.person.firstName()
-  const lastName = faker.person.lastName()
+  const firstName = faker.person.firstName();
+  const lastName = faker.person.lastName();
+
   return {
     id: faker.string.uuid(),
     firstName,
@@ -11,20 +14,21 @@ export const users = Array.from({ length: 20 }, () => {
       .username({ firstName, lastName })
       .toLocaleLowerCase(),
     email: faker.internet.email({ firstName }).toLocaleLowerCase(),
-    phoneNumber: faker.phone.number({ style: 'international' }),
+    phoneNumber: faker.phone.number({ style: "international" }),
     status: faker.helpers.arrayElement([
-      'active',
-      'inactive',
-      'invited',
-      'suspended',
+      "active",
+      "inactive",
+      "invited",
+      "suspended",
     ]),
     role: faker.helpers.arrayElement([
-      'superadmin',
-      'admin',
-      'cashier',
-      'manager',
+      "superadmin",
+      "admin",
+      "cashier",
+      "manager",
     ]),
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.recent(),
-  }
-})
+    // Convert Date objects to Unix timestamps (seconds)
+    createdAt: getCurrentUnixTimestamp(),
+    updatedAt: getCurrentUnixTimestamp(),
+  };
+});

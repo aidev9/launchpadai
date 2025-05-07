@@ -2,26 +2,7 @@
 
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-
-// Define the user profile interface
-export interface UserProfile {
-  uid: string;
-  displayName?: string | null;
-  email?: string | null;
-  photoURL?: string | null;
-  isEmailVerified?: boolean;
-  createdAt?: string;
-  userType?: "user" | "admin" | "superadmin";
-  subscription?: "free" | "pro" | "enterprise";
-  xp?: number;
-  level?: number;
-  hasAnsweredTimelineQuestion?: boolean;
-  hasCompletedOnboarding?: boolean;
-  completedQuests?: string[];
-  bio?: string;
-  urls?: { value: string }[];
-  // Add other fields as needed based on your app
-}
+import { UserProfile } from "../firebase/schema";
 
 // Create a persistent storage atom for user profile
 export const userProfileAtom = atomWithStorage<UserProfile | null>(

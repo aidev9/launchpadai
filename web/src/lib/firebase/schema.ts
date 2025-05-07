@@ -1,5 +1,69 @@
 import { z } from "zod";
 
+// START: USER PROFILE
+export interface UserProfile {
+  uid: string;
+  displayName?: string | null;
+  email?: string | null;
+  photoURL?: string | null;
+  isEmailVerified?: boolean;
+  createdAt?: string;
+  userType?: "user" | "admin" | "superadmin";
+  subscription?: "free" | "pro" | "enterprise";
+  xp?: number;
+  level?: number;
+  hasAnsweredTimelineQuestion?: boolean;
+  hasCompletedOnboarding?: boolean;
+  completedQuests?: string[];
+  bio?: string;
+  urls?: { value: string }[];
+}
+
+// END: USER PROFILE
+
+// START: SUBSCRIPTION
+// Define subscription interface
+export interface Subscription {
+  planType: string;
+  billingCycle: "monthly" | "annual";
+  price: number;
+  active: boolean;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  createdAt: any;
+  paymentIntentId: string;
+}
+
+// Schema for user subscription data
+export const userSubscriptionSchema = z.object({
+  userId: z.string(),
+  planType: z.string(),
+  billingCycle: z.enum(["monthly", "annual"]),
+  price: z.number(),
+  paymentIntentId: z.string(),
+  stripeCustomerId: z.string(),
+  stripeSubscriptionId: z.string(),
+});
+
+// Define plan types and pricing interface
+export interface PlanOption {
+  title: string;
+  description: string;
+  monthly: {
+    price: number;
+    description: string;
+    priceId: string;
+  };
+  annual: {
+    price: number;
+    description: string;
+    priceId: string;
+  };
+  features: string[];
+}
+
+// END: SUBSCRIPTION
+
 // START: QUESTIONS
 // TODO: Clean up the question schema
 export interface Question {
@@ -9,8 +73,8 @@ export interface Question {
   tags?: string[];
   phase?: string;
   order?: number;
-  createdAt?: string;
-  last_modified?: string;
+  createdAt?: number;
+  last_modified?: number;
 }
 // Schema for questions within a product
 export const productQuestionSchema = z.object({
@@ -18,8 +82,8 @@ export const productQuestionSchema = z.object({
   question: z.string(),
   answer: z.string().nullable().optional(),
   tags: z.array(z.string()),
-  last_modified: z.coerce.date(),
-  createdAt: z.coerce.date(),
+  last_modified: z.number(),
+  createdAt: z.number(),
 });
 
 export type ProductQuestion = z.infer<typeof productQuestionSchema>;
@@ -49,8 +113,8 @@ export interface Course {
   filePath?: string; // Path to the image in Firebase Storage
   url: string;
   tags: string[];
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 // Schema for course validation
@@ -80,8 +144,8 @@ export interface Module {
   attachments: string[]; // URLs of attachments
   tags: string[];
   xpAwards: number;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 // Schema for module validation
@@ -180,8 +244,8 @@ export interface TechStack {
   phase: string[];
   prompt?: string;
   documentationLinks?: string[];
-  createdAt?: number | string;
-  updatedAt?: number | string;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 /**
@@ -217,6 +281,9 @@ export interface TechStackAsset {
   createdAt?: number;
   updatedAt?: number;
   isGenerating?: boolean;
+  recentlyCompleted?: boolean;
+  completedAt?: number;
+  needsGeneration?: boolean;
 }
 
 export const techStackAssetInputSchema = z.object({

@@ -100,21 +100,23 @@ export default function SubscriptionSettings() {
 
   // Helper function to capitalize the first letter of a string
   const capitalize = (str: string) => {
-    return str.charAt(0).toUpperCase() + str.slice(1);
+    try {
+      if (!str) return str;
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    } catch (error) {
+      console.error("Error capitalizing string:", error);
+      return str;
+    }
   };
 
   // Helper function to get status badge color
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "active":
-        return "default";
-      case "canceled":
-        return "destructive";
-      case "past_due":
-        // Map 'past_due' status to 'destructive' variant as 'warning' is not directly supported
-        return "destructive";
-      default:
-        return "secondary";
+  const getStatusBadgeVariant = (status: boolean) => {
+    if (status === undefined) return "secondary"; // Default to secondary if status is undefined
+
+    if (status) {
+      return "default"; // Active subscription
+    } else {
+      return "destructive"; // Canceled subscription
     }
   };
 
@@ -155,9 +157,11 @@ export default function SubscriptionSettings() {
                     </p>
                     <div className="flex items-center space-x-2">
                       <Badge
-                        variant={getStatusBadgeVariant(subscription.status)}
+                        variant={getStatusBadgeVariant(
+                          subscription.active as boolean
+                        )}
                       >
-                        {capitalize(subscription.status)}
+                        {subscription.active ? "Active" : "Inactive"}
                       </Badge>
                     </div>
                   </div>

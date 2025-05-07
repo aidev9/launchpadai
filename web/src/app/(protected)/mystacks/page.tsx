@@ -3,55 +3,120 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
-  Search as SearchIcon,
-  X,
   LayoutGrid,
   Table as TableIcon,
+  Layers,
+  MoreHorizontal,
+  Trash2,
 } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useToast } from "@/hooks/use-toast";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { TechStack } from "@/lib/firebase/schema";
-import { getAllTechStacks } from "@/lib/firebase/techstacks";
+import {
+  getAllTechStacks,
+  deleteTechStack,
+  deleteMultipleTechStacks,
+} from "@/lib/firebase/techstacks";
 import { PhaseFilter } from "@/components/prompts/phase-filter";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   techStackLayoutViewAtom,
   techStackPhaseFilterAtom,
   techStackSearchQueryAtom,
   selectedTechStackAtom,
+  selectedTechStackIdAtom,
+  techStackWizardStateAtom,
+  currentWizardStepAtom,
+  isEditModeAtom,
+  stackTableRowSelectionAtom,
+  deleteMultipleTechStacksAtom as deleteMultipleTechStacksOptimisticAtom,
+  deleteTechStackAtom as deleteTechStackOptimisticAtom,
+  allTechStacksAtom,
+  filteredTechStacksAtom,
+  techStacksLoadingAtom,
+  techStacksErrorAtom,
 } from "@/lib/store/techstack-store";
+import { StackDataTable } from "./components/stack-data-table";
+
+const initialWizardState = {
+  appType: "",
+  frontEndStack: "",
+  backendStack: "",
+  database: "",
+  aiAgentStack: [],
+  integrations: [],
+  deploymentStack: "",
+  name: "",
+  description: "",
+  tags: [],
+  phase: [],
+  prompt: "",
+  documentationLinks: [],
+};
 
 export default function MyTechStacks() {
   const router = useRouter();
   const { toast } = useToast();
   const [layoutView, setLayoutView] = useAtom(techStackLayoutViewAtom);
   const [phaseFilter, setPhaseFilter] = useAtom(techStackPhaseFilterAtom);
-  const [searchQuery, setSearchQuery] = useAtom(techStackSearchQueryAtom);
+  const [_searchQuery, setSearchQuery] = useAtom(techStackSearchQueryAtom);
   const [, setSelectedTechStack] = useAtom(selectedTechStackAtom);
+  const [, setSelectedTechStackId] = useAtom(selectedTechStackIdAtom);
+  const [, setTechStackWizardState] = useAtom(techStackWizardStateAtom);
+  const [, setCurrentWizardStep] = useAtom(currentWizardStepAtom);
+  const [, setIsEditMode] = useAtom(isEditModeAtom);
+  const [rowSelection, setRowSelection] = useAtom(stackTableRowSelectionAtom);
+  const [, optimisticDeleteMultiple] = useAtom(
+    deleteMultipleTechStacksOptimisticAtom
+  );
+  const [, optimisticDeleteSingle] = useAtom(deleteTechStackOptimisticAtom);
+  const [isDeleteSelectedDialogOpen, setIsDeleteSelectedDialogOpen] =
+    useState(false);
+  const [stackToDelete, setStackToDelete] = useState<TechStack | null>(null);
 
-  const [techStacks, setTechStacks] = useState<TechStack[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const filteredStacksData = useAtomValue(filteredTechStacksAtom);
+  const isLoading = useAtomValue(techStacksLoadingAtom);
+  const error = useAtomValue(techStacksErrorAtom);
 
-  // Fetch tech stacks
+  const [, setAllTechStacks] = useAtom(allTechStacksAtom);
+  const [, setIsLoading] = useAtom(techStacksLoadingAtom);
+  const [, setError] = useAtom(techStacksErrorAtom);
+
   useEffect(() => {
-    const fetchTechStacks = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         const result = await getAllTechStacks();
         if (result.success && result.techStacks) {
-          setTechStacks(result.techStacks);
+          setAllTechStacks(result.techStacks);
         } else {
           setError(result.error || "Failed to fetch tech stacks");
         }
-      } catch (error) {
+      } catch (errorMsg) {
         setError(
-          error instanceof Error
-            ? error.message
+          errorMsg instanceof Error
+            ? errorMsg.message
             : "An unexpected error occurred"
         );
       } finally {
@@ -59,42 +124,123 @@ export default function MyTechStacks() {
       }
     };
 
-    fetchTechStacks();
-  }, []);
-
-  // Filter tech stacks based on search query and phase filter
-  const filteredTechStacks = techStacks.filter((stack) => {
-    // Apply phase filter
-    if (
-      phaseFilter.length > 0 &&
-      !stack.phase.some((p) => phaseFilter.includes(p))
-    ) {
-      return false;
-    }
-
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      return (
-        stack.name.toLowerCase().includes(query) ||
-        stack.description?.toLowerCase().includes(query) ||
-        stack.tags.some((tag) => tag.toLowerCase().includes(query))
-      );
-    }
-
-    return true;
-  });
+    fetchData();
+  }, [setAllTechStacks, setIsLoading, setError]);
 
   const handleCreateTechStack = () => {
+    setSelectedTechStackId(null);
+    setSelectedTechStack(null);
+    setTechStackWizardState(initialWizardState);
+    setCurrentWizardStep(1);
+    setIsEditMode(false);
     router.push("/mystacks/create");
   };
 
-  const handleTechStackClick = (techStack: TechStack) => {
+  const handleViewStack = (techStack: TechStack) => {
+    setSelectedTechStackId(techStack.id ?? null);
     setSelectedTechStack(techStack);
     router.push("/mystacks/stack");
   };
 
-  const clearSearch = () => {
+  const handleEditStack = (techStack: TechStack) => {
+    setSelectedTechStackId(techStack.id ?? null);
+    setSelectedTechStack(techStack);
+    setTechStackWizardState({
+      appType: techStack.appType || "",
+      frontEndStack: techStack.frontEndStack || "",
+      backendStack: techStack.backendStack || "",
+      database: techStack.database || "",
+      aiAgentStack: techStack.aiAgentStack || [],
+      integrations: techStack.integrations || [],
+      deploymentStack: techStack.deploymentStack || "",
+      name: techStack.name || "",
+      description: techStack.description || "",
+      tags: techStack.tags || [],
+      phase: techStack.phase || [],
+      prompt: techStack.prompt || "",
+      documentationLinks: techStack.documentationLinks || [],
+    });
+    setCurrentWizardStep(1);
+    setIsEditMode(true);
+    router.push("/mystacks/create");
+  };
+
+  const handleDeleteStack = async () => {
+    if (!stackToDelete || !stackToDelete.id) return;
+    const stackIdToDelete = stackToDelete.id;
+    const stackNameToDelete = stackToDelete.name;
+    setStackToDelete(null);
+
+    optimisticDeleteSingle(stackIdToDelete);
+
+    const result = await deleteTechStack(stackIdToDelete);
+    if (result.success) {
+      toast({
+        title: "Success",
+        description: `Tech stack "${stackNameToDelete}" deleted.`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description:
+          result.error || `Failed to delete tech stack "${stackNameToDelete}".`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const selectedRowCount = Object.keys(rowSelection).filter(
+    (key) => rowSelection[key]
+  ).length;
+
+  const handleDeleteSelectedStacks = async () => {
+    const selectedRows = Object.keys(rowSelection).filter(
+      (key) => rowSelection[key]
+    );
+
+    if (selectedRows.length === 0) {
+      toast({ title: "No stacks selected", variant: "destructive" });
+      return;
+    }
+
+    // Map the selected row indices to actual tech stack IDs
+    // In TanStack Table, the row IDs are string representations of array indices
+    const selectedIds: string[] = selectedRows
+      .map((rowId) => {
+        const index = parseInt(rowId);
+        const stackId = filteredStacksData[index]?.id;
+        return typeof stackId === "string" ? stackId : null;
+      })
+      .filter((id): id is string => id !== null); // Type guard to ensure we only have strings
+
+    if (selectedIds.length === 0) {
+      toast({
+        title: "Error identifying selected stacks",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    optimisticDeleteMultiple(selectedIds);
+
+    const result = await deleteMultipleTechStacks(selectedIds);
+    if (result.success) {
+      toast({
+        title: "Success",
+        description: `${selectedIds.length} tech stack(s) deleted.`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "Failed to delete selected tech stacks.",
+        variant: "destructive",
+      });
+    }
+    setRowSelection({});
+    setIsDeleteSelectedDialogOpen(false);
+  };
+
+  const _clearSearch = () => {
     setSearchQuery("");
   };
 
@@ -111,6 +257,15 @@ export default function MyTechStacks() {
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">My Tech Stacks</h1>
           <div className="flex flex-wrap gap-2">
+            {selectedRowCount > 0 && (
+              <Button
+                variant="destructive"
+                onClick={() => setIsDeleteSelectedDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Selected ({selectedRowCount})
+              </Button>
+            )}
             <Button onClick={handleCreateTechStack}>
               <Plus className="h-4 w-4 mr-2" />
               Create New Tech Stack
@@ -118,9 +273,7 @@ export default function MyTechStacks() {
           </div>
         </div>
 
-        {/* Filter and Search row */}
         <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-          {/* Phase filter pills */}
           <div className="w-full md:flex-1 overflow-x-auto pb-2">
             <div className="inline-flex md:flex flex-nowrap md:flex-wrap">
               <PhaseFilter
@@ -130,28 +283,7 @@ export default function MyTechStacks() {
             </div>
           </div>
 
-          {/* Search bar and view toggles */}
           <div className="flex gap-2 w-full md:w-auto">
-            {/* Search bar */}
-            <div className="relative w-full md:w-[18rem] flex-shrink-0">
-              <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Filter tech stacks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10"
-              />
-              {searchQuery && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-
-            {/* View toggle buttons */}
             <div className="flex border rounded-md">
               <Button
                 variant={layoutView === "card" ? "default" : "ghost"}
@@ -194,7 +326,7 @@ export default function MyTechStacks() {
         )}
 
         {/* Empty state */}
-        {!isLoading && !error && filteredTechStacks.length === 0 && (
+        {!isLoading && !error && filteredStacksData.length === 0 && (
           <div className="text-center py-12">
             <h2 className="text-xl font-semibold">No tech stacks found</h2>
             <p className="text-muted-foreground mt-2">
@@ -213,21 +345,81 @@ export default function MyTechStacks() {
         {/* Tech stack cards grid */}
         {!isLoading &&
           !error &&
-          filteredTechStacks.length > 0 &&
+          filteredStacksData.length > 0 &&
           layoutView === "card" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredTechStacks.map((techStack) => (
+              {filteredStacksData.map((techStack) => (
                 <div
                   key={techStack.id}
-                  className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleTechStackClick(techStack)}
+                  className="border border-primary/20 rounded-md overflow-hidden hover:shadow-md transition-shadow flex flex-col cursor-pointer hover:bg-accent min-h-48"
+                  onClick={() => handleViewStack(techStack)}
                 >
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg">{techStack.name}</h3>
-                    <p className="text-muted-foreground line-clamp-2 mt-1">
+                  <div className="p-4 relative flex-grow">
+                    <div className="absolute top-2 right-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleViewStack(techStack);
+                            }}
+                          >
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleEditStack(techStack);
+                            }}
+                          >
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setStackToDelete(techStack);
+                              // Close the dropdown menu
+                              const dropdownTrigger = e.currentTarget.closest(
+                                '[data-state="open"]'
+                              );
+                              if (dropdownTrigger) {
+                                const closeEvent = new Event("keydown");
+                                Object.defineProperty(closeEvent, "keyCode", {
+                                  value: 27,
+                                });
+                                dropdownTrigger.dispatchEvent(closeEvent);
+                              }
+                            }}
+                            className="text-red-600 hover:!text-red-600 hover:!bg-red-50"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="flex items-start mb-2 pr-10">
+                      <Layers className="h-4 w-4 mr-2 mt-1 flex-shrink-0" />
+                      <h3 className="font-semibold text-md leading-tight">
+                        {techStack.name}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-4 mt-1 mb-2">
                       {techStack.description || "No description"}
                     </p>
-                    <div className="flex flex-wrap gap-1 mt-2">
+                    <div className="flex flex-wrap gap-1 mt-auto pt-2 border-t">
                       {techStack.phase.map((phase) => (
                         <span
                           key={phase}
@@ -237,13 +429,9 @@ export default function MyTechStacks() {
                         </span>
                       ))}
                     </div>
-                    <div className="mt-4 pt-2 border-t flex justify-between items-center">
-                      <div className="text-sm text-muted-foreground">
-                        {techStack.appType}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {techStack.frontEndStack}
-                      </div>
+                    <div className="mt-2 flex justify-between items-center text-xs text-muted-foreground">
+                      <div>{techStack.appType}</div>
+                      <div>{techStack.frontEndStack}</div>
                     </div>
                   </div>
                 </div>
@@ -251,52 +439,74 @@ export default function MyTechStacks() {
             </div>
           )}
 
-        {/* Table view */}
+        {/* Tanstack Table view */}
         {!isLoading &&
           !error &&
-          filteredTechStacks.length > 0 &&
+          filteredStacksData.length > 0 &&
           layoutView === "table" && (
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="text-left p-3 font-medium">Name</th>
-                    <th className="text-left p-3 font-medium">App Type</th>
-                    <th className="text-left p-3 font-medium">Front End</th>
-                    <th className="text-left p-3 font-medium">Backend</th>
-                    <th className="text-left p-3 font-medium">Phase</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTechStacks.map((techStack) => (
-                    <tr
-                      key={techStack.id}
-                      className="border-t hover:bg-muted/50 cursor-pointer"
-                      onClick={() => handleTechStackClick(techStack)}
-                    >
-                      <td className="p-3">{techStack.name}</td>
-                      <td className="p-3">{techStack.appType}</td>
-                      <td className="p-3">{techStack.frontEndStack}</td>
-                      <td className="p-3">{techStack.backendStack}</td>
-                      <td className="p-3">
-                        <div className="flex flex-wrap gap-1">
-                          {techStack.phase.map((phase) => (
-                            <span
-                              key={phase}
-                              className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full"
-                            >
-                              {phase}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <StackDataTable
+              data={filteredStacksData}
+              onViewStack={handleViewStack}
+              onEditStack={handleEditStack}
+              onDeleteStack={setStackToDelete}
+            />
           )}
       </div>
+
+      {/* Delete Confirmation Dialog (existing) */}
+      {stackToDelete && (
+        <AlertDialog
+          open={!!stackToDelete}
+          onOpenChange={() => setStackToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the
+                tech stack.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setStackToDelete(null)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteStack}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* Delete Selected Confirmation Dialog - NEW */}
+      <AlertDialog
+        open={isDeleteSelectedDialogOpen}
+        onOpenChange={setIsDeleteSelectedDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              selected {selectedRowCount} tech stack(s) and all their associated
+              assets.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSelectedStacks}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Selected
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Main>
   );
 }

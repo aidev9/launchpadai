@@ -57,7 +57,7 @@ export function ProfileDropdown() {
               className="h-7 px-2 rounded-full bg-gradient-to-r text-amber-950 hover:from-amber-100 hover:to-amber-200 border-amber-400"
               onClick={() => router.push("/upgrade")}
             >
-              <Star className="h-3.5 w-3.5 mr-1 fill-amber-500" />
+              <Star className="h-4 w-4 mr-0 fill-amber-500 stroke-0" />
               <span className="text-xs font-medium">Upgrade</span>
             </Button>
           </TooltipTrigger>

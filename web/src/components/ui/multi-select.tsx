@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { X } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Command as CommandPrimitive } from "cmdk";
@@ -29,8 +29,10 @@ export function MultiSelect({
   disabled = false,
 }: MultiSelectProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
+  const [activeIndex, setActiveIndex] = React.useState(-1);
 
   const handleUnselect = (option: string) => {
     onChange(selected.filter((s) => s !== option));
@@ -46,10 +48,53 @@ export function MultiSelect({
           onChange(newSelected);
         }
       }
+
+      // Handle arrow down to open dropdown and navigate
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (!open) {
+          setOpen(true);
+        } else {
+          setActiveIndex((prev) => Math.min(prev + 1, selectables.length - 1));
+        }
+      }
+
+      // Handle arrow up to navigate up
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((prev) => Math.max(prev - 1, 0));
+      }
+
+      // Handle Enter to select the focused option
+      if (
+        e.key === "Enter" &&
+        open &&
+        activeIndex >= 0 &&
+        activeIndex < selectables.length
+      ) {
+        e.preventDefault();
+        const selectedOption = selectables[activeIndex];
+        if (selectedOption) {
+          onChange([...selected, selectedOption.value]);
+          setInputValue("");
+          setOpen(false);
+          setActiveIndex(-1);
+        }
+      }
+
       // This is not a default behavior of the <input /> field
       if (e.key === "Escape") {
+        setOpen(false);
         input.blur();
       }
+    }
+  };
+
+  // Handle clicking on the container to focus input and open dropdown
+  const handleContainerClick = () => {
+    if (!disabled && inputRef.current) {
+      inputRef.current.focus();
+      setOpen(true);
     }
   };
 
@@ -57,19 +102,28 @@ export function MultiSelect({
     (option) => !selected.includes(option.value)
   );
 
+  // Reset active index when dropdown opens/closes
+  React.useEffect(() => {
+    if (!open) {
+      setActiveIndex(-1);
+    }
+  }, [open]);
+
   return (
     <Command
       onKeyDown={handleKeyDown}
       className={`overflow-visible bg-transparent ${className}`}
     >
       <div
-        className={`group rounded-md border border-input px-3 py-2 text-sm ring-offset-background ${
+        ref={containerRef}
+        onClick={handleContainerClick}
+        className={`group rounded-md border border-input px-3 py-2 text-sm ring-offset-background cursor-pointer ${
           disabled
             ? "opacity-50 cursor-not-allowed"
             : "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
         }`}
       >
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 items-center">
           {selected.map((selectedValue) => {
             const option = options.find((o) => o.value === selectedValue);
             return (
@@ -82,7 +136,10 @@ export function MultiSelect({
                       e.preventDefault();
                       e.stopPropagation();
                     }}
-                    onClick={() => handleUnselect(selectedValue)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUnselect(selectedValue);
+                    }}
                   >
                     <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
                   </button>
@@ -90,34 +147,47 @@ export function MultiSelect({
               </Badge>
             );
           })}
-          <CommandPrimitive.Input
-            ref={inputRef}
-            value={inputValue}
-            onValueChange={setInputValue}
-            onBlur={() => setOpen(false)}
-            onFocus={() => setOpen(true)}
-            placeholder={selected.length === 0 ? placeholder : ""}
-            className="ml-2 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
-            disabled={disabled}
-          />
+          <div className="flex flex-1 items-center">
+            <CommandPrimitive.Input
+              ref={inputRef}
+              value={inputValue}
+              onValueChange={setInputValue}
+              onFocus={() => setOpen(true)}
+              onBlur={(e) => {
+                // Only close if the related target is not in our container
+                if (!containerRef.current?.contains(e.relatedTarget as Node)) {
+                  setOpen(false);
+                }
+              }}
+              placeholder={selected.length === 0 ? placeholder : ""}
+              className="ml-2 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+              disabled={disabled}
+            />
+            <ChevronDown
+              className="h-4 w-4 text-muted-foreground ml-2"
+              onClick={handleContainerClick}
+            />
+          </div>
         </div>
       </div>
       <div className="relative mt-2">
         {open && selectables.length > 0 && !disabled && (
           <div className="absolute top-0 z-10 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in">
-            <CommandGroup className="h-full overflow-auto">
-              {selectables.map((option) => (
+            <CommandGroup className="h-full max-h-60 overflow-auto">
+              {selectables.map((option, index) => (
                 <CommandItem
                   key={option.value}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
+                  onMouseEnter={() => setActiveIndex(index)}
                   onSelect={() => {
                     onChange([...selected, option.value]);
                     setInputValue("");
+                    setOpen(false);
                   }}
-                  className={"cursor-pointer"}
+                  className={`cursor-pointer ${activeIndex === index ? "bg-accent text-accent-foreground" : ""}`}
                 >
                   {option.label}
                 </CommandItem>

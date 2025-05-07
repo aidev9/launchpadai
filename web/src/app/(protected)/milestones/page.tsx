@@ -13,29 +13,29 @@ import { clientDb } from "@/lib/firebase/client";
 import { doc, getDoc, Firestore } from "firebase/firestore";
 import { useAtom } from "jotai";
 import { getCurrentUserProfileAtom } from "@/lib/store/user-store";
-import { UserProfile } from "@/lib/store/user-store";
+import { userProfileAtom, updateUserProfileAtom } from "@/lib/store/user-store";
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 
 // Custom hook to fetch product timeline from Firestore
-function useProductTimeline(
-  productId: string | null,
-  userProfile: UserProfile | null
-) {
+function useProductTimeline(productId: string | null) {
   const [timeline, setTimeline] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [userProfile] = useAtom(userProfileAtom);
 
   useEffect(() => {
     const fetchTimeline = async () => {
-      if (!productId || !userProfile?.uid || !clientDb) {
+      if (!productId || !getCurrentUserId() || !clientDb) {
         setTimeline(null);
         return;
       }
       setLoading(true);
       try {
         const db = clientDb as Firestore;
+        const userId = await getCurrentUserId();
         const questionsDocRef = doc(
           db,
           "questions",
-          userProfile.uid,
+          userId,
           "products",
           productId
         );
@@ -76,7 +76,7 @@ export default function MilestonesPage() {
   const [userProfile] = useAtom(getCurrentUserProfileAtom);
 
   // Use custom hook instead of React Query
-  const { timeline } = useProductTimeline(productId, userProfile);
+  const { timeline } = useProductTimeline(productId);
 
   useEffect(() => {
     if (timeline) {

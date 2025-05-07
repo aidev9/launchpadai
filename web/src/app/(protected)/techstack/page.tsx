@@ -19,6 +19,7 @@ import {
   currentWizardStepAtom,
   techStackWizardStateAtom,
   selectedTechStackIdAtom,
+  selectedTechStackAtom,
   isEditModeAtom,
 } from "@/lib/store/techstack-store";
 import { TechStack, TechStackInput } from "@/lib/firebase/schema";
@@ -49,6 +50,7 @@ export default function TechStackWizard() {
   const [selectedTechStackId, setSelectedTechStackId] = useAtom(
     selectedTechStackIdAtom
   );
+  const [_, setSelectedTechStack] = useAtom(selectedTechStackAtom);
   const [isEditMode, setIsEditMode] = useAtom(isEditModeAtom);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -255,7 +257,32 @@ export default function TechStackWizard() {
 
           // Store the ID of the newly created tech stack
           if (result.id) {
+            console.log("New tech stack created with ID:", result.id);
+
+            // Set the ID first
             setSelectedTechStackId(result.id);
+            console.log("Updated selectedTechStackId atom:", result.id);
+
+            // Fetch the newly created tech stack to update the selectedTechStack atom
+            const techStackResult = await getTechStack(result.id);
+            console.log("Fetched tech stack result:", techStackResult);
+
+            if (techStackResult.success && techStackResult.techStack) {
+              // Update the selectedTechStack atom with the newly created tech stack
+              const newTechStack = techStackResult.techStack;
+              console.log("Setting selectedTechStack atom to:", newTechStack);
+              setSelectedTechStack(newTechStack);
+
+              // Force a small delay to ensure state is updated before navigation
+              await new Promise((resolve) => setTimeout(resolve, 100));
+            } else {
+              console.error(
+                "Failed to fetch newly created tech stack:",
+                techStackResult.error
+              );
+            }
+          } else {
+            console.error("Created tech stack but no ID was returned");
           }
         }
       }
@@ -283,7 +310,17 @@ export default function TechStackWizard() {
         // Redirect to the stack page
         // The app uses Jotai state management to store the selected tech stack
         // rather than URL parameters, so we just navigate to the stack page
-        router.push("/mystacks/stack");
+        console.log("About to navigate to stack page");
+        console.log("Current selectedTechStackId:", selectedTechStackId);
+
+        // Add the tech stack ID to the URL to ensure correct routing
+        if (!isEditMode && result.id) {
+          console.log("Navigating to stack page with ID:", result.id);
+          router.push(`/mystacks/stack?id=${result.id}`);
+        } else {
+          console.log("Navigating to stack page without ID");
+          router.push("/mystacks/stack");
+        }
       } else {
         toast({
           title: "Error",

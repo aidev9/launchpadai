@@ -6,30 +6,32 @@ import {
   createTechStackAsset,
   updateTechStackAsset,
   deleteTechStackAsset,
-  generateAssetContent,
-  getTechStackAssets,
 } from "@/lib/firebase/techstack-assets";
 
-export function useAssetHandlers(
+/**
+ * Enhanced asset handlers using React Query for asset generation
+ */
+export function useAssetHandlersWithQuery(
   selectedTechStack: TechStack | null,
   assets: TechStackAsset[],
-  setAssets: React.Dispatch<React.SetStateAction<TechStackAsset[]>>,
   selectedAsset: TechStackAsset | null,
   setSelectedAsset: React.Dispatch<React.SetStateAction<TechStackAsset | null>>,
   setIsAssetDialogOpen: React.Dispatch<React.SetStateAction<boolean>>,
-  isGeneratingContent: boolean,
-  setIsGeneratingContent: React.Dispatch<React.SetStateAction<boolean>>,
-  generatingAssets: Record<string, boolean>,
-  setGeneratingAssets: React.Dispatch<
-    React.SetStateAction<Record<string, boolean>>
-  >,
   isDeleteDialogOpen: boolean,
   setIsDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>,
   assetToDelete: TechStackAsset | null,
-  setAssetToDelete: React.Dispatch<React.SetStateAction<TechStackAsset | null>>
+  setAssetToDelete: React.Dispatch<React.SetStateAction<TechStackAsset | null>>,
+  generateAsset: (params: {
+    assetId: string;
+    assetType: string;
+    techStackDetails: any;
+    userInstructions?: string;
+  }) => void,
+  refetchAssets: () => void
 ) {
   const { toast } = useToast();
   const { awardXp } = useXp();
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleCreateAsset = () => {
     setSelectedAsset(null);
@@ -84,12 +86,8 @@ export function useAssetHandlers(
           });
         }
 
-        // Refresh assets
-        const assetsResult = await getTechStackAssets(selectedTechStack.id);
-        if (assetsResult.success && assetsResult.assets) {
-          setAssets(assetsResult.assets);
-        }
-
+        // Refresh assets using React Query
+        refetchAssets();
         setIsAssetDialogOpen(false);
       } else {
         toast({
@@ -130,15 +128,13 @@ export function useAssetHandlers(
           description: "Asset deleted successfully",
         });
 
-        // Remove asset from state
-        setAssets((prev: TechStackAsset[]) =>
-          prev.filter((a: TechStackAsset) => a.id !== assetToDelete.id)
-        );
-
         // Clear selected asset if it was deleted
         if (selectedAsset?.id === assetToDelete.id) {
           setSelectedAsset(null);
         }
+
+        // Refresh assets using React Query
+        refetchAssets();
       } else {
         toast({
           title: "Error",
@@ -164,109 +160,23 @@ export function useAssetHandlers(
   ) => {
     if (!selectedTechStack?.id || !asset.id) return;
 
-    setIsGeneratingContent(true);
-
-    // Mark this asset as generating
-    setAssets((prev: TechStackAsset[]) =>
-      prev.map((a: TechStackAsset) =>
-        a.id === asset.id ? { ...a, isGenerating: true } : a
-      )
-    );
-
-    // Update the generating assets tracking
-    setGeneratingAssets((prev: Record<string, boolean>) => ({
-      ...prev,
-      [asset.id!]: true,
-    }));
-
     try {
       toast({
         title: "Generating Content",
         description: `Regenerating content for ${asset.title}. This may take a minute...`,
       });
 
-      const result = await generateAssetContent(
-        selectedTechStack.id,
-        asset.id,
-        asset.assetType,
-        selectedTechStack,
-        userInstructions
+      // Use the React Query mutation to generate content
+      generateAsset({
+        assetId: asset.id,
+        assetType: asset.assetType,
+        techStackDetails: selectedTechStack,
+        userInstructions,
+      });
+
+      console.log(
+        `[assetHandlers] Content generation initiated for ${asset.id}`
       );
-
-      // Use the extractTextContent function defined below
-
-      // Process the content to extract text if it's in JSON format
-      const processedContent = result.success
-        ? extractTextContent(result.body || result.content || "")
-        : "";
-
-      if (result.success) {
-        // Immediately update the selected asset with the new content
-        // This makes the Regenerate button work immediately without waiting for polling
-        if (selectedAsset && asset.id === selectedAsset.id) {
-          setSelectedAsset({
-            ...selectedAsset,
-            body: processedContent || selectedAsset.body,
-            isGenerating: false,
-          });
-        }
-
-        // Update the assets state to reflect the new content
-        setAssets((prev: TechStackAsset[]) =>
-          prev.map((a: TechStackAsset) =>
-            a.id === asset.id
-              ? {
-                  ...a,
-                  body: processedContent || a.body,
-                  isGenerating: false,
-                }
-              : a
-          )
-        );
-
-        // Also update the generating assets tracking
-        setGeneratingAssets((prev: Record<string, boolean>) => {
-          const updated = { ...prev };
-          if (asset.id) delete updated[asset.id];
-          return updated;
-        });
-
-        // Refresh assets to get the updated state from the server
-        const assetsResult = await getTechStackAssets(selectedTechStack.id);
-        if (assetsResult.success && assetsResult.assets) {
-          setAssets(assetsResult.assets);
-
-          // Update the selected asset if it's in the updated assets
-          if (selectedAsset) {
-            const updatedSelectedAsset = assetsResult.assets.find(
-              (a) => a.id === selectedAsset.id
-            );
-            if (updatedSelectedAsset) {
-              setSelectedAsset(updatedSelectedAsset);
-            }
-          }
-        }
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to generate content",
-          variant: "destructive",
-        });
-
-        // Reset the generating state for this asset
-        setAssets((prev: TechStackAsset[]) =>
-          prev.map((a: TechStackAsset) =>
-            a.id === asset.id ? { ...a, isGenerating: false } : a
-          )
-        );
-
-        // Remove from generating assets tracking
-        setGeneratingAssets((prev: Record<string, boolean>) => {
-          const updated = { ...prev };
-          if (asset.id) delete updated[asset.id];
-          return updated;
-        });
-      }
     } catch (error) {
       toast({
         title: "Error",
@@ -276,33 +186,7 @@ export function useAssetHandlers(
             : "An unexpected error occurred",
         variant: "destructive",
       });
-
-      // Reset the generating state for this asset
-      setAssets((prev: TechStackAsset[]) =>
-        prev.map((a: TechStackAsset) =>
-          a.id === asset.id ? { ...a, isGenerating: false } : a
-        )
-      );
-
-      // Remove from generating assets tracking
-      setGeneratingAssets((prev: Record<string, boolean>) => {
-        const updated = { ...prev };
-        if (asset.id) delete updated[asset.id];
-        return updated;
-      });
-    } finally {
-      setIsGeneratingContent(false);
     }
-  };
-
-  const handleCopyAsset = (asset: TechStackAsset) => {
-    // Extract text content from JSON if needed
-    const content = extractTextContent(asset.body);
-    navigator.clipboard.writeText(content);
-    toast({
-      title: "Success",
-      description: "Asset content copied to clipboard",
-    });
   };
 
   // Helper function to extract text content from JSON
@@ -330,6 +214,16 @@ export function useAssetHandlers(
     return content;
   };
 
+  const handleCopyAsset = (asset: TechStackAsset) => {
+    // Extract text content from JSON if needed
+    const content = extractTextContent(asset.body);
+    navigator.clipboard.writeText(content);
+    toast({
+      title: "Success",
+      description: "Asset content copied to clipboard",
+    });
+  };
+
   const handleDownloadAsset = (asset: TechStackAsset) => {
     const blob = new Blob([asset.body], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
@@ -342,6 +236,51 @@ export function useAssetHandlers(
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadAssets = async () => {
+    if (!selectedTechStack?.id) return;
+
+    setIsDownloading(true);
+
+    try {
+      // Create a zip file with all assets
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+
+      // Add each asset to the zip
+      assets.forEach((asset) => {
+        const fileName = `${asset.title.replace(/\s+/g, "-").toLowerCase()}.md`;
+        zip.file(fileName, asset.body);
+      });
+
+      // Generate the zip file
+      const content = await zip.generateAsync({ type: "blob" });
+
+      // Download the zip file
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${selectedTechStack.name.replace(/\s+/g, "-").toLowerCase()}-assets.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "Assets downloaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to download assets",
+        variant: "destructive",
+      });
+      console.error("Error downloading assets:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return {
     handleCreateAsset,
     handleEditAsset,
@@ -351,5 +290,8 @@ export function useAssetHandlers(
     handleGenerateContent,
     handleCopyAsset,
     handleDownloadAsset,
+    handleDownloadAssets,
+    isDownloading,
+    setIsDownloading,
   };
 }

@@ -148,10 +148,9 @@ export const columns: ColumnDef<Note>[] = [
       <DataTableColumnHeader column={column} title="Last Modified" />
     ),
     cell: ({ row }) => {
-      const date = format(
-        new Date((row.getValue("updatedAt") as number) * 1000),
-        "MM/dd/yyyy HH:mm"
-      );
+      // Use the unixTimestampToDate utility function to convert seconds to Date
+      const timestamp = row.getValue("updatedAt") as number;
+      const date = format(new Date(timestamp), "MM/dd/yyyy HH:mm");
       return <div className="font-medium">{date}</div>;
     },
     meta: {

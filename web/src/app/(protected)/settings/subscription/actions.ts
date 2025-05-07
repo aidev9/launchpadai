@@ -41,13 +41,7 @@ export async function getSubscriptionAction() {
 
     return {
       success: true,
-      subscription: {
-        planType: userData?.subscription || "free",
-        billingCycle: userData?.billingCycle || "monthly",
-        status: userData?.subscriptionStatus || "inactive",
-        stripeCustomerId: userData?.stripeCustomerId,
-        stripeSubscriptionId: userData?.stripeSubscriptionId,
-      },
+      subscription: userData?.subscription,
     };
   } catch (error) {
     console.error("Error fetching subscription details:", error);

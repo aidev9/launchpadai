@@ -2,6 +2,22 @@ import { atom } from "jotai";
 import { Prompt, PromptInput } from "@/lib/firebase/schema";
 
 /**
+ * Interface for problem suggestions with label and body
+ */
+export interface ProblemSuggestion {
+  label: string;
+  body: string;
+}
+
+/**
+ * Interface for ask suggestions with label and body
+ */
+export interface AskSuggestion {
+  label: string;
+  body: string;
+}
+
+/**
  * Type definition for the PACE wizard state
  */
 export interface PaceWizardState {
@@ -60,12 +76,12 @@ export const suggestionsLoadingAtom = atom<boolean>(false);
 /**
  * Atom for storing problem suggestions
  */
-export const problemSuggestionsAtom = atom<string[]>([]);
+export const problemSuggestionsAtom = atom<ProblemSuggestion[]>([]);
 
 /**
  * Atom for storing ask suggestions
  */
-export const askSuggestionsAtom = atom<string[]>([]);
+export const askSuggestionsAtom = atom<AskSuggestion[]>([]);
 
 /**
  * Helper function to convert PACE wizard state to a prompt input

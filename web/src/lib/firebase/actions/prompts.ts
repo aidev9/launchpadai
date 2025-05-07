@@ -35,8 +35,8 @@ export async function getAllPromptsAction() {
         phaseTags: data.phaseTags || [],
         productTags: data.productTags || [],
         tags: data.tags || [],
-        createdAt: data.createdAt * 1000, // Convert to milliseconds
-        updatedAt: data.updatedAt * 1000, // Convert to milliseconds
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
       });
     });
 
@@ -71,8 +71,8 @@ export async function getPromptsByPhaseAction(phases: string[]) {
         phaseTags: data.phaseTags || [],
         productTags: data.productTags || [],
         tags: data.tags || [],
-        createdAt: data.createdAt * 1000, // Convert to milliseconds
-        updatedAt: data.updatedAt * 1000, // Convert to milliseconds
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
       });
     });
 
@@ -109,8 +109,8 @@ export async function getPromptAction(promptId: string) {
       phaseTags: data.phaseTags || [],
       productTags: data.productTags || [],
       tags: data.tags || [],
-      createdAt: data.createdAt * 1000, // Convert to milliseconds
-      updatedAt: data.updatedAt * 1000, // Convert to milliseconds
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
     };
 
     return { success: true, prompt };
@@ -182,9 +182,8 @@ export async function addPromptAction(
       prompt: {
         ...firestoreData,
         id: promptRef.id,
-        // Convert to milliseconds for client-side use
-        createdAt: firestoreData.createdAt * 1000,
-        updatedAt: firestoreData.updatedAt * 1000,
+        createdAt: firestoreData.createdAt,
+        updatedAt: firestoreData.updatedAt,
       },
     };
   } catch (error) {
@@ -276,8 +275,8 @@ export async function updatePromptAction(
         updateData.tags !== undefined
           ? updateData.tags
           : currentData?.tags || [],
-      createdAt: currentData?.createdAt * 1000, // Convert to milliseconds
-      updatedAt: updateData.updatedAt * 1000, // Convert to milliseconds
+      createdAt: currentData?.createdAt,
+      updatedAt: updateData.updatedAt,
     };
 
     // Revalidate paths
@@ -368,8 +367,8 @@ export async function getUserPromptsAction() {
         phaseTags: data.phaseTags || [],
         productTags: data.productTags || [],
         tags: data.tags || [],
-        createdAt: data.createdAt * 1000, // Convert to milliseconds
-        updatedAt: data.updatedAt * 1000, // Convert to milliseconds
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
       });
     });
 
@@ -406,8 +405,8 @@ export async function getUserPromptsByPhaseAction(phases: string[]) {
         phaseTags: data.phaseTags || [],
         productTags: data.productTags || [],
         tags: data.tags || [],
-        createdAt: data.createdAt * 1000, // Convert to milliseconds
-        updatedAt: data.updatedAt * 1000, // Convert to milliseconds
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
       });
     });
 

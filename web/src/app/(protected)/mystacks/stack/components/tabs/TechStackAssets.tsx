@@ -75,6 +75,7 @@ export function TechStackAssets({
             assets={assets}
             selectedAsset={selectedAsset}
             onSelectAsset={setSelectedAsset}
+            generatingAssets={generatingAssets}
           />
         </div>
 

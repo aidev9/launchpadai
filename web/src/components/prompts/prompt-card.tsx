@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
+import { IconPlaylistAdd } from "@tabler/icons-react";
 
 interface PromptCardProps {
   prompt: Prompt;
@@ -88,7 +89,7 @@ export function PromptCard({
 
   return (
     <Card
-      className="p-4 hover:shadow-md transition-shadow cursor-pointer relative group"
+      className="p-4 hover:shadow-md hover:bg-accent transition-shadow cursor-pointer relative group shadow-none rounded-md border border-primary/20 min-h-48"
       onClick={() => onClick(prompt)}
     >
       {/* Dropdown menu */}
@@ -209,11 +210,17 @@ export function PromptCard({
         </div>
       )}
 
-      <h3 className="font-semibold text-lg mb-2 line-clamp-1 pr-6">
-        {prompt.title}
-      </h3>
+      <div className="flex items-start mb-2 pr-10">
+        <IconPlaylistAdd className="h-4 w-4 mr-2 mt-1 flex-shrink-0" />
+        <h3 className="font-semibold text-md leading-tight line-clamp-1">
+          {prompt.title}
+        </h3>
+      </div>
 
-      <div className="flex flex-wrap gap-1 mb-2">
+      <p className="text-muted-foreground text-sm line-clamp-4 mb-4">
+        {prompt.body}
+      </p>
+      <div className="flex flex-wrap gap-1 mb-0">
         {prompt.phaseTags.map((tag) => (
           <Badge
             key={tag}
@@ -225,10 +232,6 @@ export function PromptCard({
           </Badge>
         ))}
       </div>
-
-      <p className="text-muted-foreground text-sm line-clamp-4">
-        {prompt.body}
-      </p>
     </Card>
   );
 }

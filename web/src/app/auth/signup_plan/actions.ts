@@ -10,6 +10,7 @@ import SubscriptionConfirmation from "@/lib/emails/subscription-confirmation";
 
 import Stripe from "stripe";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { getSubscriptionPlans } from "@/app/(protected)/upgrade/actions";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-04-30.basil",
@@ -193,3 +194,6 @@ export const checkEmailExists = actionClient
       };
     }
   });
+
+// Re-export the getSubscriptionPlans function
+export { getSubscriptionPlans };

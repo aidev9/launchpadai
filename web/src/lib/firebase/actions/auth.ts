@@ -40,9 +40,12 @@ export async function getUserData(userId: string) {
       return null;
     }
 
+    // Serialize the data to convert any Firebase Timestamp objects to Unix timestamps (seconds)
+    const userData = userDoc.data();
+
     return {
       id: userDoc.id,
-      ...userDoc.data(),
+      ...userData,
     };
   } catch (error) {
     console.error("Error getting user data:", error);

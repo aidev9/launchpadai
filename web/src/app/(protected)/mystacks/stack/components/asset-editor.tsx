@@ -101,7 +101,11 @@ export function AssetEditor({
                       : ""
                   }`}
                 />
-                {selectedAsset.isGenerating ? "Generating..." : "Regenerate"}
+                {selectedAsset.isGenerating
+                  ? "Generating..."
+                  : selectedAsset.needsGeneration
+                    ? "Generate Content"
+                    : "Regenerate"}
               </Button>
               <Button
                 variant="outline"
