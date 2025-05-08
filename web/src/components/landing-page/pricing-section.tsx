@@ -2,26 +2,55 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { PricingCard } from "./pricing-card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { selectedPlanAtom, BillingCycle } from "@/stores/subscriptionStore";
+import {
+  selectedPlanAtom,
+  BillingCycle,
+  monthlyPricingPlansAtom,
+  annualPricingPlansAtom,
+  pricingPlansLoadingAtom,
+  PricingPlan,
+} from "@/stores/subscriptionStore";
 import { getSubscriptionPlans } from "@/app/(protected)/upgrade/actions";
+
+// Get button text based on plan title
+const getButtonText = (planTitle: string) => {
+  switch (planTitle) {
+    case "Free":
+      return "Start Free";
+    case "Explorer":
+      return "Get Started";
+    case "Builder":
+      return "Start Building";
+    case "Accelerator":
+      return "Scale Faster";
+    default:
+      return "Select Plan";
+  }
+};
 
 export function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(false);
-  const [pricingPlans, setPricingPlans] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [monthlyPlans, setMonthlyPlans] = useAtom(monthlyPricingPlansAtom);
+  const [annualPlans, setAnnualPlans] = useAtom(annualPricingPlansAtom);
+  const [isLoading, setIsLoading] = useAtom(pricingPlansLoadingAtom);
   const setSelectedPlan = useSetAtom(selectedPlanAtom);
   const router = useRouter();
 
-  // Fetch pricing data when component mounts or billing cycle changes
+  // Fetch pricing data once when component mounts
   useEffect(() => {
     async function fetchPricingData() {
+      // Only fetch if we don't already have the data
+      if (monthlyPlans.length > 0 && annualPlans.length > 0) {
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
-        const billingCycle: BillingCycle = isAnnual ? "annual" : "monthly";
         const result = await getSubscriptionPlans();
 
         if (result.error || !result.plans) {
@@ -29,18 +58,35 @@ export function PricingSection() {
           return;
         }
 
-        // Transform subscription plans to pricing card format
-        const formattedPlans = result.plans.map((plan) => ({
+        // Transform subscription plans to pricing card format for both billing cycles
+        const formattedMonthlyPlans = result.plans.map((plan) => ({
           title: plan.title,
-          price: isAnnual ? plan.annual.price : plan.monthly.price,
+          price: plan.monthly.price,
           description: plan.description,
           features: plan.features.map((feature) => ({ text: feature })),
           buttonText: getButtonText(plan.title),
-          buttonVariant: plan.title === "Builder" ? "default" : "outline",
+          buttonVariant:
+            plan.title === "Builder"
+              ? "default"
+              : ("outline" as "default" | "outline"),
           isPopular: plan.title === "Builder",
         }));
 
-        setPricingPlans(formattedPlans);
+        const formattedAnnualPlans = result.plans.map((plan) => ({
+          title: plan.title,
+          price: plan.annual.price,
+          description: plan.description,
+          features: plan.features.map((feature) => ({ text: feature })),
+          buttonText: getButtonText(plan.title),
+          buttonVariant:
+            plan.title === "Builder"
+              ? "default"
+              : ("outline" as "default" | "outline"),
+          isPopular: plan.title === "Builder",
+        }));
+
+        setMonthlyPlans(formattedMonthlyPlans);
+        setAnnualPlans(formattedAnnualPlans);
       } catch (error) {
         console.error("Error fetching pricing data:", error);
       } finally {
@@ -49,23 +95,13 @@ export function PricingSection() {
     }
 
     fetchPricingData();
-  }, [isAnnual]);
-
-  // Get button text based on plan title
-  const getButtonText = (planTitle: string) => {
-    switch (planTitle) {
-      case "Free":
-        return "Start Free";
-      case "Explorer":
-        return "Get Started";
-      case "Builder":
-        return "Start Building";
-      case "Accelerator":
-        return "Scale Faster";
-      default:
-        return "Select Plan";
-    }
-  };
+  }, [
+    monthlyPlans,
+    annualPlans,
+    setMonthlyPlans,
+    setAnnualPlans,
+    setIsLoading,
+  ]);
 
   // Handle plan selection
   const handlePlanSelection = (planTitle: string, price: number) => {
@@ -86,6 +122,9 @@ export function PricingSection() {
 
     router.push("/auth/signup_plan");
   };
+
+  // Get the current plans based on billing cycle
+  const currentPlans = isAnnual ? annualPlans : monthlyPlans;
 
   return (
     <section id="pricing" className="bg-muted/50 py-20">
@@ -121,7 +160,7 @@ export function PricingSection() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {pricingPlans.map((plan, index) => (
+            {currentPlans.map((plan, index) => (
               <PricingCard
                 key={index}
                 title={plan.title}

@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckIcon } from "@radix-ui/react-icons";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface PricingFeature {
   text: string;
@@ -58,7 +59,7 @@ export function PricingCard({
           className="mt-4 flex items-baseline text-5xl font-bold"
           data-testid={`plan-price-${planId}`}
         >
-          ${price}
+          $<PriceCounter value={price} />
           <span className="ml-1 text-xl text-muted-foreground">
             /{billingPeriod}
           </span>
@@ -95,5 +96,27 @@ export function PricingCard({
         </Button>
       </CardFooter>
     </Card>
+  );
+}
+
+interface PriceCounterProps {
+  value: number;
+}
+
+function PriceCounter({ value }: PriceCounterProps) {
+  return (
+    <div className="relative overflow-hidden h-[40px] flex items-center">
+      <AnimatePresence mode="popLayout">
+        <motion.span
+          key={value}
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -50, opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+        >
+          {value}
+        </motion.span>
+      </AnimatePresence>
+    </div>
   );
 }

@@ -9,6 +9,16 @@ export interface SubscriptionPlan {
   price: number;
 }
 
+export interface PricingPlan {
+  title: string;
+  price: number;
+  description: string;
+  features: { text: string }[];
+  buttonText: string;
+  buttonVariant: "default" | "outline";
+  isPopular: boolean;
+}
+
 // Default to free plan with monthly billing
 const defaultPlan: SubscriptionPlan = {
   planType: "Free",
@@ -18,6 +28,11 @@ const defaultPlan: SubscriptionPlan = {
 
 // Atom to store the selected subscription plan
 export const selectedPlanAtom = atom<SubscriptionPlan>(defaultPlan);
+
+// Atoms to store pricing data for both billing cycles
+export const monthlyPricingPlansAtom = atom<PricingPlan[]>([]);
+export const annualPricingPlansAtom = atom<PricingPlan[]>([]);
+export const pricingPlansLoadingAtom = atom<boolean>(true);
 
 // Helper function to calculate the annual price with 20% discount
 export const calculateAnnualPrice = (monthlyPrice: number): number => {

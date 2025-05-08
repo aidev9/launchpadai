@@ -1,40 +1,250 @@
 "use client";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import { TestimonialCard } from "./testimonial-card";
-import Testimonial from "./testimonial-card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Carousel,
+  CarouselApi,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
+import { cn } from "@/lib/utils";
+import { StarIcon } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 
-const testimonialData = [
+const testimonials = [
   {
-    id: "tab1",
-    initials: "SC",
-    name: "Sarah Chen",
-    title: "Founder of HealthTech Innovators",
+    id: 1,
+    name: "Alex Rivera",
+    designation: "Founder & CEO",
+    company: "Quantum SaaS",
     testimonial:
-      '"LaunchpadAI cut our MVP development time in half. The prompt library alone saved us weeks of trial and error, and the connections we made through the platform led to our seed round."',
+      "LaunchpadAI has completely transformed the way we work. The efficiency and ease of use are unmatched! " +
+      "We were struggling with productivity before, but this tool has streamlined our entire process. " +
+      "Our team's output has increased by 40% since implementation.",
+    avatar:
+      "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
-    id: "tab2",
-    initials: "MJ",
+    id: 2,
+    name: "Sophia Chen",
+    designation: "Co-founder",
+    company: "MarketBoost AI",
+    testimonial:
+      "After implementing LaunchpadAI, our customer acquisition costs dropped by 42%. The analytics dashboard gives us insights " +
+      "we never had before, and the automation features saved us from hiring two additional team members. " +
+      "The ROI was evident within the first month of use.",
+    avatar:
+      "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400",
+  },
+  {
+    id: 3,
     name: "Marcus Johnson",
-    title: "CEO of FinTech Solutions",
+    designation: "CTO",
+    company: "Elevate Digital",
     testimonial:
-      '"As a non-technical founder, I was struggling to communicate with developers. LaunchpadAI\'s learning resources and AI tools bridged that gap and helped me become self-sufficient in building our first product."',
+      "As a marketing agency handling multiple client campaigns, we needed something scalable and reliable. " +
+      "LaunchpadAI delivers on both fronts. Our team onboarding time decreased from weeks to days, " +
+      "and client satisfaction scores are up 28%. The integration capabilities are exceptional.",
+    avatar:
+      "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
-    id: "tab3",
-    initials: "CS",
-    name: "The Cloudsphere Team",
-    title: "SaaS Platform",
+    id: 4,
+    name: "Priya Sharma",
+    designation: "Founder",
+    company: "NexGen AI Solutions",
     testimonial:
-      '"We\'ve tried every AI tool on the market, but LaunchpadAI is the only one that truly understands the founder journey. The combination of tools, learning, and community is unmatched."',
+      "The AI capabilities in LaunchpadAI are genuinely next-level. We've integrated it into our core product offering, " +
+      "and our clients are amazed by the results. What used to take us 20 hours of manual work now happens automatically " +
+      "in the background. This has been transformative for our business model.",
+    avatar:
+      "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400",
+  },
+  {
+    id: 5,
+    name: "Daniel Park",
+    designation: "CEO",
+    company: "Streamline SaaS",
+    testimonial:
+      "We evaluated seven different solutions before choosing LaunchpadAI. The decision has paid off tremendously - " +
+      "our development cycles are 60% faster, and the integration with our existing tech stack was seamless. " +
+      "I only wish we'd found it sooner. The support team is also incredibly responsive.",
+    avatar:
+      "https://images.pexels.com/photos/15009938/pexels-photo-15009938/free-photo-of-a-man-is-sitting-on-a-bike-with-a-helmet-on.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+  },
+  {
+    id: 6,
+    name: "Emma Wilson",
+    designation: "Founder",
+    company: "Growth Accelerator",
+    testimonial:
+      "As someone who's built three successful SaaS companies, I know a game-changing tool when I see one. " +
+      "LaunchpadAI has become the backbone of our operations. The security features give our enterprise clients " +
+      "peace of mind, and the customization options allow us to tailor the experience to each client's needs.",
+    avatar:
+      "https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
 ];
 
 export function TestimonialsSection() {
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const [count, setCount] = useState(0);
+
+  // Auto-advance carousel every 5 seconds with looping
+  useEffect(() => {
+    if (!api) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      // Get the current slide index
+      const currentIndex = api.selectedScrollSnap();
+      const totalSlides = api.scrollSnapList().length;
+
+      // If we're at the last slide, go back to the first one
+      if (currentIndex === totalSlides - 1) {
+        api.scrollTo(0);
+      } else {
+        api.scrollNext();
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [api]);
+
+  useEffect(() => {
+    if (!api) {
+      return;
+    }
+
+    setCount(api.scrollSnapList().length);
+    setCurrent(api.selectedScrollSnap() + 1);
+
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap() + 1);
+    });
+  }, [api]);
+
   return (
-    <section id="testimonials" className="container py-20 space-y-12">
-      <Testimonial />
-    </section>
+    <div
+      id="testimonials"
+      className="w-full max-w-screen-xl mx-auto py-6 xs:py-12 px-6"
+    >
+      <h2 className="mb-8 xs:mb-14 text-4xl md:text-5xl font-bold text-center tracking-tight">
+        Testimonials
+      </h2>
+      <div className="container w-full mx-auto">
+        <Carousel
+          setApi={setApi}
+          opts={{
+            loop: true,
+            align: "start",
+            skipSnaps: false,
+          }}
+        >
+          <CarouselContent>
+            {testimonials.map((testimonial) => (
+              <CarouselItem key={testimonial.id}>
+                <TestimonialCard testimonial={testimonial} />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+        <div className="flex items-center justify-center gap-2 mt-6">
+          {Array.from({ length: count }).map((_, index) => (
+            <button
+              key={index}
+              onClick={() => api?.scrollTo(index)}
+              className={cn("h-3.5 w-3.5 rounded-full border-2", {
+                "bg-primary border-primary": current === index + 1,
+              })}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
+
+const TestimonialCard = ({
+  testimonial,
+}: {
+  testimonial: (typeof testimonials)[number];
+}) => (
+  <div className="mb-8 bg-accent rounded-xl py-8 px-6 sm:py-6">
+    <div className="flex items-center justify-between gap-20">
+      <div className="hidden lg:block relative shrink-0 aspect-[3/4] max-w-[18rem] w-full bg-muted-foreground/20 rounded-xl">
+        <Image
+          src={testimonial.avatar}
+          fill
+          alt={`${testimonial.name} profile`}
+          className="object-cover rounded-xl"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        />
+
+        <div className="absolute top-1/4 right-0 translate-x-1/2 h-12 w-12 bg-primary rounded-full flex items-center justify-center">
+          <svg
+            width="102"
+            height="102"
+            viewBox="0 0 102 102"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+          >
+            <path
+              d="M26.0063 19.8917C30.0826 19.8625 33.7081 20.9066 36.8826 23.024C40.057 25.1414 42.5746 28.0279 44.4353 31.6835C46.2959 35.339 47.2423 39.4088 47.2744 43.8927C47.327 51.2301 44.9837 58.4318 40.2444 65.4978C35.4039 72.6664 28.5671 78.5755 19.734 83.2249L2.54766 74.1759C8.33598 71.2808 13.2548 67.9334 17.3041 64.1335C21.2515 60.3344 23.9203 55.8821 25.3105 50.7765C20.5179 50.4031 16.6348 48.9532 13.6612 46.4267C10.5864 44.0028 9.03329 40.5999 9.00188 36.2178C8.97047 31.8358 10.5227 28.0029 13.6584 24.7192C16.693 21.5381 20.809 19.9289 26.0063 19.8917ZM77.0623 19.5257C81.1387 19.4965 84.7641 20.5406 87.9386 22.6581C91.1131 24.7755 93.6306 27.662 95.4913 31.3175C97.3519 34.9731 98.2983 39.0428 98.3304 43.5268C98.383 50.8642 96.0397 58.0659 91.3004 65.1319C86.4599 72.3005 79.6231 78.2095 70.79 82.859L53.6037 73.8099C59.392 70.9149 64.3108 67.5674 68.3601 63.7676C72.3075 59.9685 74.9763 55.5161 76.3665 50.4105C71.5739 50.0372 67.6908 48.5873 64.7172 46.0608C61.6424 43.6369 60.0893 40.2339 60.0579 35.8519C60.0265 31.4698 61.5787 27.6369 64.7145 24.3532C67.7491 21.1722 71.865 19.563 77.0623 19.5257Z"
+              className="fill-primary-foreground"
+            />
+          </svg>
+        </div>
+      </div>
+      <div className="flex flex-col justify-center">
+        <div className="flex items-center justify-between gap-1">
+          <div className="hidden sm:flex md:hidden items-center gap-4">
+            <Avatar className="w-8 h-8 md:w-10 md:h-10">
+              <AvatarFallback className="text-xl font-medium bg-primary text-primary-foreground">
+                {testimonial.name.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-lg font-semibold">{testimonial.name}</p>
+              <p className="text-sm text-gray-500">{testimonial.designation}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <StarIcon className="w-5 h-5 fill-yellow-400 stroke-yellow-400" />
+            <StarIcon className="w-5 h-5 fill-yellow-400 stroke-yellow-400" />
+            <StarIcon className="w-5 h-5 fill-yellow-400 stroke-yellow-400" />
+            <StarIcon className="w-5 h-5 fill-yellow-400 stroke-yellow-400" />
+            <StarIcon className="w-5 h-5 fill-yellow-400 stroke-yellow-400" />
+          </div>
+        </div>
+        <p className="mt-6 text-lg sm:text-2xl lg:text-[1.75rem] xl:text-3xl leading-normal lg:!leading-normal font-semibold tracking-tight">
+          &quot;{testimonial.testimonial}&quot;
+        </p>
+        <div className="flex sm:hidden md:flex mt-6 items-center gap-4">
+          <Avatar>
+            <Image
+              src={testimonial.avatar}
+              alt={testimonial.name}
+              width={40}
+              height={40}
+              className="object-cover"
+            />
+            <AvatarFallback className="text-xl font-medium bg-primary text-primary-foreground">
+              {testimonial.name.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-lg font-semibold">{testimonial.name}</p>
+            <p className="text-sm text-gray-500">
+              {testimonial.designation}, {testimonial.company}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
