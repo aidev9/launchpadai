@@ -24,14 +24,14 @@ const staggerContainer = {
 };
 
 const headlineTexts = [
-  "Become a Master Vibe Coder with AI",
-  "Rule the Code Generation with AI",
-  "Transform Your Prompts into Code with AI",
+  "Become a Master Vibe Coder with LaunchpadAI",
+  "Rule the AI Code Generation Game",
+  "Transform Your Prompts into Working Apps",
   "Build Detailed Prompts with a Single Click",
   "Launch Your Startup Faster with AI Superpowers",
-  "Build Products 10x Faster with AI Assistance",
+  "Build Products 10x Faster with LaunchpadAI",
   "Learn Continuously with AI-Powered Resources",
-  "Build, Learn, and Connect with AI",
+  "Build, Learn, and Connect with The Community",
   "Shorten Your Time to Market with AI",
   "Save Time and Money with AI-Driven Solutions",
 ];

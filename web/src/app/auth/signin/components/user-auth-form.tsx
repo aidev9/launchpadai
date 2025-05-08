@@ -77,7 +77,7 @@ export function UserAuthForm({
   const { result } = useAction(signupAction, {
     onSuccess: async (data) => {
       if (data.data?.success) {
-        router.push("/ftux");
+        router.push("/welcome");
       }
     },
     onError: (error) => {
@@ -93,7 +93,7 @@ export function UserAuthForm({
         if (isUpgrade) {
           router.push("/upgrade");
         } else {
-          router.push("/ftux");
+          router.push("/welcome");
         }
       })
       .catch((error) => {
@@ -116,7 +116,7 @@ export function UserAuthForm({
       if (isUpgrade) {
         router.push("/upgrade");
       } else {
-        router.push("/ftux");
+        router.push("/welcome");
       }
     } catch (error) {
       console.log("error:", error);

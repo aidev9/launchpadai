@@ -85,7 +85,7 @@ export async function awardXpPoints(actionId: string, userId?: string) {
     // Revalidate paths that might display XP
     revalidatePath("/");
     revalidatePath("/dashboard");
-    revalidatePath("/ftux");
+    revalidatePath("/welcome");
 
     return {
       success: true,

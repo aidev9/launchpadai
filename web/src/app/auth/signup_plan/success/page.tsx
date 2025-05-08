@@ -12,7 +12,7 @@ export default function SubscriptionSuccess() {
   useEffect(() => {
     // Automatically redirect to FTUX after a delay
     const timer = setTimeout(() => {
-      router.push("/ftux");
+      router.push("/welcome");
     }, 5000);
 
     return () => clearTimeout(timer);
@@ -43,7 +43,7 @@ export default function SubscriptionSuccess() {
               seconds.
             </p>
             <div className="flex justify-center">
-              <Button onClick={() => router.push("/ftux")}>
+              <Button onClick={() => router.push("/welcome")}>
                 Continue to Launch
               </Button>
             </div>

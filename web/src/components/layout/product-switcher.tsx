@@ -45,7 +45,7 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
         console.log("Product selection updated in Jotai store", product.id);
 
         // Only redirect to product page if on specific routes
-        const routesToRedirectFrom = ["/ftux", "/welcome", "/help"];
+        const routesToRedirectFrom = ["/welcome", "/welcome", "/help"];
         const shouldRedirect = routesToRedirectFrom.some(
           (route) => pathname === route || pathname.startsWith(`${route}/`)
         );
@@ -70,7 +70,7 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
 
   // Navigate to the FTUX page
   const handleStartHere = useCallback(() => {
-    router.push("/ftux");
+    router.push("/welcome");
   }, [router]);
 
   if (isLoading && products.length === 0) {

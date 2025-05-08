@@ -91,7 +91,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
           const { email, password } = form.getValues();
           await handleEmailPasswordSignIn(email, password);
 
-          router.push("/ftux");
+          router.push("/welcome");
         } catch (error) {
           console.error("Error signing in after signup:", error);
 
@@ -122,11 +122,11 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
       await handleSocialSignIn("google");
 
       console.log(
-        "[SignUpForm] Google sign-in successful. Attempting redirect to /ftux..."
+        "[SignUpForm] Google sign-in successful. Attempting redirect to /welcome..."
       );
       // Redirect immediately after successful authentication and session creation
-      router.push("/ftux");
-      console.log("[SignUpForm] router.push('/ftux') called.");
+      router.push("/welcome");
+      console.log("[SignUpForm] router.push('/welcome') called.");
     } catch (error) {
       console.error("[SignUpForm] Google sign-in error:", error);
     } finally {

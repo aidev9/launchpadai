@@ -207,7 +207,7 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
         try {
           await handleEmailPasswordSignIn(data.email, data.password);
           // Redirect to FTUX after successful sign-in
-          router.push("/ftux");
+          router.push("/welcome");
         } catch (signInError) {
           console.error(
             "Error signing in after account creation:",

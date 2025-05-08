@@ -86,9 +86,9 @@ test.describe("User Signup Flow", () => {
     // Wait for successful signup and navigation to FTUX page
     console.log("Waiting for navigation after signup");
     try {
-      await page.waitForURL("**/ftux**", { timeout: 30000 });
+      await page.waitForURL("**/welcome**", { timeout: 30000 });
       console.log("Successfully navigated to FTUX page");
-      await page.screenshot({ path: "test-results/ftux-page.png" });
+      await page.screenshot({ path: "test-results/welcome-page.png" });
     } catch (e) {
       console.error("Navigation to FTUX page timed out:", e);
       await page.screenshot({
@@ -107,12 +107,12 @@ test.describe("User Signup Flow", () => {
     await page.getByLabel("Password").fill(testUser.password);
     await page.getByRole("button", { name: "Sign In" }).click();
 
-    // Wait for successful login - might redirect to dashboard or ftux
+    // Wait for successful login - might redirect to dashboard or welcome
     console.log("Waiting for successful login");
     try {
       await Promise.race([
         page.waitForURL("**/dashboard**", { timeout: 15000 }),
-        page.waitForURL("**/ftux**", { timeout: 15000 }),
+        page.waitForURL("**/welcome**", { timeout: 15000 }),
       ]);
       console.log("Successfully logged in to:", page.url());
     } catch (e) {

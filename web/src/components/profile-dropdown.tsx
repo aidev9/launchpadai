@@ -95,7 +95,7 @@ export function ProfileDropdown() {
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem>
-              <Link href="/ftux" className="flex w-full">
+              <Link href="/welcome" className="flex w-full">
                 <Compass className="mr-2 h-4 w-4" />
                 Start Here
               </Link>

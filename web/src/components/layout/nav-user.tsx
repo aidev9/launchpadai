@@ -104,7 +104,7 @@ export function NavUser({ user }: { user: User | null }) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/ftux">
+                <Link href="/welcome">
                   <Compass className="mr-2 h-4 w-4" />
                   Start Here
                 </Link>

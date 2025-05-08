@@ -363,7 +363,7 @@ async function testPlanSignup(page: Page, plan: Plan, isAnnual: boolean) {
       page.waitForURL("**/dashboard**", { timeout: 60000 }),
       page.waitForURL("**/welcome**", { timeout: 60000 }),
       page.waitForURL("**/success**", { timeout: 60000 }),
-      page.waitForURL("**/ftux**", { timeout: 60000 }),
+      page.waitForURL("**/welcome**", { timeout: 60000 }),
     ]);
 
     // Take success screenshot
