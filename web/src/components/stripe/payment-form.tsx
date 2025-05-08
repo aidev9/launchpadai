@@ -81,7 +81,11 @@ export function PaymentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-6"
+      data-testid="payment-form"
+    >
       <PaymentElement />
 
       {errorMessage && (

@@ -16,13 +16,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { updateProfileAction, ProfileUpdateData } from "./actions";
 import { useAtom } from "jotai";
@@ -98,10 +91,14 @@ export default function ProfileForm() {
       };
       const result = await updateProfileAction(profileData);
       if (result.success) {
+        // Show both toast and in-page success message for testing
         toast({
           title: "Profile updated",
           duration: TOAST_DEFAULT_DURATION,
           description: "Your profile has been updated successfully.",
+          data: {
+            "data-testid": "profile-updated-toast",
+          },
         });
       } else {
         // Revert atom if server update fails
@@ -116,6 +113,9 @@ export default function ProfileForm() {
         title: "Error",
         description:
           error instanceof Error ? error.message : "Failed to update profile",
+        data: {
+          "data-testid": "profile-update-error-toast",
+        },
       });
     } finally {
       setIsLoading(false);

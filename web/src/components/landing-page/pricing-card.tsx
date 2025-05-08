@@ -39,8 +39,12 @@ export function PricingCard({
   isPopular = false,
   onClick,
 }: PricingCardProps) {
+  // Convert title to lowercase for test IDs
+  const planId = title.toLowerCase().replace(/\s+/g, "-");
+
   return (
     <Card
+      data-testid={`pricing-card-${planId}`}
       className={`${isPopular ? "border-primary" : "border-muted-foreground/20"} relative flex flex-col h-full`}
     >
       {isPopular && (
@@ -49,19 +53,31 @@ export function PricingCard({
         </div>
       )}
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <div className="mt-4 flex items-baseline text-5xl font-bold">
+        <CardTitle data-testid={`plan-title-${planId}`}>{title}</CardTitle>
+        <div
+          className="mt-4 flex items-baseline text-5xl font-bold"
+          data-testid={`plan-price-${planId}`}
+        >
           ${price}
           <span className="ml-1 text-xl text-muted-foreground">
             /{billingPeriod}
           </span>
         </div>
-        <CardDescription className="mt-4">{description}</CardDescription>
+        <CardDescription
+          className="mt-4"
+          data-testid={`plan-description-${planId}`}
+        >
+          {description}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 flex-grow">
-        <ul className="space-y-2">
+        <ul className="space-y-2" data-testid={`plan-features-${planId}`}>
           {features.map((feature, index) => (
-            <li key={index} className="flex items-center">
+            <li
+              key={index}
+              className="flex items-center"
+              data-testid={`plan-feature-${planId}-${index}`}
+            >
               <CheckIcon className="mr-2 h-4 w-4 text-primary" />
               <span>{feature.text}</span>
             </li>
@@ -69,7 +85,12 @@ export function PricingCard({
         </ul>
       </CardContent>
       <CardFooter className="mt-auto pt-4">
-        <Button className="w-full" variant={buttonVariant} onClick={onClick}>
+        <Button
+          className="w-full"
+          variant={buttonVariant}
+          onClick={onClick}
+          data-testid={`plan-button-${planId}`}
+        >
           {buttonText}
         </Button>
       </CardFooter>
