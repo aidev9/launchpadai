@@ -1,21 +1,6 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-
-// Type for the product
-export type Product = {
-  id: string;
-  name: string;
-  description?: string;
-  stage: string;
-  problem?: string;
-  team?: string;
-  website?: string;
-  country?: string;
-  template_id?: string;
-  template_type?: string;
-  createdAt?: string;
-  last_modified?: string;
-};
+import { Product } from "@/lib/firebase/schema";
 
 // Store selected product ID in localStorage
 export const selectedProductIdAtom = atomWithStorage<string | null>(

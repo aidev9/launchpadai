@@ -39,13 +39,13 @@ import {
 
 type QAData = {
   id: string;
-  tags: string[];
+  tags?: string[]; // Make tags optional to match the Question type
   question: string;
   order?: number;
-  last_modified?: Date;
   answer?: string | null;
   phase?: string;
-  createdAt?: Date;
+  createdAt?: number;
+  updatedAt?: number;
 };
 
 interface QATableProps<TValue> {
@@ -157,7 +157,8 @@ export function QATable<TValue>({ columns, data }: QATableProps<TValue>) {
 
   // Store the table instance in the atom
   React.useEffect(() => {
-    setTableInstance(table);
+    // Type assertion to resolve type mismatch between QAData and Question
+    setTableInstance(table as any);
   }, [table, setTableInstance]);
 
   return (
@@ -172,8 +173,10 @@ export function QATable<TValue>({ columns, data }: QATableProps<TValue>) {
                   <TableHead
                     key={header.id}
                     className={cn(
-                      header.column.getCanSort() &&
-                        "cursor-pointer select-none",
+                      {
+                        "cursor-pointer select-none":
+                          header.column.getCanSort(),
+                      },
                       header.column.columnDef.meta?.className
                     )}
                     onClick={header.column.getToggleSortingHandler()}

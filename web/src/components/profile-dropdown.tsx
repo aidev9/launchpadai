@@ -124,6 +124,21 @@ export function ProfileDropdown() {
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem
+            onClick={() => {
+              // Access the handleOpenFeedback function from the parent component
+              const event = new CustomEvent("openFeedback");
+              document.dispatchEvent(event);
+            }}
+          >
+            Send Feedback
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href="/upgrade" className="flex w-full">
+              Upgrade
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
             onClick={async () => {
               try {
                 await signOutAndClearProfile(router);

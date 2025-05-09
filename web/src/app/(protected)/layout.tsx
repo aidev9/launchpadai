@@ -18,6 +18,7 @@ import { ProfileDropdown } from "@/components/profile-dropdown";
 import { motion } from "framer-motion";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { set } from "nprogress";
+import { FeedbackButton } from "@/components/feedback/feedback-button";
 
 const topNav = [
   {
@@ -257,7 +258,8 @@ export default function RootLayout({
           <Header>
             {/* <TopNav links={topNav} /> */}
             <div className="ml-auto flex items-center space-x-4">
-              <Search />
+              {/* <Search /> */}
+              <FeedbackButton />
               <ThemeSwitch />
               <ProfileDropdown />
             </div>

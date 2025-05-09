@@ -37,6 +37,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { formatTimestamp } from "@/utils/constants";
 
 // Static color mapping function - outside component to avoid recreation
 const getStageColor = (stage: string) => {
@@ -53,16 +54,6 @@ const getStageColor = (stage: string) => {
   return (
     stageColors[stage] || "bg-gray-500/10 text-gray-500 border-gray-500/20"
   );
-};
-
-// Static date formatting function - outside component
-const formatCreatedDate = (dateString?: string) => {
-  if (!dateString) return "N/A";
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
 };
 
 // Text trimming utility
@@ -413,7 +404,7 @@ export function ProductDashboard() {
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   Created
                 </h3>
-                <p>{formatCreatedDate(selectedProduct.createdAt)}</p>
+                <p>{formatTimestamp(selectedProduct.createdAt)}</p>
               </div>
             )}
           </CardContent>

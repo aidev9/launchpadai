@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Question } from "../data/schema";
+import { Question } from "@/lib/firebase/schema";
 import {
   deleteQAModalOpenAtom,
   editQAModalOpenAtom,

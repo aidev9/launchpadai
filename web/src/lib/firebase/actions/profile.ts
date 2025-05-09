@@ -6,6 +6,7 @@ import { UserProfile } from "../schema";
 import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { xpActions } from "@/xp/points-schedule"; // Import the XP schedule
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Find the sign-in action and get its points value
 const signInAction = xpActions.find((action) => action.id === "signin");
@@ -67,8 +68,7 @@ export async function fetchUserProfile(): Promise<{
       try {
         await userRef.update({
           xp: FieldValue.increment(SIGN_IN_XP_AWARD),
-          // Optionally update lastLogin timestamp here too
-          // lastLogin: FieldValue.serverTimestamp(),
+          updatedAt: getCurrentUnixTimestamp(),
         });
         // Update newXp only if the database update is successful
         newXp = currentXp + SIGN_IN_XP_AWARD;

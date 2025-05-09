@@ -5,6 +5,11 @@ import { z } from "zod";
 import { actionClient } from "@/lib/action";
 // import { returnValidationErrors } from "next-safe-action";
 import { awardXpPoints } from "@/xp/server-actions"; // Import the XP award function
+import { Resend } from "resend";
+import SignupNotification from "@/lib/emails/signup-notification";
+
+// Initialize Resend with API key from environment variables
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Schema for signup data validation
 const signupSchema = z.object({
@@ -94,6 +99,33 @@ export const signupAction = actionClient
           // Award XP for signing up
           await awardXpPoints("signup", uid);
           console.log(`Awarded XP to user ${uid} for signing up`);
+
+          // Send notification email to admin
+          try {
+            await resend.emails.send({
+              from: process.env.EMAIL_FROM || "notifications@launchpadai.io",
+              to: process.env.EMAIL_ADMIN || "info@launchpadai.io",
+              subject:
+                "Congratulations! A new user has signed up to LaunchpadAI",
+              react: SignupNotification({
+                name,
+                email,
+                subscription: subscription || "free",
+                company: company || "Not provided",
+                role: role || "Not provided",
+                signupPath: "Regular Signup",
+              }),
+            });
+            console.log(
+              `Admin notification email sent for new signup: ${email}`
+            );
+          } catch (emailError) {
+            // Log error but don't fail the signup process
+            console.error(
+              "Error sending admin notification email:",
+              emailError
+            );
+          }
         } catch (firestoreError) {
           console.error("Firestore error:", firestoreError);
           // Delete the auth user if Firestore fails

@@ -1,10 +1,10 @@
 "use server";
 
 import { adminDb } from "@/lib/firebase/admin";
-import { FieldValue } from "firebase-admin/firestore";
 import { z } from "zod";
 import { Resend } from "resend";
 import { createConfirmationEmail } from "@/lib/emails/confirmation";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Initialize Resend with API key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -68,7 +68,7 @@ export async function submitToWaitlist(
     await waitlistCollection.add({
       ...validatedData,
       phone: formattedPhone || null,
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: getCurrentUnixTimestamp(),
     });
 
     // Send confirmation email

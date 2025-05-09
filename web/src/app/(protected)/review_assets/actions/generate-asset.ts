@@ -1,15 +1,13 @@
 "use server";
 
-// import { z } from "zod";
-// Comment out the safe-action import since there's a module resolution issue
-// import { action } from "@/lib/safe-action";
 import { getProduct } from "@/lib/firebase/products";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { saveAsset, getAsset } from "@/lib/firebase/assets";
-import { type Product } from "@/lib/store/product-store";
+import { type Product } from "@/lib/firebase/schema";
 import { getAllQuestionAnswers } from "@/lib/firebase/question-answers";
 import { getProjectNotes } from "@/lib/firebase/notes";
 import { awardXpPoints } from "@/xp/server-actions"; // Import XP award function
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Dynamic import AI utils to avoid bundling them in the client
 const generateAIContent = async (params: {
@@ -25,7 +23,7 @@ const generateAIContent = async (params: {
   notes: Array<{
     id: string;
     note_body: string;
-    last_modified: string;
+    updatedAt: number;
   }>; // Use Note structure
   asset: {
     title: string;
@@ -88,11 +86,11 @@ async function handleAssetGeneration(data: {
     // Get notes for the product
     const notesResponse = await getProjectNotes(productId);
     // Ensure notes have the correct structure with all required fields
-    const notes = notesResponse.success 
+    const notes = notesResponse.success
       ? (notesResponse.notes || []).map((note: any) => ({
           id: note.id || "",
           note_body: note.note_body || "",
-          last_modified: note.last_modified || new Date().toISOString()
+          updatedAt: note.updatedAt || getCurrentUnixTimestamp(),
         }))
       : [];
 
@@ -126,7 +124,7 @@ async function handleAssetGeneration(data: {
     const saveResponse = await saveAsset(productId, {
       id: assetId,
       content: generatedContent,
-      last_updated: new Date(),
+      updatedAt: getCurrentUnixTimestamp(),
     });
 
     if (!saveResponse.success) {

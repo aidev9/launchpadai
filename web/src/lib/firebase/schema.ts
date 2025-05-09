@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+// START: PRODUCT
+export type Product = {
+  id: string;
+  name: string;
+  description?: string;
+  stage: string;
+  problem?: string;
+  team?: string;
+  website?: string;
+  country?: string;
+  template_id?: string;
+  template_type?: string;
+  createdAt?: number;
+  updatedAt?: number;
+};
+
+// END: PRODUCT
+
 // START: USER PROFILE
 export interface UserProfile {
   uid: string;
@@ -7,9 +25,9 @@ export interface UserProfile {
   email?: string | null;
   photoURL?: string | null;
   isEmailVerified?: boolean;
-  createdAt?: string;
+  createdAt?: number;
   userType?: "user" | "admin" | "superadmin";
-  subscription?: "free" | "pro" | "enterprise";
+  subscription?: "free" | "explorer" | "builder" | "enterprise";
   xp?: number;
   level?: number;
   hasAnsweredTimelineQuestion?: boolean;
@@ -30,7 +48,7 @@ export interface Subscription {
   active: boolean;
   stripeCustomerId: string;
   stripeSubscriptionId: string;
-  createdAt: any;
+  createdAt: number;
   paymentIntentId: string;
 }
 
@@ -66,15 +84,31 @@ export interface PlanOption {
 
 // START: QUESTIONS
 // TODO: Clean up the question schema
+
+const questionSchema = z.object({
+  id: z.string(),
+  question: z.string(),
+  answer: z.string().nullable().optional(),
+  phases: z.array(z.string()).default([]),
+  tags: z.array(z.string()).default([]),
+  updatedAt: z.number().optional(),
+  createdAt: z.number().optional(),
+  order: z.number().optional(),
+});
+
+// export type Question = z.infer<typeof questionSchema>;
+
+export const questionListSchema = z.array(questionSchema);
+
 export interface Question {
   id: string;
   question: string;
   answer: string | null;
   tags?: string[];
-  phase?: string;
+  phases?: string[];
   order?: number;
   createdAt?: number;
-  last_modified?: number;
+  updatedAt?: number;
 }
 // Schema for questions within a product
 export const productQuestionSchema = z.object({
@@ -82,8 +116,9 @@ export const productQuestionSchema = z.object({
   question: z.string(),
   answer: z.string().nullable().optional(),
   tags: z.array(z.string()),
-  last_modified: z.number(),
+  updatedAt: z.number(),
   createdAt: z.number(),
+  order: z.number().optional(),
 });
 
 export type ProductQuestion = z.infer<typeof productQuestionSchema>;
@@ -303,3 +338,98 @@ export const techStackAssetInputSchema = z.object({
 
 export type TechStackAssetInput = z.infer<typeof techStackAssetInputSchema>;
 // END: TECH STACKS
+
+// export interface FirestoreAsset {
+//   id: string;
+//   phase: string;
+//   document: string;
+//   content?: string;
+//   title?: string;
+//   systemPrompt?: string;
+//   order?: number;
+//   createdAt?: number;
+//   updatedAt?: number;
+// }
+
+export interface Asset {
+  id: string;
+  phase:
+    | "Discover"
+    | "Validate"
+    | "Design"
+    | "Build"
+    | "Secure"
+    | "Launch"
+    | "Grow";
+  document: string;
+  systemPrompt: string;
+  order: number;
+}
+
+// Interface for an asset in Firestore
+export interface FirestoreAsset {
+  id: string;
+  title: string;
+  description: string;
+  systemPrompt: string;
+  phase: Asset["phase"];
+  tags: string[];
+  order: number;
+  content?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export interface ProductNote {
+  id: string;
+  note_body: string;
+  tags?: string[];
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+// Type definition for AI model settings
+export interface AIModelSettings {
+  modelId: string;
+  temperature: number;
+  maxTokens: number;
+  topP: number;
+}
+
+export interface Note {
+  id: string;
+  note_body: string;
+  tags: string[];
+  createdAt: number;
+  udpdatedAt: number;
+}
+
+// START: FEEDBACK
+// Interface for Feedback data
+export interface Feedback {
+  id: string;
+  userId: string;
+  userEmail: string;
+  name: string;
+  type: "bug" | "feature" | "comment";
+  subject: string;
+  body: string;
+  status: "new" | "in-progress" | "resolved";
+  createdAt: string;
+  updatedAt: string;
+  response?: string;
+  responseAt?: string;
+}
+
+// Schema for feedback validation
+export const feedbackSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  type: z.enum(["bug", "feature", "comment"], {
+    required_error: "Please select a feedback type",
+  }),
+  subject: z.string().min(1, "Subject is required"),
+  body: z.string().min(1, "Message is required"),
+});
+
+export type FeedbackInput = z.infer<typeof feedbackSchema>;
+// END: FEEDBACK

@@ -17,7 +17,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useRouter, usePathname } from "next/navigation";
-import { Product } from "@/lib/store/product-store";
+import { Product } from "@/lib/firebase/schema";
 import { useProducts } from "@/hooks/useProducts";
 import { useCallback } from "react";
 

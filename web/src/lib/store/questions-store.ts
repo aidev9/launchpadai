@@ -1,16 +1,5 @@
 import { atom } from "jotai";
-
-// Define the question type
-export interface Question {
-  id: string;
-  question: string;
-  answer: string | null;
-  tags: string[];
-  order: number;
-  phase?: string;
-  last_modified: Date | string;
-  createdAt: Date | string;
-}
+import { Question } from "@/lib/firebase/schema";
 
 // Create an atom to share all questions
 export const allQuestionsAtom = atom<Question[]>([]);

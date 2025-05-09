@@ -1,166 +1,157 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Search, PlusCircle } from "lucide-react";
 import { useState } from "react";
+import { Main } from "@/components/layout/main";
+import { UsersTable } from "./components/users-table";
+import { Button } from "@/components/ui/button";
+import { PlusIcon, Trash2 } from "lucide-react";
+import { useAtom } from "jotai";
+import {
+  inviteDialogOpenAtom,
+  deleteDialogOpenAtom,
+  selectedUsersAtom,
+  usersAtom,
+  rowSelectionAtom,
+} from "./users-store";
+import { InviteUserDialog } from "./components/invite-user-dialog";
+import { DeleteUserDialog } from "./components/delete-user-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { deleteUser } from "./actions/delete";
 
-export default function UsersManagement() {
-  const [searchQuery, setSearchQuery] = useState("");
+export default function UsersPage() {
+  const [inviteDialogOpen, setInviteDialogOpen] = useAtom(inviteDialogOpenAtom);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useAtom(deleteDialogOpenAtom);
+  const [selectedUsers] = useAtom(selectedUsersAtom);
+  const [users, setUsers] = useAtom(usersAtom);
+  const [, setRowSelection] = useAtom(rowSelectionAtom);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { toast } = useToast();
 
-  // Demo user data - in a real app, these would be fetched from your API
-  const users = [
-    {
-      id: "1",
-      name: "Alice Smith",
-      email: "alice@example.com",
-      role: "Admin",
-      status: "Active",
-      joined: "Apr 12, 2025",
-    },
-    {
-      id: "2",
-      name: "Bob Johnson",
-      email: "bob@example.com",
-      role: "User",
-      status: "Active",
-      joined: "Apr 8, 2025",
-    },
-    {
-      id: "3",
-      name: "Carol Williams",
-      email: "carol@example.com",
-      role: "Editor",
-      status: "Active",
-      joined: "Mar 30, 2025",
-    },
-    {
-      id: "4",
-      name: "Dave Brown",
-      email: "dave@example.com",
-      role: "User",
-      status: "Inactive",
-      joined: "Mar 15, 2025",
-    },
-    {
-      id: "5",
-      name: "Eve Davis",
-      email: "eve@example.com",
-      role: "User",
-      status: "Pending",
-      joined: "Apr 20, 2025",
-    },
-  ];
+  // Handle deletion of selected users
+  const handleDeleteUsers = async () => {
+    if (selectedUsers.length === 0) return;
 
-  // Filter users based on search query
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    // Close the dialog immediately to prevent flickering
+    setDeleteDialogOpen(false);
+
+    setIsDeleting(true);
+    try {
+      let successCount = 0;
+      let failedCount = 0;
+      const successfullyDeletedIds: string[] = [];
+
+      // Delete users one by one
+      for (const userId of selectedUsers) {
+        try {
+          const result = await deleteUser(userId);
+          if (result.success) {
+            successCount++;
+            successfullyDeletedIds.push(userId);
+          } else {
+            failedCount++;
+            console.error(`Failed to delete user ${userId}: ${result.error}`);
+          }
+        } catch (err) {
+          failedCount++;
+          console.error(`Error deleting user ${userId}:`, err);
+        }
+      }
+
+      // Update the UI based on the results
+      if (successCount > 0) {
+        // Update users state to remove deleted users
+        setUsers((prevUsers) =>
+          prevUsers.filter((user) => !successfullyDeletedIds.includes(user.uid))
+        );
+
+        // Clear row selection
+        setRowSelection({});
+
+        // Show success message
+        toast({
+          title: "Users deleted",
+          description: `Successfully deleted ${successCount} ${
+            successCount === 1 ? "user" : "users"
+          }${
+            failedCount > 0
+              ? `. Failed to delete ${failedCount} ${
+                  failedCount === 1 ? "user" : "users"
+                }.`
+              : ""
+          }`,
+        });
+      } else {
+        // Show warning but don't treat it as a complete failure
+        toast({
+          title: "Warning",
+          description:
+            "Some users may not have been completely deleted. The user list has been updated with successfully deleted users.",
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while deleting users",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      // Dialog is already closed at this point
+    }
+  };
+
+  const hasSelectedUsers = selectedUsers.length > 0;
+
+  // Debug logging
+  console.log("Page component - selectedUsers:", selectedUsers);
+  console.log("Page component - hasSelectedUsers:", hasSelectedUsers);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Users Management</h1>
-
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add New User
-        </Button>
+    <Main>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+          <p className="text-muted-foreground">
+            View, manage, and invite users to your platform.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasSelectedUsers && (
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={isDeleting}
+              className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Selected
+              {selectedUsers.length > 0 && ` (${selectedUsers.length})`}
+            </Button>
+          )}
+          <Button onClick={() => setInviteDialogOpen(true)}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Invite User
+          </Button>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>View and manage user accounts</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search users..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={user.role === "Admin" ? "default" : "outline"}
-                      >
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          user.status === "Active"
-                            ? "default"
-                            : user.status === "Inactive"
-                              ? "destructive"
-                              : "outline"
-                        }
-                      >
-                        {user.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{user.joined}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Edit
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredUsers.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      No users found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <UsersTable />
+
+      <InviteUserDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+      />
+
+      <DeleteUserDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onDelete={handleDeleteUsers}
+        isDeleting={isDeleting}
+      />
+    </Main>
   );
 }

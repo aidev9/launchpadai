@@ -90,6 +90,12 @@ export const xpActions: XpAction[] = [
     description: "Create a new asset in a stack",
     points: 15,
   },
+  {
+    id: "submit_feedback",
+    name: "Submit Feedback",
+    description: "Submit feedback or feature request",
+    points: 25,
+  },
 ];
 
 export default xpActions;

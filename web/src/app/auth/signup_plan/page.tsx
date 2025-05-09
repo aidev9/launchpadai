@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { SignUpPlanForm } from "./components/sign-up-plan-form";
 import Link from "next/link";
 import { getSubscriptionPlans } from "./actions";
+import { AlphaWarningAlert } from "@/components/alpha-warning-alert";
 
 export default function SignUpPlan() {
   const [selectedPlan] = useAtom(selectedPlanAtom);
@@ -92,10 +93,14 @@ export default function SignUpPlan() {
             Join LaunchpadAI
           </h1>
           <p className="text-sm text-muted-foreground">
-            You selected the {selectedPlan.planType} plan (
-            {selectedPlan.billingCycle} billing)
+            You selected the{" "}
+            <span className="font-bold">
+              {selectedPlan.planType} plan ({selectedPlan.billingCycle} billing)
+            </span>
           </p>
         </div>
+
+        <AlphaWarningAlert />
 
         <Card className="w-full">
           <CardHeader className="space-y-1">

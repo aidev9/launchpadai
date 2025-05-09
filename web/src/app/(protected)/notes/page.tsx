@@ -232,32 +232,31 @@ export default function NotesPage() {
   return (
     <>
       <Main>
-        {selectedProductId ? (
-          <>
-            <div className="mb-6 flex flex-col md:flex-row gap-6 justify-between">
-              <div className="flex-1">
-                <Breadcrumbs items={breadcrumbItems} className="mb-4" />
-                <h2 className="text-2xl font-bold tracking-tight">
-                  {productName} - Notes
-                </h2>
-                <p className="text-muted-foreground">Manage your notes here.</p>
-              </div>
-              <div className="flex items-start mt-6 md:mt-0">
-                <NotesPrimaryButtons
-                  selectedRows={selectedRows}
-                  onDelete={handleDeleteNotes}
-                  selectedProductId={selectedProductId}
-                />
-              </div>
-            </div>
+        <div className="mb-6 flex flex-col md:flex-row gap-6 justify-between">
+          <div className="flex-1">
+            <Breadcrumbs items={breadcrumbItems} className="mb-4" />
+            <h2 className="text-2xl font-bold tracking-tight">
+              {productName} - Notes
+            </h2>
+            <p className="text-muted-foreground">Manage your notes here.</p>
+          </div>
+          <div className="flex items-start mt-6 md:mt-0">
+            {selectedProductId && (
+              <NotesPrimaryButtons
+                selectedRows={selectedRows}
+                onDelete={handleDeleteNotes}
+                selectedProductId={selectedProductId}
+              />
+            )}
+          </div>
+        </div>
 
-            <div className="flex-grow overflow-auto">
-              <NoteTable data={notes} setSelectedRows={updateSelectedRows} />
-            </div>
-          </>
-        ) : (
-          renderProductSelector()
-        )}
+        <div className="flex-grow overflow-auto">
+          <NoteTable
+            data={selectedProductId ? notes : []}
+            setSelectedRows={updateSelectedRows}
+          />
+        </div>
       </Main>
 
       <NotesDialogs

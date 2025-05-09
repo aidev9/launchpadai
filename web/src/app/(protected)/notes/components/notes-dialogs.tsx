@@ -1,13 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useXp } from "@/xp/useXp";
 import { toast as showToast } from "@/hooks/use-toast";
+import { TagInput } from "@/components/ui/tag-input";
 import {
   Note,
   addNoteModalOpenAtom,
@@ -28,7 +28,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { clientAuth } from "@/lib/firebase/client";
-import { get } from "http";
 
 const userId = clientAuth.currentUser?.uid;
 
@@ -52,7 +51,7 @@ export function NotesDialogs({
   const [allNotes, setAllNotes] = useAtom(allNotesAtom);
 
   const [noteBody, setNoteBody] = useState("");
-  const [tagsInput, setTagsInput] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const { awardXp } = useXp();
@@ -61,7 +60,7 @@ export function NotesDialogs({
   useEffect(() => {
     if (selectedNote && editModalOpen) {
       setNoteBody(selectedNote.note_body);
-      setTagsInput(selectedNote.tags?.join(", ") || "");
+      setTags(selectedNote.tags || []);
     }
   }, [selectedNote, editModalOpen]);
 
@@ -69,7 +68,7 @@ export function NotesDialogs({
   useEffect(() => {
     if (addModalOpen) {
       setNoteBody("");
-      setTagsInput("");
+      setTags([]);
     }
   }, [addModalOpen]);
 
@@ -80,17 +79,10 @@ export function NotesDialogs({
       // Get data for optimistic update
       const noteBody = formData.get("noteBody") as string;
 
-      // Process tags for optimistic update
-      const tagsString = formData.get("tags") as string;
-      const tags = tagsString
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0);
-
       // Close dialog and reset form
       setAddModalOpen(false);
       setNoteBody("");
-      setTagsInput("");
+      setTags([]);
 
       // Ensure selectedProductId is a string
       if (!selectedProductId) {
@@ -127,11 +119,6 @@ export function NotesDialogs({
 
           // Update the allNotes atom directly
           setAllNotes((prevNotes) => [newNote, ...prevNotes]);
-
-          // Also use the onOptimisticAdd callback for backward compatibility
-          // if (onOptimisticAdd) {
-          //   onOptimisticAdd(newNote);
-          // }
 
           // Award XP for creating a note
           const createNoteActionId = "create_note";
@@ -189,15 +176,6 @@ export function NotesDialogs({
     try {
       // Get form data for the update
       const noteBody = formData.get("noteBody") as string;
-      const tagsString = formData.get("tags") as string;
-      const tags = tagsString
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0);
-
-      // Add the necessary values to the form
-      formData.append("productId", selectedProductId);
-      formData.append("noteId", selectedNote.id);
 
       // Store the note ID for reference in case selectedNote becomes null
       const noteId = selectedNote.id;
@@ -205,22 +183,27 @@ export function NotesDialogs({
       // Close dialog and reset state
       setEditModalOpen(false);
       setNoteBody("");
-      setTagsInput("");
+      setTags([]);
       setSelectedNote(null);
 
       // Call server action to update the note
-      const result = await updateNote(formData);
+      const result = await updateNote({
+        productId: selectedProductId,
+        noteId: noteId,
+        noteBody: noteBody,
+        tags: tags,
+      });
 
-      if (result.success && "note" in result && result.note) {
+      if (result.success) {
         // Update the allNotes atom with the updated note data
         setAllNotes((prevNotes) =>
           prevNotes.map((note) =>
             note.id === noteId
               ? {
                   ...note,
-                  note_body: (result.note as Note).note_body || noteBody,
-                  tags: (result.note as Note).tags || tags,
-                  updatedAt: (result.note as Note).updatedAt || Date.now(),
+                  note_body: noteBody,
+                  tags: tags,
+                  updatedAt: getCurrentUnixTimestamp(),
                 }
               : note
           )
@@ -237,7 +220,7 @@ export function NotesDialogs({
       } else {
         onShowToast({
           title: "Error updating note",
-          description: (result as any).error || "Failed to update note",
+          description: result.error || "Failed to update note",
           variant: "destructive",
           duration: TOAST_DEFAULT_DURATION,
         });
@@ -288,18 +271,11 @@ export function NotesDialogs({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="tags">
-                  Tags{" "}
-                  <span className="text-muted-foreground text-xs">
-                    (comma separated)
-                  </span>
-                </Label>
-                <Input
-                  id="tags"
-                  name="tags"
-                  value={tagsInput}
-                  onChange={(e) => setTagsInput(e.target.value)}
-                  placeholder="e.g. important, follow-up, idea"
+                <Label htmlFor="tags">Tags</Label>
+                <TagInput
+                  value={tags}
+                  onChange={setTags}
+                  placeholder="Type and press Enter to add tags..."
                   disabled={saving}
                 />
               </div>
@@ -342,18 +318,11 @@ export function NotesDialogs({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-tags">
-                  Tags{" "}
-                  <span className="text-muted-foreground text-xs">
-                    (comma separated)
-                  </span>
-                </Label>
-                <Input
-                  id="edit-tags"
-                  name="tags"
-                  value={tagsInput}
-                  onChange={(e) => setTagsInput(e.target.value)}
-                  placeholder="e.g. important, follow-up, idea"
+                <Label htmlFor="edit-tags">Tags</Label>
+                <TagInput
+                  value={tags}
+                  onChange={setTags}
+                  placeholder="Type and press Enter to add tags..."
                   disabled={saving}
                 />
               </div>

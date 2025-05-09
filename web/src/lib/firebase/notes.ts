@@ -1,12 +1,7 @@
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 import { adminDb } from "./admin";
 import { getCurrentUserId } from "./adminAuth";
-
-export interface Note {
-  id: string;
-  note_body: string;
-  tags: string[];
-  last_modified: Date;
-}
+import { type Note } from "@/lib/firebase/schema";
 
 // Helper function inline to avoid import issues
 function serializeFirestoreData(
@@ -62,10 +57,9 @@ export async function saveNote(
     const userId = await getCurrentUserId();
     const notesRef = getUserNoteRef(userId, projectId);
 
-    const now = new Date();
     const noteWithTimestamp = {
       ...noteData,
-      last_modified: now,
+      updatedAt: getCurrentUnixTimestamp(),
       tags: noteData.tags || [],
     };
 
@@ -94,7 +88,7 @@ export async function getProjectNotes(projectId: string) {
     const userId = await getCurrentUserId();
     const notesRef = getUserNoteRef(userId, projectId);
 
-    const snapshot = await notesRef.orderBy("last_modified", "desc").get();
+    const snapshot = await notesRef.orderBy("updatedAt", "desc").get();
 
     // Serialize each note document to handle timestamps
     const notes = snapshot.docs.map((doc) => {

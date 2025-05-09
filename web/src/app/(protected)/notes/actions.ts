@@ -75,22 +75,21 @@ export async function createNote({
 /**
  * Update an existing note
  */
-export async function updateNote(formData: FormData) {
+export async function updateNote({
+  productId,
+  noteId,
+  noteBody,
+  tags,
+}: {
+  productId: string;
+  noteId: string;
+  noteBody: string;
+  tags: string[];
+}) {
   try {
-    const productId = formData.get("productId") as string;
-    const noteId = formData.get("noteId") as string;
-    const noteBody = formData.get("noteBody") as string;
-    const tagsString = formData.get("tags") as string;
-
     if (!productId || !noteId || !noteBody) {
       return { success: false, error: "Missing required data" };
     }
-
-    // Process tags
-    const tags = tagsString
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0);
 
     const timestamp = new Date().toISOString();
 

@@ -1,17 +1,4 @@
-export interface Asset {
-  id: string;
-  phase:
-    | "Discover"
-    | "Validate"
-    | "Design"
-    | "Build"
-    | "Secure"
-    | "Launch"
-    | "Grow";
-  document: string;
-  systemPrompt: string;
-  order: number;
-}
+import { Asset } from "@/lib/firebase/schema";
 
 // Default assets template - used for initializing new products
 export const assets: Asset[] = [

@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { productQuestionInputSchema, ProductQuestionInput } from "./schema";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { get } from "http";
 
 // Root questions collection reference
 const questionsCollection = adminDb.collection("questions");
@@ -47,12 +49,10 @@ export async function createQuestion(data: QuestionInput) {
     const questionsRef = getUserQuestionsRef(userId);
 
     // Add timestamps
-    const now = new Date().toISOString();
-    console.log("now::::", now);
     const questionData = {
       ...validatedData,
-      createdAt: now,
-      last_modified: now,
+      createdAt: getCurrentUnixTimestamp(),
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     // Add to Firestore
@@ -92,10 +92,9 @@ export async function updateQuestion(id: string, data: Partial<QuestionInput>) {
       };
     }
 
-    // Update with new data and last_modified timestamp
     const updateData = {
       ...data,
-      last_modified: new Date().toISOString(),
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     await questionsRef.doc(id).update(updateData);
@@ -161,7 +160,7 @@ export async function getAllQuestions() {
     const userId = await getCurrentUserId();
     const questionsRef = getUserQuestionsRef(userId);
 
-    const snapshot = await questionsRef.orderBy("last_modified", "desc").get();
+    const snapshot = await questionsRef.orderBy("updatedAt", "desc").get();
 
     const questions = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -191,7 +190,7 @@ export async function getQuestionsByProject(projectId: string) {
 
     const snapshot = await questionsRef
       .where("project_id", "==", projectId)
-      .orderBy("last_modified", "desc")
+      .orderBy("updatedAt", "desc")
       .get();
 
     const questions = snapshot.docs.map((doc) => ({
@@ -315,11 +314,9 @@ export async function saveProductQuestionAnswer(
       `Question found, updating with answer: "${answer.substring(0, 20)}${answer.length > 20 ? "..." : ""}"`
     );
 
-    // Update the answer and last_modified timestamp
-    const now = new Date().toISOString();
     await questionRef.update({
       answer,
-      last_modified: now,
+      updatedAt: getCurrentUnixTimestamp(),
     });
 
     console.log(`Successfully saved answer for question ${questionId}`);
@@ -387,11 +384,10 @@ export async function addProductQuestion(
     const questionId = `custom_${Date.now()}`;
 
     // Add timestamps
-    const now = new Date().toISOString();
     const questionData = {
       ...validatedData,
-      createdAt: now,
-      last_modified: now,
+      createdAt: getCurrentUnixTimestamp(),
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     // Add to Firestore

@@ -2,7 +2,7 @@
 
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, indexedDBLocalPersistence, signOut } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useSetAtom } from "jotai";
 import { clearUserProfileAtom } from "@/lib/store/user-store";
@@ -46,6 +46,23 @@ export const clientDb = getFirestore(
   clientApp,
   process.env.FIRESTORE_DATABASE_NAME as string
 );
+
+// Enable offline persistence for Firestore
+if (typeof window !== "undefined") {
+  enableIndexedDbPersistence(clientDb).catch((err) => {
+    if (err.code === "failed-precondition") {
+      // Multiple tabs open, persistence can only be enabled
+      // in one tab at a time.
+      console.warn("Firestore persistence failed: Multiple tabs open");
+    } else if (err.code === "unimplemented") {
+      // The current browser does not support all of the
+      // features required to enable persistence
+      console.warn("Firestore persistence is not available in this browser");
+    } else {
+      console.error("Firestore persistence error:", err);
+    }
+  });
+}
 
 // Note: This hook usage might need to be moved to a component context
 // if client.ts is not guaranteed to be used within a Jotai Provider scope.

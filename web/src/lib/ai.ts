@@ -4,7 +4,7 @@ import { RunnableSequence } from "@langchain/core/runnables";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StateGraph } from "@langchain/langgraph";
-import { type Product } from "@/lib/store/product-store";
+import { type Product } from "@/lib/firebase/schema";
 import { type QuestionAnswer } from "@/lib/firebase/question-answers";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { Annotation, START, END } from "@langchain/langgraph";
@@ -19,7 +19,7 @@ export interface AssetGenerationData {
   document: string;
   product: Product;
   questionAnswers: QuestionAnswer[];
-  notes?: { id: string; note_body: string; last_modified: string }[];
+  notes?: { id: string; note_body: string; updatedAt: number }[];
   asset?: {
     title: string;
     description: string;
@@ -136,8 +136,7 @@ const AssetGenerationStateAnnotation = Annotation.Root({
   document: Annotation<string>(),
   product: Annotation<Product>(),
   questionAnswers: Annotation<QuestionAnswer[]>(),
-  notes:
-    Annotation<{ id: string; note_body: string; last_modified: string }[]>(),
+  notes: Annotation<{ id: string; note_body: string; updatedAt: number }[]>(),
   formattedQAs: Annotation<string>(),
   formattedNotes: Annotation<string>(),
   generatedContent: Annotation<string>(),
@@ -195,29 +194,31 @@ const MODEL_CONFIG = {
   verbose: {
     modelName: "gpt-4o-mini",
     temperature: 1.0, // Higher temperature for more verbose output during retries
-  }
+  },
 };
 
 /**
  * Validates and potentially regenerates content to meet minimum word count
  */
 async function validateWordCount(
-  content: string, 
+  content: string,
   minWords: number,
   regenerationFn: () => Promise<string>,
   maxAttempts: number = 2 // Reduced from 3 to 2 attempts
 ): Promise<string> {
   let validatedContent = content;
   let attempts = 0;
-  
+
   while (countWords(validatedContent) < minWords && attempts < maxAttempts) {
-    console.log(`Content has ${countWords(validatedContent)} words, which is less than the required ${minWords}. Regenerating... (Attempt ${attempts + 1}/${maxAttempts})`);
+    console.log(
+      `Content has ${countWords(validatedContent)} words, which is less than the required ${minWords}. Regenerating... (Attempt ${attempts + 1}/${maxAttempts})`
+    );
     attempts++;
-    
+
     // Try regenerating content with more explicit instructions
     validatedContent = await regenerationFn();
   }
-  
+
   return validatedContent;
 }
 
@@ -276,12 +277,12 @@ Please generate a comprehensive ${document} based on this information. The docum
 
     // Validate word count and regenerate if necessary
     generatedContent = await validateWordCount(
-      generatedContent, 
-      2000, 
+      generatedContent,
+      2000,
       async () => {
         // Use verbose model config for regeneration attempts
         const verboseModel = new ChatOpenAI(MODEL_CONFIG.verbose);
-        
+
         const enhancedPrompt = ChatPromptTemplate.fromMessages([
           ["system", unifiedSystemPrompt],
           [
@@ -298,8 +299,10 @@ Expand on all sections with more detailed information, examples, and analysis.
             `,
           ],
         ]);
-        
-        const enhancedChain = enhancedPrompt.pipe(verboseModel).pipe(new StringOutputParser());
+
+        const enhancedChain = enhancedPrompt
+          .pipe(verboseModel)
+          .pipe(new StringOutputParser());
         return await enhancedChain.invoke({});
       }
     );
@@ -392,7 +395,7 @@ Please generate a comprehensive ${state.document} based on this information. The
         generatedContent: content,
       };
     };
-    
+
     /**
      * Validates word count and regenerates if needed
      */
@@ -401,13 +404,13 @@ Please generate a comprehensive ${state.document} based on this information. The
     ) => {
       const wordCount = countWords(state.generatedContent);
       console.log(`Generated content has ${wordCount} words`);
-      
+
       if (wordCount >= 2000) {
         return { generatedContent: state.generatedContent };
       }
-      
+
       console.log("Content doesn't meet minimum word count. Regenerating...");
-      
+
       const model = new ChatOpenAI(MODEL_CONFIG.verbose);
 
       // Create enhanced prompt with explicit instructions to generate longer content
@@ -464,11 +467,13 @@ Expand on all sections with more detailed information, examples, and analysis.
     // Final validation to ensure minimum word count
     let finalContent = result.generatedContent;
     if (countWords(finalContent) < 2000) {
-      console.log("Final content still doesn't meet word count requirements. Making one last attempt...");
-      
+      console.log(
+        "Final content still doesn't meet word count requirements. Making one last attempt..."
+      );
+
       const regenerationFn = async () => {
         const model = new ChatOpenAI(MODEL_CONFIG.verbose);
-        
+
         const finalPrompt = ChatPromptTemplate.fromMessages([
           [
             "system",
@@ -496,8 +501,12 @@ The final document MUST exceed 2000 words - this is a strict requirement.
           .pipe(new StringOutputParser())
           .invoke({});
       };
-      
-      finalContent = await validateWordCount(finalContent, 2000, regenerationFn);
+
+      finalContent = await validateWordCount(
+        finalContent,
+        2000,
+        regenerationFn
+      );
     }
 
     return finalContent;

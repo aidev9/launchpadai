@@ -23,14 +23,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { TagInput } from "@/components/ui/tag-input";
 import {
   questionModalOpenAtom,
   allQuestionsAtom,
-  Question,
 } from "@/lib/store/questions-store";
+import { Question } from "@/lib/firebase/schema";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { toast } from "@/components/ui/use-toast";
 import {
@@ -39,7 +39,12 @@ import {
 } from "@/lib/firebase/actions/questions";
 import { useXp } from "@/xp/useXp";
 import { toast as showToast } from "@/hooks/use-toast";
-import { phaseOptions, TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import {
+  getCurrentUnixTimestamp,
+  phaseOptions,
+  TOAST_DEFAULT_DURATION,
+} from "@/utils/constants";
+import { get } from "http";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -52,6 +57,7 @@ const formSchema = z.object({
     .max(500, { message: "Question must be less than 500 characters" }),
   answer: z.string().optional(),
   phases: z.array(z.string()).min(1, { message: "Select at least one phase" }),
+  tags: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -71,6 +77,7 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(
     null
   );
+  const [tags, setTags] = useState<string[]>([]);
 
   // Form for adding a new question
   const form = useForm<FormValues>({
@@ -79,6 +86,7 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
       text: "",
       answer: "",
       phases: [],
+      tags: "",
     },
   });
 
@@ -88,6 +96,8 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
     form.setValue("text", "");
     form.setValue("answer", "");
     form.setValue("phases", []);
+    form.setValue("tags", "");
+    setTags([]);
 
     // Clear editing state
     setIsEditing(false);
@@ -129,12 +139,11 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
             // Use setValue instead of form.reset to potentially reduce re-renders
             form.setValue("text", questionToEdit.question);
             form.setValue("answer", questionToEdit.answer || "");
-            form.setValue(
-              "phases",
-              questionToEdit.tags?.map(
-                (tag) => tag.charAt(0).toUpperCase() + tag.slice(1)
-              ) || [questionToEdit.phase]
-            );
+            form.setValue("phases", questionToEdit.phases || []);
+            form.setValue("tags", questionToEdit.tags?.join(", ") || "");
+
+            // Set tags
+            setTags(questionToEdit.tags || []);
           }
         } else {
           // Reset form for new question - only if needed
@@ -187,7 +196,8 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
           {
             question: data.text,
             answer: data.answer || null,
-            tags: data.phases.map((phase) => phase.toLowerCase()),
+            tags: tags,
+            phases: data.phases,
             phase: data.phases[0], // Use the first phase as the primary one
           }
         );
@@ -201,9 +211,10 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
                     ...q,
                     question: data.text,
                     answer: data.answer || null,
-                    tags: data.phases.map((phase) => phase.toLowerCase()),
+                    tags: tags,
+                    phases: data.phases,
                     phase: data.phases[0],
-                    last_modified: new Date(),
+                    updatedAt: getCurrentUnixTimestamp(),
                   }
                 : q
             )
@@ -229,14 +240,16 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
         console.log("Submitting question data:", {
           question: data.text,
           answer: data.answer || null,
-          tags: data.phases.map((phase) => phase.toLowerCase()),
+          tags: tags,
+          phases: data.phases,
           phase: data.phases[0], // Primary phase
         });
 
         const response = await addProductQuestionAction(selectedProductId, {
           question: data.text,
           answer: data.answer || null,
-          tags: data.phases.map((phase) => phase.toLowerCase()),
+          tags: tags,
+          phases: data.phases,
           phase: data.phases[0], // Use the first phase as the primary one
         });
 
@@ -248,11 +261,11 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
             id: response.id,
             question: data.text,
             answer: data.answer || null,
-            tags: data.phases.map((phase) => phase.toLowerCase()),
-            phase: data.phases[0],
+            tags: tags,
+            phases: data.phases,
             order: (allQuestions?.length ?? 0) + 1, // Assign next order
-            last_modified: new Date(), // Use current date for new question
-            createdAt: new Date(), // Add createdAt timestamp
+            createdAt: getCurrentUnixTimestamp(),
+            updatedAt: getCurrentUnixTimestamp(),
           };
           setAllQuestions((prev) => [...(prev || []), newQuestion]);
 
@@ -395,6 +408,15 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
                 </FormItem>
               )}
             />
+
+            <div>
+              <FormLabel>Tags</FormLabel>
+              <TagInput
+                value={tags}
+                onChange={setTags}
+                placeholder="Type and press enter to add a tag..."
+              />
+            </div>
 
             <DialogFooter>
               <Button

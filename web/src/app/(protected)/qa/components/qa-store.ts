@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { Question } from "../data/schema";
+import { Question } from "@/lib/firebase/schema";
 import { Table, ColumnFiltersState, SortingState } from "@tanstack/react-table";
 
 // Table state atoms
@@ -7,7 +7,7 @@ export const rowSelectionAtom = atom<Record<string, boolean>>({});
 export const columnVisibilityAtom = atom<Record<string, boolean>>({});
 export const columnFiltersAtom = atom<ColumnFiltersState>([]);
 export const sortingAtom = atom<SortingState>([
-  { id: "last_modified", desc: true },
+  { id: "updatedAt", desc: true },
 ]);
 
 // Table instance atom (will hold a reference to the TanStack Table instance)

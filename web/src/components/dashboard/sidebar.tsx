@@ -4,6 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { FeedbackModal } from "@/app/(protected)/help/components/feedback-modal";
+import { useCreateFeedback } from "@/hooks/useFeedback";
+import { FeedbackInput } from "@/lib/firebase/schema";
+import { useToast } from "@/hooks/use-toast";
+import { useAtom } from "jotai";
+import { userProfileAtom } from "@/lib/store/user-store";
 import {
   LayoutDashboard,
   CheckSquare,
@@ -33,7 +40,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
 
 const sidebarNavItems = [
   {
@@ -109,9 +115,15 @@ const sidebarNavItems = [
   },
   {
     title: "Help Center",
-    href: "/dashboard/help",
+    href: "/help",
     icon: HelpCircle,
     group: "Other",
+  },
+  {
+    title: "Feedback",
+    href: "/admin/feedback",
+    icon: MessageSquare,
+    group: "Admin",
   },
 ];
 
@@ -144,6 +156,39 @@ export function Sidebar({ className, ...props }: SidebarProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(teams[0]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [feedbackType, setFeedbackType] = useState<
+    "bug" | "feature" | "comment"
+  >("feature");
+  const createFeedbackMutation = useCreateFeedback();
+  const { toast } = useToast();
+  const [userProfile] = useAtom(userProfileAtom);
+
+  const handleOpenFeedback = () => {
+    setFeedbackType("feature");
+    setModalOpen(true);
+  };
+
+  const handleSubmitFeedback = async (data: FeedbackInput) => {
+    try {
+      const userId = userProfile?.uid || "unknown";
+      const userEmail = userProfile?.email || "unknown@example.com";
+
+      await createFeedbackMutation.mutateAsync({
+        data,
+        userId,
+        userEmail,
+      });
+
+      setModalOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit feedback. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Group items by their group property
   const groupedItems = sidebarNavItems.reduce(
@@ -334,10 +379,24 @@ export function Sidebar({ className, ...props }: SidebarProps) {
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleOpenFeedback}>
+              Send Feedback
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/upgrade">Upgrade</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      <FeedbackModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        type={feedbackType}
+        onSubmit={handleSubmitFeedback}
+        isSubmitting={createFeedbackMutation.isPending}
+      />
     </div>
   );
 }

@@ -121,13 +121,11 @@ export function NavUser({ user }: { user: User | null }) {
               )}
 
               <DropdownMenuSeparator />
-              {userProfile?.subscription !== "pro" &&
-                userProfile?.subscription !== "enterprise" && (
-                  <DropdownMenuItem>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Upgrade to Pro
-                  </DropdownMenuItem>
-                )}
+
+              <DropdownMenuItem>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Upgrade to Pro
+              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>

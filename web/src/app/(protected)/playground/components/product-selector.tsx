@@ -21,7 +21,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Product, selectedProductAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
+import { Product } from "@/lib/firebase/schema";
 import { useProducts } from "@/hooks/useProducts";
 import { useAtom } from "jotai";
 

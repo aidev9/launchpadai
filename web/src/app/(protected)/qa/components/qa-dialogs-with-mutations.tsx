@@ -13,9 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { TagInput } from "@/components/ui/tag-input";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -31,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { MultiSelect } from "@/components/ui/multi-select";
 import {
   addQAModalOpenAtom,
   editQAModalOpenAtom,
@@ -40,17 +43,12 @@ import {
   allQuestionsAtom,
   tableInstanceAtom,
 } from "./qa-store";
-import { phaseOptions } from "../data/data";
-import {
-  addProductQuestionAction,
-  deleteQuestionAction,
-  updateProductQuestionAction,
-} from "@/lib/firebase/actions/questions";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
-import { Question } from "../data/schema";
+import { Question } from "@/lib/firebase/schema";
 import { toast as showToast } from "@/hooks/use-toast";
 import { useXp } from "@/xp/useXp";
-import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import { TOAST_DEFAULT_DURATION, phaseOptions } from "@/utils/constants";
+import { useQuestionsQuery } from "../hooks/useQuestionsQuery";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -59,7 +57,7 @@ type ShowToastOptions = Parameters<typeof showToast>[0];
 const questionFormSchema = z.object({
   question: z.string().min(1, "Question is required"),
   answer: z.string().optional(),
-  phase: z.string().optional(),
+  phases: z.array(z.string()).min(1, "Select at least one phase"),
   tags: z.string().optional(),
 });
 
@@ -84,8 +82,13 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const { awardXp } = useXp();
   const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get the mutations from our custom hook
+  const {
+    addQuestionMutation,
+    updateQuestionMutation,
+    deleteQuestionMutation,
+  } = useQuestionsQuery(selectedProductId);
 
   // Initialize form
   const form = useForm<QuestionFormValues>({
@@ -93,7 +96,7 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
     defaultValues: {
       question: "",
       answer: "",
-      phase: "Discover",
+      phases: ["Discover"],
       tags: "",
     },
   });
@@ -104,7 +107,7 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
       form.reset({
         question: selectedQuestion.question,
         answer: selectedQuestion.answer || "",
-        phase: selectedQuestion.phase || "Discover",
+        phases: selectedQuestion.phases || ["Discover"],
         tags: selectedQuestion.tags?.join(", ") || "",
       });
 
@@ -119,26 +122,12 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
       form.reset({
         question: "",
         answer: "",
-        phase: "Discover",
+        phases: ["Discover"],
         tags: "",
       });
       setTags([]);
-      setTagInput("");
     }
   }, [addModalOpen, form]);
-
-  // Handle adding a tag
-  const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput("");
-    }
-  };
-
-  // Handle removing a tag
-  const handleRemoveTag = (tag: string) => {
-    setTags(tags.filter((t) => t !== tag));
-  };
 
   // Handle form submission
   const onSubmit = async (data: QuestionFormValues) => {
@@ -151,33 +140,40 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
       // Prepare question data
       const questionData = {
         question: data.question,
         answer: data.answer || null,
         tags: tags,
-        phase: data.phase,
+        phases: data.phases,
+        phase: data.phases[0], // Use the first phase as the primary one
       };
 
       let response;
 
-      // Use different functions for add vs edit
+      // Use different mutations for add vs edit
       if (editModalOpen && selectedQuestion) {
-        // Update existing question
-        response = await updateProductQuestionAction(
-          selectedProductId,
-          selectedQuestion.id,
-          questionData
-        );
+        // Update existing question using Tanstack Query mutation
+        response = await updateQuestionMutation.mutateAsync({
+          productId: selectedProductId,
+          questionId: selectedQuestion.id,
+          questionData: questionData,
+        });
+
+        // Award XP for answering if an answer was added and wasn't there before
+        if (data.answer && !selectedQuestion.answer) {
+          await awardXp("answer_question");
+        }
       } else {
-        // Add new question
-        response = await addProductQuestionAction(
-          selectedProductId,
-          questionData
-        );
+        // Add new question using Tanstack Query mutation
+        response = await addQuestionMutation.mutateAsync({
+          ...questionData,
+          productId: selectedProductId,
+        });
+
+        // Award XP for adding a question
+        await awardXp("add_question");
       }
 
       if (response.success) {
@@ -188,26 +184,11 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
         let toastDescription = isAdding
           ? "Question added successfully"
           : "Question updated successfully";
-        let pointsAwarded = 0;
-        let actionId = "";
 
-        if (isAdding) {
-          actionId = "add_question";
-          pointsAwarded = 5; // Points for adding a question
-        } else if (isAnsweringFirstTime) {
-          actionId = "answer_question";
-          pointsAwarded = 5; // Points for answering a question
-          toastDescription = "Answer saved successfully"; // Update description for answering
-        }
-
-        // Award XP if applicable
-        if (actionId && pointsAwarded > 0) {
-          try {
-            await awardXp(actionId);
-            toastDescription += ` You earned ${pointsAwarded} XP!`;
-          } catch (error) {
-            console.log("error:", error);
-          }
+        if (isAnsweringFirstTime) {
+          toastDescription = "Answer saved successfully. You earned 5 XP!";
+        } else if (isAdding) {
+          toastDescription += ". You earned 5 XP!";
         }
 
         // Show the toast
@@ -220,27 +201,6 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
         // Close dialogs
         setAddModalOpen(false);
         setEditModalOpen(false);
-
-        // Refresh questions
-        if (response.question) {
-          // Update local state
-          if (editModalOpen && selectedQuestion) {
-            // Update existing question
-            setAllQuestions(
-              allQuestions.map((q) =>
-                q.id === selectedQuestion.id
-                  ? (response.question as unknown as Question)
-                  : q
-              )
-            );
-          } else {
-            // Add new question
-            setAllQuestions([
-              ...allQuestions,
-              response.question as unknown as Question,
-            ]);
-          }
-        }
 
         // Call onSuccess to refresh the questions list
         if (onSuccess) {
@@ -255,8 +215,6 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
         title: "Error saving question",
         description: error instanceof Error ? error.message : "Unknown error",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -269,8 +227,6 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
       });
       return;
     }
-
-    setIsSubmitting(true);
 
     try {
       // Determine if we're deleting a single question or multiple questions
@@ -288,7 +244,6 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
             title: "Error",
             description: "No questions selected for deletion",
           });
-          setIsSubmitting(false);
           return;
         }
 
@@ -328,12 +283,10 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
             title: "Error",
             description: "Failed to map selected rows to question IDs",
           });
-          setIsSubmitting(false);
           return;
         }
 
         // Create a copy of questions to update optimistically
-        let updatedQuestions = [...allQuestions];
         let successCount = 0;
         let errorCount = 0;
 
@@ -341,25 +294,18 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
         for (const id of selectedQuestionIds) {
           console.log(`Deleting question with ID: ${id}`);
           try {
-            const response = await deleteQuestionAction(selectedProductId, id);
-            console.log(`Delete response for ${id}:`, response);
+            // Use the mutation to delete each question
+            await deleteQuestionMutation.mutateAsync({
+              productId: selectedProductId,
+              questionId: id,
+            });
 
-            if (response.success) {
-              // Filter out the deleted question from our local copy
-              updatedQuestions = updatedQuestions.filter((q) => q.id !== id);
-              successCount++;
-            } else {
-              console.error(`Failed to delete question ${id}:`, response.error);
-              errorCount++;
-            }
+            successCount++;
           } catch (error) {
             console.error(`Error deleting question ${id}:`, error);
             errorCount++;
           }
         }
-
-        // Update local state immediately (optimistic update)
-        setAllQuestions(updatedQuestions);
 
         // Clear selection
         setRowSelection({});
@@ -380,37 +326,28 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
           });
         }
       } else if (selectedQuestion) {
-        // Single question deletion
+        // Single question deletion using mutation
         console.log(`Deleting single question: ${selectedQuestion.id}`);
-        const response = await deleteQuestionAction(
-          selectedProductId,
-          selectedQuestion.id
-        );
+        await deleteQuestionMutation.mutateAsync({
+          productId: selectedProductId,
+          questionId: selectedQuestion.id,
+        });
 
-        if (response.success) {
-          // Update local state immediately (optimistic update)
-          setAllQuestions(
-            allQuestions.filter((q) => q.id !== selectedQuestion.id)
-          );
-
-          onShowToast({
-            title: "Success",
-            description: "Question deleted successfully",
-          });
-        } else {
-          throw new Error(response.error || "Failed to delete question");
-        }
+        onShowToast({
+          title: "Success",
+          description: "Question deleted successfully",
+        });
       } else {
         throw new Error("No question selected for deletion");
       }
 
-      // Call onSuccess to refresh the questions list, but only if we need to
-      // This helps avoid unnecessary flickering
+      // Close the modal
+      setDeleteModalOpen(false);
+      setSelectedQuestion(null);
+
+      // Call onSuccess to refresh the questions list
       if (onSuccess) {
-        // Delay the refresh to avoid flicker
-        setTimeout(() => {
-          onSuccess();
-        }, 500);
+        onSuccess();
       }
     } catch (error) {
       console.error("Error deleting question:", error);
@@ -418,10 +355,6 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
         title: "Error deleting question",
         description: error instanceof Error ? error.message : "Unknown error",
       });
-    } finally {
-      setIsSubmitting(false);
-      setDeleteModalOpen(false);
-      setSelectedQuestion(null);
     }
   };
 
@@ -489,27 +422,21 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
 
               <FormField
                 control={form.control}
-                name="phase"
+                name="phases"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phase</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a phase" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {phaseOptions.map((phase) => (
-                          <SelectItem key={phase} value={phase}>
-                            {phase}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Phases</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        placeholder="Select phases..."
+                        selected={field.value}
+                        options={phaseOptions}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Select the phases this question applies to.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -517,48 +444,37 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
 
               <div>
                 <FormLabel>Tags</FormLabel>
-                <div className="flex items-center space-x-2 mt-1.5">
-                  <Input
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    placeholder="Add a tag..."
-                    className="flex-1"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddTag();
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAddTag}
-                  >
-                    Add
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">
-                      {tag}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="h-4 w-4 p-0 ml-1"
-                        onClick={() => handleRemoveTag(tag)}
-                      >
-                        <X className="h-3 w-3" />
-                        <span className="sr-only">Remove {tag}</span>
-                      </Button>
-                    </Badge>
-                  ))}
-                </div>
+                <TagInput
+                  value={tags}
+                  onChange={setTags}
+                  placeholder="Type and press enter to add a tag..."
+                />
               </div>
 
               <DialogFooter>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setAddModalOpen(false);
+                    setEditModalOpen(false);
+                  }}
+                  disabled={
+                    addQuestionMutation.isPending ||
+                    updateQuestionMutation.isPending
+                  }
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    addQuestionMutation.isPending ||
+                    updateQuestionMutation.isPending
+                  }
+                >
+                  {addQuestionMutation.isPending ||
+                  updateQuestionMutation.isPending
                     ? "Saving..."
                     : editModalOpen
                       ? "Update"
@@ -598,16 +514,16 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
             <Button
               variant="outline"
               onClick={() => setDeleteModalOpen(false)}
-              disabled={isSubmitting}
+              disabled={deleteQuestionMutation.isPending}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
-              disabled={isSubmitting}
+              disabled={deleteQuestionMutation.isPending}
             >
-              {isSubmitting ? "Deleting..." : "Delete"}
+              {deleteQuestionMutation.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

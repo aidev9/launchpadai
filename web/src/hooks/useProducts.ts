@@ -4,8 +4,8 @@ import {
   productsAtom,
   selectedProductIdAtom,
   selectedProductAtom,
-  Product,
 } from "@/lib/store/product-store";
+import { Product } from "@/lib/firebase/schema";
 import { getAllProducts, getProduct } from "@/lib/firebase/products";
 
 interface ApiResponse<T> {

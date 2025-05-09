@@ -5,27 +5,14 @@ import { openai } from "@ai-sdk/openai";
 import { createStreamableValue } from "ai/rsc";
 import { PROMPT_ENHANCEMENT_SYSTEM_PROMPT } from "@/utils/constants";
 import { Message } from "ai";
-import { Product } from "@/lib/store/product-store";
+import {
+  Product,
+  ProductNote,
+  Question,
+  AIModelSettings,
+} from "@/lib/firebase/schema";
 import { getOrderedProductQuestions } from "@/lib/firebase/actions/questions";
 import { getProjectNotes } from "@/lib/firebase/notes";
-import { Question } from "@/lib/firebase/schema";
-
-// Type definition for AI model settings
-export interface AIModelSettings {
-  modelId: string;
-  temperature: number;
-  maxTokens: number;
-  topP: number;
-}
-
-// Define types for questions and notes
-
-interface ProductNote {
-  id: string;
-  note_body: string;
-  tags?: string[];
-  last_modified?: Date;
-}
 
 // Default settings if not provided
 const defaultSettings: AIModelSettings = {

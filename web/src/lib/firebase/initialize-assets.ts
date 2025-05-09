@@ -1,26 +1,11 @@
 "use server";
 
 import { adminDb } from "./admin";
-import {
-  assets as defaultAssets,
-  Asset,
-} from "@/app/(protected)/review_assets/data/assets";
+import { assets as defaultAssets } from "@/app/(protected)/review_assets/data/assets";
+import { FirestoreAsset } from "@/lib/firebase/schema";
 import { v4 as uuidv4 } from "uuid";
 import { getCurrentUserId } from "./adminAuth";
-
-// Interface for an asset in Firestore
-export interface FirestoreAsset {
-  id: string;
-  title: string;
-  description: string;
-  systemPrompt: string;
-  phase: Asset["phase"];
-  tags: string[];
-  order: number;
-  created_at: Date;
-  last_updated: Date;
-  content?: string;
-}
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 /**
  * Initialize assets for a user's product
@@ -61,8 +46,8 @@ export async function initializeProductAssets(
         phase: defaultAsset.phase,
         tags: [defaultAsset.phase],
         order: defaultAsset.order,
-        created_at: now,
-        last_updated: now,
+        createdAt: getCurrentUnixTimestamp(),
+        updatedAt: getCurrentUnixTimestamp(),
       };
 
       batch.set(assetRef, firestoreAsset);

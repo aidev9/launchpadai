@@ -7,6 +7,7 @@ import { awardXpPoints } from "@/xp/server-actions";
 import { z } from "zod";
 import { Resend } from "resend";
 import SubscriptionConfirmation from "@/lib/emails/subscription-confirmation";
+import SignupNotification from "@/lib/emails/signup-notification";
 
 import Stripe from "stripe";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
@@ -125,7 +126,7 @@ export const createSubscriptionAction = actionClient
           createdAt: getCurrentUnixTimestamp(),
         });
 
-        // 5. Send confirmation email
+        // 5. Send confirmation email to user
         try {
           await resend.emails.send({
             from: process.env.EMAIL_FROM || "noreply@launchpadai.io",
@@ -141,6 +142,29 @@ export const createSubscriptionAction = actionClient
         } catch (emailError) {
           console.error("Email sending error:", emailError);
           // Don't fail the whole process if just the email fails
+        }
+
+        // 5b. Send notification email to admin
+        try {
+          await resend.emails.send({
+            from: process.env.EMAIL_FROM || "notifications@launchpadai.io",
+            to: process.env.EMAIL_ADMIN || "info@launchpadai.io",
+            subject: "Congratulations! A new user has signed up to LaunchpadAI",
+            react: SignupNotification({
+              name,
+              email,
+              subscription: planType.toLowerCase(),
+              company: company || "Not provided",
+              role: role || "Not provided",
+              signupPath: "Subscription Plan Signup",
+            }),
+          });
+          console.log(
+            `Admin notification email sent for new subscription signup: ${email}`
+          );
+        } catch (emailError) {
+          console.error("Admin notification email error:", emailError);
+          // Don't fail the whole process if just the admin notification email fails
         }
 
         // 6. Award XP for signing up

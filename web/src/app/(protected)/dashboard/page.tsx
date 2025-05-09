@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useProducts } from "@/hooks/useProducts";
-import { Product } from "@/lib/store/product-store";
+import { Product } from "@/lib/firebase/schema";
 import {
   DropdownMenu,
   DropdownMenuContent,

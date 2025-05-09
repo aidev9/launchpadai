@@ -45,10 +45,10 @@ import {
   updateProduct,
 } from "@/lib/firebase/products";
 import {
-  Product,
   selectedProductAtom,
   selectedProductIdAtom,
 } from "@/lib/store/product-store";
+import { Product } from "@/lib/firebase/schema";
 import { useAtom } from "jotai";
 import { CountrySelect } from "@/components/ui/country-select";
 import { Breadcrumbs } from "@/components/breadcrumbs";

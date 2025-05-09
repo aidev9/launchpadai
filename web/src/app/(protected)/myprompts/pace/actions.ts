@@ -4,7 +4,7 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { createStreamableValue } from "ai/rsc";
 import { Message } from "ai";
-import { AIModelSettings } from "@/app/(protected)/prompts/prompt/actions";
+import { AIModelSettings } from "@/lib/firebase/schema";
 
 // Default settings for AI model
 const defaultSettings: AIModelSettings = {

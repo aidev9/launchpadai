@@ -2,33 +2,11 @@
 
 import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
-// import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
-import { FirestoreAsset } from "./initialize-assets";
-import { Asset } from "@/app/(protected)/review_assets/data/assets";
+import { FirestoreAsset, Asset } from "@/lib/firebase/schema";
 import { awardXpPoints } from "@/xp/server-actions";
-
-// Schema for asset validation
-// const assetSchema = z.object({
-//   id: z.string(),
-//   phase: z.enum([
-//     "Discover",
-//     "Validate",
-//     "Design",
-//     "Build",
-//     "Secure",
-//     "Launch",
-//     "Grow",
-//   ]),
-//   title: z.string(),
-//   description: z.string(),
-//   systemPrompt: z.string(),
-//   tags: z.array(z.string()),
-//   order: z.number(),
-//   content: z.string().optional(),
-//   last_updated: z.coerce.date().optional(),
-//   created_at: z.coerce.date().optional(),
-// });
+import { get } from "http";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Get the assets reference for a specific user and product
 function getUserAssetRef(userId: string, productId: string) {
@@ -200,11 +178,10 @@ export async function saveAsset(
     const docSnapshot = await assetDocRef.get();
     const isNewAsset = !docSnapshot.exists;
 
-    const now = new Date();
     const assetWithTimestamp = {
       ...assetData,
-      last_updated: now,
-      created_at: assetData.created_at || now,
+      updatedAt: getCurrentUnixTimestamp(),
+      createdAt: assetData.createdAt || getCurrentUnixTimestamp(),
     };
 
     await assetDocRef.set(assetWithTimestamp, { merge: true });

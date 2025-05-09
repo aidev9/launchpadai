@@ -15,6 +15,8 @@ import {
   productCountLoadedAtom,
 } from "../store/product-store";
 import { getDefaultStore } from "jotai";
+import { get } from "http";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Root products collection reference
 // const productsCollection = adminDb.collection("products");
@@ -71,11 +73,10 @@ export async function createProduct(data: ProductInput) {
     const productsRef = getUserProductsRef(userId);
 
     // Add timestamps
-    const now = new Date().toISOString();
     const productData = {
       ...validatedData,
-      createdAt: now,
-      last_modified: now,
+      createdAt: getCurrentUnixTimestamp(),
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     // Add to Firestore
@@ -159,15 +160,14 @@ async function createProductQuestions(userId: string, productId: string) {
         const questionId = adminDb.collection("_").doc().id; // Generate a Firebase auto-ID
 
         // Format the question data - without the id from staticQuestions
-        const now = new Date().toISOString();
         const questionData = {
           question: staticQuestion.text,
           answer: null,
           tags: [staticQuestion.phase.toLowerCase()],
           phase: staticQuestion.phase,
           order: staticQuestion.order,
-          createdAt: now,
-          last_modified: now,
+          createdAt: getCurrentUnixTimestamp(),
+          updatedAt: getCurrentUnixTimestamp(),
         };
 
         // Add to batch
@@ -220,10 +220,9 @@ export async function updateProduct(id: string, data: Partial<ProductInput>) {
       };
     }
 
-    // Update with new data and last_modified timestamp
     const updateData = {
       ...data,
-      last_modified: new Date().toISOString(),
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     await productsRef.doc(id).update(updateData);
@@ -293,7 +292,7 @@ export async function getAllProducts() {
     const userId = await getCurrentUserId();
     const productsRef = getUserProductsRef(userId);
 
-    const snapshot = await productsRef.orderBy("last_modified", "desc").get();
+    const snapshot = await productsRef.orderBy("updatedAt", "desc").get();
 
     const products = snapshot.docs.map((doc) => ({
       id: doc.id,

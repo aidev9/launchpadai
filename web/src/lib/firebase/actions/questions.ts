@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "../adminAuth";
 import { getProductQuestionsRef } from "../questions";
 import { awardXpPoints } from "@/xp/server-actions"; // Import XP award function
+import { get } from "http";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Get reference to the questions collection
 // const questionsCollection = adminDb.collection("questions");
@@ -45,11 +47,10 @@ export async function saveQuestionAnswer(
     // We'll just update without checking existence first, which is faster
     // This is safe as the client should only call this with valid questions
 
-    // Update the answer and last_modified timestamp
-    const now = new Date().toISOString();
+    // Update the answer and updatedAt timestamp
     await questionRef.update({
       answer,
-      last_modified: now,
+      updatedAt: getCurrentUnixTimestamp(),
     });
 
     // Revalidate the UI
@@ -169,6 +170,7 @@ export async function addProductQuestionAction(
     question: string;
     answer: string | null;
     tags: string[];
+    phases?: string[];
     phase?: string;
   }
 ) {
@@ -195,17 +197,19 @@ export async function addProductQuestionAction(
     const questionId = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     // Prepare the question data
-    const now = new Date().toISOString();
-    const phase = questionData.phase || questionData.tags[0] || "Discover";
+    const phases = questionData.phases || [];
+    const phase =
+      questionData.phase || (phases.length > 0 ? phases[0] : "Discover");
 
     const newQuestion = {
       question: questionData.question,
       answer: questionData.answer,
       tags: questionData.tags,
+      phases: phases,
       phase: phase,
-      order: Date.now(), // Use timestamp for default ordering
-      createdAt: now,
-      last_modified: now,
+      order: getCurrentUnixTimestamp(), // Use timestamp for default ordering
+      createdAt: getCurrentUnixTimestamp(),
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     // Add to Firestore
@@ -242,6 +246,7 @@ export async function updateProductQuestionAction(
     question: string;
     answer: string | null;
     tags: string[];
+    phases?: string[];
     phase?: string;
   }
 ) {
@@ -277,15 +282,17 @@ export async function updateProductQuestionAction(
     const existingData = questionDoc.data() || {};
 
     // Prepare the update data
-    const now = new Date().toISOString();
-    const phase = questionData.phase || questionData.tags[0] || "Discover";
+    const phases = questionData.phases || [];
+    const phase =
+      questionData.phase || (phases.length > 0 ? phases[0] : "Discover");
 
     const updatedQuestion = {
       question: questionData.question,
       answer: questionData.answer,
       tags: questionData.tags,
+      phases: phases,
       phase: phase,
-      last_modified: now,
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     // Update in Firestore
@@ -305,7 +312,7 @@ export async function updateProductQuestionAction(
         id: questionId,
         ...updatedQuestion,
         createdAt: existingData.createdAt,
-        order: existingData.order || Date.now(),
+        order: existingData.order || getCurrentUnixTimestamp(),
       },
     };
   } catch (error) {
@@ -359,10 +366,9 @@ export async function answerProductQuestionAction(
     const isNewAnswer = !existingAnswer;
 
     // Update the answer in Firestore
-    const now = new Date().toISOString();
     await questionsRef.doc(questionId).update({
       answer: answer,
-      last_modified: now,
+      updatedAt: getCurrentUnixTimestamp(),
     });
 
     // Award XP only for answering a question for the first time
@@ -388,7 +394,7 @@ export async function answerProductQuestionAction(
       success: true,
       questionId,
       answer,
-      lastModified: now,
+      updatedAt: getCurrentUnixTimestamp(),
     };
   } catch (error) {
     console.error("Error answering question:", error);

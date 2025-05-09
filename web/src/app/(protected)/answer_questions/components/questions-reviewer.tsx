@@ -6,16 +6,7 @@ import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  // CheckCircle,
-  // Circle,
-  Edit,
-  Save,
-  // Search,
-  FileText,
-  Check,
-  Trash2,
-} from "lucide-react";
+import { Edit, Save, FileText, Check, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -28,8 +19,8 @@ import {
   allQuestionsAtom,
   questionModalOpenAtom,
   selectedPhasesAtom,
-  Question,
 } from "@/lib/store/questions-store";
+import { Question } from "@/lib/firebase/schema";
 import { AddQuestionButton } from "./add-question-button";
 import {
   AlertDialog,
@@ -44,7 +35,11 @@ import {
 import { userProfileAtom, updateUserProfileAtom } from "@/lib/store/user-store";
 import { toast as showToast } from "@/hooks/use-toast";
 import React from "react";
-import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import {
+  getCurrentUnixTimestamp,
+  TOAST_DEFAULT_DURATION,
+} from "@/utils/constants";
+import { get } from "http";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -202,7 +197,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
     // Filter by phase
     if (!selectedPhases.includes("All")) {
       filtered = filtered.filter((question) =>
-        selectedPhases.includes(question.phase || "")
+        question.phases?.some((phase) => selectedPhases.includes(phase))
       );
     }
 
@@ -339,7 +334,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
         setAllQuestions((prev) =>
           prev.map((q) =>
             q.id === selectedQuestionId
-              ? { ...q, answer, last_modified: new Date().toISOString() }
+              ? { ...q, answer, updatedAt: getCurrentUnixTimestamp() }
               : q
           )
         );
@@ -559,7 +554,10 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
                       </h2>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">
-                          {selectedQuestion.phase}
+                          {selectedQuestion.phases &&
+                          selectedQuestion.phases.length > 0
+                            ? selectedQuestion.phases[0]
+                            : "No phase"}
                         </Badge>
                         {selectedQuestion.tags &&
                           selectedQuestion.tags.length > 0 && (

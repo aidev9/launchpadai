@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useSetAtom } from "jotai";
+import { formatTimestamp } from "@/utils/constants";
 
 // This provides access to the atom setters without causing unnecessary rerenders
 const ActionsCell = ({ note }: { note: Note }) => {
@@ -149,9 +150,9 @@ export const columns: ColumnDef<Note>[] = [
     ),
     cell: ({ row }) => {
       // Use the unixTimestampToDate utility function to convert seconds to Date
-      const timestamp = row.getValue("updatedAt") as number;
-      const date = format(new Date(timestamp), "MM/dd/yyyy HH:mm");
-      return <div className="font-medium">{date}</div>;
+      const updatedAt = parseInt(row.getValue("updatedAt"));
+      const formatteDate = formatTimestamp(updatedAt);
+      return <div className="font-medium">{formatteDate}</div>;
     },
     meta: {
       className: "whitespace-nowrap",

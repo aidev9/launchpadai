@@ -29,14 +29,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { v4 as uuidv4 } from "uuid";
 import { newlyCreatedAssetIdAtom } from "./add-asset-button";
-import { FirestoreAsset } from "@/lib/firebase/initialize-assets";
+import { FirestoreAsset } from "@/lib/firebase/schema";
 import {
   allAssetsAtom,
   selectedAssetPhasesAtom,
 } from "@/lib/store/assets-store";
 import { useXp } from "@/xp/useXp";
 import { toast as showToast } from "@/hooks/use-toast";
-import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import {
+  getCurrentUnixTimestamp,
+  TOAST_DEFAULT_DURATION,
+} from "@/utils/constants";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -45,7 +48,7 @@ type ShowToastOptions = Parameters<typeof showToast>[0];
 interface Note {
   id: string;
   note_body: string;
-  last_modified: string;
+  updatedAt: number;
 }
 
 // Interface for AssetsReviewerContent props
@@ -466,7 +469,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
     const note: Note = {
       id: noteId,
       note_body: noteContent,
-      last_modified: new Date().toISOString(),
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     try {
@@ -512,9 +515,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
                 ? {
                     ...n,
                     ...response.note,
-                    last_modified:
-                      response.note.last_modified?.toString() ||
-                      note.last_modified,
+                    updatedAt: response.note.updatedAt || note.updatedAt,
                   }
                 : n
             )

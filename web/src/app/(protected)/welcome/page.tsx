@@ -23,6 +23,7 @@ import { PlusCircle, Search as SearchIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { cn } from "@/lib/utils";
+import { AlphaWarningAlert } from "@/components/alpha-warning-alert";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -88,6 +89,7 @@ export default function Welcome() {
 
   return (
     <Main>
+      <AlphaWarningAlert />
       <div className="flex flex-col gap-8">
         {/* Breadcrumbs */}
         <div className="mb-2">

@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import LongText from "@/components/long-text";
 import { statusTypes } from "../data/data";
-import { Question } from "../data/schema";
+import { Question } from "@/lib/firebase/schema";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
+import { formatTimestamp } from "@/utils/constants";
 
 export const columns: ColumnDef<Question>[] = [
   {
@@ -64,7 +65,10 @@ export const columns: ColumnDef<Question>[] = [
       <DataTableColumnHeader column={column} title="Phase" />
     ),
     cell: ({ row }) => {
-      const phase = row.getValue("phase");
+      const phases = row.original.phases;
+      const phase =
+        phases && phases.length > 0 ? phases[0] : row.getValue("phase");
+
       return phase ? (
         <Badge variant="outline" className="capitalize">
           {String(phase)}
@@ -72,6 +76,18 @@ export const columns: ColumnDef<Question>[] = [
       ) : (
         <div className="text-muted-foreground italic">N/A</div>
       );
+    },
+    filterFn: (row, id, value) => {
+      // If value is null or empty array, don't filter
+      if (!value || !Array.isArray(value) || value.length === 0) {
+        return true;
+      }
+
+      const phases = row.original.phases;
+      const phase =
+        phases && phases.length > 0 ? phases[0] : row.getValue("phase");
+
+      return value.includes(phase);
     },
   },
   {
@@ -151,18 +167,27 @@ export const columns: ColumnDef<Question>[] = [
     },
   },
   {
-    accessorKey: "last_modified",
+    accessorKey: "updatedAt",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Last Modified" />
     ),
     cell: ({ row }) => {
-      const lastModified = row.getValue("last_modified") as string;
-      const date = lastModified ? new Date(lastModified) : null;
+      const updatedAt = row.getValue("updatedAt");
+      // Handle different types of timestamps
+      let timestamp: number;
+
+      if (typeof updatedAt === "number") {
+        timestamp = updatedAt;
+      } else if (typeof updatedAt === "string") {
+        timestamp = parseInt(updatedAt);
+      } else {
+        timestamp = 0; // Default for null/undefined
+      }
+
+      const formattedDate = timestamp ? formatTimestamp(timestamp) : "N/A";
 
       return (
-        <div className="text-sm text-muted-foreground">
-          {date ? date.toLocaleDateString() : "N/A"}
-        </div>
+        <div className="text-sm text-muted-foreground">{formattedDate}</div>
       );
     },
     sortingFn: "datetime",

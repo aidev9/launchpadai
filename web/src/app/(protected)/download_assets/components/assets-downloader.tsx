@@ -13,23 +13,11 @@ import { getProductAssets } from "@/lib/firebase/assets";
 import { toast } from "@/components/ui/use-toast";
 import { selectedAssetsAtom } from "./assets-atoms";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
-
-interface FirestoreAsset {
-  id: string;
-  phase: string;
-  document: string;
-  content?: string;
-  title?: string;
-  createdAt?: string;
-  last_modified?: string;
-  systemPrompt?: string;
-  order?: number;
-}
+import { FirestoreAsset } from "@/lib/firebase/schema";
 
 export function AssetsDownloader() {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [selectedPhases] = useAtom(selectedPhasesAtom);
-  // const [selectedPrompts] = useAtom(selectedPromptsAtom);
   const [selectedAssets, setSelectedAssets] = useAtom(selectedAssetsAtom);
   const [displayedAssets, setDisplayedAssets] = useState<FirestoreAsset[]>([]);
   const [allAssets, setAllAssets] = useState<FirestoreAsset[]>([]);
@@ -106,7 +94,6 @@ export function AssetsDownloader() {
   const getAssetTitle = (asset: FirestoreAsset) => {
     // Try different possible title fields in order of preference
     if (asset.title) return asset.title;
-    if (asset.document) return asset.document;
 
     // If content exists and is not too long, it might be a title
     if (asset.content && asset.content.length < 100) {
@@ -197,10 +184,8 @@ export function AssetsDownloader() {
                             {asset.phase}
                           </span>
                           <span className="text-sm text-muted-foreground">
-                            {asset.last_modified
-                              ? new Date(
-                                  asset.last_modified
-                                ).toLocaleDateString()
+                            {asset.updatedAt
+                              ? new Date(asset.updatedAt).toLocaleDateString()
                               : "N/A"}
                           </span>
                         </div>

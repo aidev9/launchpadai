@@ -173,14 +173,14 @@ export const sidebarData: SidebarData = {
           icon: IconDashboard,
         },
         {
-          title: "Users Management",
+          title: "Users",
           url: "/admin/users",
           icon: IconUserShield,
         },
         {
-          title: "Users",
-          url: "/users",
-          icon: IconUsers,
+          title: "Feedback",
+          url: "/admin/feedback",
+          icon: IconMessages,
         },
         {
           title: "Courses",
@@ -241,7 +241,7 @@ export const sidebarData: SidebarData = {
         },
         {
           title: "Help Center",
-          url: "/help-center",
+          url: "/help",
           icon: IconHelp,
         },
         {

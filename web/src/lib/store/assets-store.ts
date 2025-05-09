@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { FirestoreAsset } from "@/lib/firebase/initialize-assets";
+import { FirestoreAsset } from "@/lib/firebase/schema";
 
 // Create an atom to share all assets
 export const allAssetsAtom = atom<FirestoreAsset[]>([]);
