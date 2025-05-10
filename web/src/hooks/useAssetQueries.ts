@@ -32,32 +32,12 @@ export function useAssetQueries(techStackId: string | undefined) {
         return { assets: [] };
       }
 
-      console.log(
-        `[useAssetQueries] Fetching assets for tech stack ${techStackId}`
-      );
       const result = await getTechStackAssets(techStackId);
 
       if (result.success) {
-        console.log(
-          `[useAssetQueries] Successfully fetched ${result.assets?.length || 0} assets`
-        );
-
-        // Log the status of all assets
-        console.log(
-          `[useAssetQueries] Asset statuses:`,
-          result.assets?.map((a) => ({
-            id: a.id,
-            type: a.assetType,
-            isGenerating: a.isGenerating,
-            needsGeneration: a.needsGeneration,
-            recentlyCompleted: a.recentlyCompleted,
-          }))
-        );
+        // Successfully fetched assets
       } else {
-        console.error(
-          `[useAssetQueries] Failed to fetch assets:`,
-          result.error
-        );
+        // Failed to fetch assets
       }
 
       return result;
@@ -81,10 +61,6 @@ export function useAssetQueries(techStackId: string | undefined) {
       techStackDetails: any;
       userInstructions?: string;
     }) => {
-      console.log(
-        `[useAssetQueries] Generating content for asset ${assetId} (${assetType})`
-      );
-
       const result = await generateAssetContentApi(
         techStackId!,
         assetId,
@@ -93,10 +69,6 @@ export function useAssetQueries(techStackId: string | undefined) {
         userInstructions
       );
 
-      console.log(
-        `[useAssetQueries] Generation result:`,
-        result.success ? "Success" : "Failed"
-      );
       return result;
     },
     onMutate: async (variables) => {
@@ -126,10 +98,6 @@ export function useAssetQueries(techStackId: string | undefined) {
     },
     onError: (error, variables) => {
       // Revert optimistic update on error if necessary, or handle error
-      console.error(
-        `[useAssetQueries] Error generating asset ${variables.assetId}:`,
-        error
-      );
       setOptimisticGeneratingAssets((prev) => ({
         ...prev,
         [variables.assetId]: false,

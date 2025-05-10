@@ -117,9 +117,6 @@ export function useProducts() {
           errorMessage.includes("not authenticated") ||
           errorMessage.includes("Authentication failed")
         ) {
-          console.log(
-            "[useProducts] Authentication error detected, redirecting to sign in"
-          );
           // If we're in a browser environment, redirect to sign in
           if (typeof window !== "undefined") {
             window.location.href = "/auth/signin";

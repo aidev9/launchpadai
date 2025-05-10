@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
@@ -23,7 +23,8 @@ import {
   isEditModeAtom,
   selectedTechStackAtom,
 } from "@/lib/store/techstack-store";
-import { TechStack, TechStackInput } from "@/lib/firebase/schema";
+import { TechStack } from "@/lib/firebase/schema";
+import { TechStackInput } from "@/lib/firebase/schema";
 import {
   createTechStack,
   getTechStack,
@@ -53,25 +54,23 @@ export default function TechStackWizard() {
   const [selectedTechStackId, setSelectedTechStackId] = useAtom(
     selectedTechStackIdAtom
   );
-  const [, setSelectedTechStack] = useAtom(selectedTechStackAtom);
+  const [selectedTechStack, setSelectedTechStack] = useAtom(
+    selectedTechStackAtom
+  );
   const [isEditMode, setIsEditMode] = useAtom(isEditModeAtom);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { awardXp } = useXp();
 
-  // Check if we're in edit mode by looking for an ID in the URL
+  // Only fetch tech stack data if we have a selected tech stack ID
   useEffect(() => {
-    const techStackId = searchParams.get("id");
-    if (techStackId) {
+    if (selectedTechStackId) {
       setIsLoading(true);
-      setIsEditMode(true);
-      setSelectedTechStackId(techStackId);
 
-      // Fetch the tech stack data
-      getTechStack(techStackId)
+      // Fetch the tech stack data without modifying isEditMode
+      getTechStack(selectedTechStackId)
         .then((result) => {
           if (result.success && result.techStack) {
             // Populate the wizard state with the tech stack data
@@ -113,19 +112,11 @@ export default function TechStackWizard() {
         .finally(() => {
           setIsLoading(false);
         });
-    } else {
-      // Reset edit mode and selected tech stack ID if no ID in URL
-      setIsEditMode(false);
-      setSelectedTechStackId(null);
     }
 
-    // Clean up function to reset state when component unmounts
-    return () => {
-      setIsEditMode(false);
-      setSelectedTechStackId(null);
-    };
+    // No cleanup function that resets isEditMode
   }, [
-    searchParams,
+    selectedTechStackId,
     setIsEditMode,
     setSelectedTechStackId,
     setWizardState,
@@ -211,8 +202,7 @@ export default function TechStackWizard() {
     setIsSubmitting(true);
     let success = false;
     let newStackIdForNavigation: string | undefined = undefined;
-    const editStackIdForNavigation =
-      isEditMode && selectedTechStackId ? selectedTechStackId : undefined;
+    const editStackIdForNavigation = selectedTechStackId || undefined;
 
     try {
       // Validate required fields before submission
@@ -245,7 +235,18 @@ export default function TechStackWizard() {
         documentationLinks: wizardState.documentationLinks || [],
       };
 
-      if (isEditMode && selectedTechStackId) {
+      if (isEditMode) {
+        // Make sure selectedTechStackId is not null
+        if (!selectedTechStackId) {
+          toast({
+            title: "Error",
+            description: "Tech stack ID is missing",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
         const result = await updateTechStack(
           selectedTechStackId,
           techStackData
@@ -255,10 +256,18 @@ export default function TechStackWizard() {
             title: "Success",
             description: "Tech stack updated successfully.",
           });
-          awardXp("editTechStack");
-          // For edit mode, selectedTechStackId is already set and correct.
-          // Optionally, clear the selectedTechStack object to force a full refetch if underlying data changed significantly.
-          // setSelectedTechStack(null);
+          // No XP award for editing tech stack
+
+          // Update the selectedTechStack atom with the updated data
+          // This ensures the stack page displays the latest information
+          const updatedTechStack: TechStack = {
+            ...selectedTechStack!,
+            ...techStackData,
+            id: selectedTechStackId,
+            updatedAt: Date.now(), // Make sure updatedAt is set to now (as a timestamp)
+          };
+          setSelectedTechStack(updatedTechStack);
+
           success = true;
         } else {
           toast({
@@ -452,6 +461,7 @@ export default function TechStackWizard() {
                     disabled={isSubmitting}
                     className="bg-green-600 hover:bg-green-700"
                   >
+                    {/* Use isEditMode to determine button text */}
                     {isEditMode ? "Update Tech Stack" : "Create Tech Stack"}
                   </Button>
                 )}

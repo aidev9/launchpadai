@@ -96,6 +96,12 @@ export const xpActions: XpAction[] = [
     description: "Submit feedback or feature request",
     points: 25,
   },
+  {
+    id: "create_feature",
+    name: "Create Feature",
+    description: "Created a new feature for a product",
+    points: 50,
+  },
 ];
 
 export default xpActions;

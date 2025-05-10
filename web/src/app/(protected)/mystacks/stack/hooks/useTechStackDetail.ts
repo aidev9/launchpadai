@@ -82,15 +82,8 @@ export function useTechStackDetailWithQuery() {
       if (!selectedTechStack && selectedTechStackId) {
         setIsLoading(true);
         try {
-          console.log(
-            `[useTechStackDetail] Fetching tech stack ${selectedTechStackId}`
-          );
           const result = await getTechStack(selectedTechStackId);
           if (result.success && result.techStack) {
-            console.log(
-              `[useTechStackDetail] Successfully fetched tech stack:`,
-              result.techStack.name
-            );
             setSelectedTechStack(result.techStack);
           } else {
             console.error(
@@ -128,26 +121,9 @@ export function useTechStackDetailWithQuery() {
   // Refetch assets when tab changes to assets
   useEffect(() => {
     if (activeTab === "assets" && selectedTechStack?.id) {
-      console.log(`[useTechStackDetail] Tab changed to assets, refetching`);
       refetchAssets();
     }
   }, [activeTab, selectedTechStack?.id, refetchAssets]);
-
-  // Log when assets change
-  useEffect(() => {
-    if (assets.length > 0) {
-      console.log(
-        `[useTechStackDetail] Assets updated:`,
-        assets.map((a: TechStackAsset) => ({
-          id: a.id,
-          type: a.assetType,
-          status: getAssetStatus(a),
-        }))
-      );
-    }
-  }, [assets, getAssetStatus]);
-
-  // No need to calculate anyAssetsGenerating locally, we get it from useAssetQueries
 
   // Generate content for an asset
   const handleGenerateContent = async (
@@ -156,10 +132,6 @@ export function useTechStackDetailWithQuery() {
   ) => {
     if (!selectedTechStack || !asset.id) return;
 
-    console.log(
-      `[useTechStackDetail] Generating content for asset ${asset.id} (${asset.assetType})`
-    );
-
     try {
       await generateAsset({
         assetId: asset.id,
@@ -167,8 +139,6 @@ export function useTechStackDetailWithQuery() {
         techStackDetails: selectedTechStack,
         userInstructions: instructions,
       });
-
-      console.log(`[useTechStackDetail] Content generation initiated`);
     } catch (error) {
       console.error(`[useTechStackDetail] Error generating content:`, error);
       toast({

@@ -316,7 +316,9 @@ export default function TechStackWizard() {
         // Add the tech stack ID to the URL to ensure correct routing
         if (!isEditMode && result.id) {
           console.log("Navigating to stack page with ID:", result.id);
-          router.push(`/mystacks/stack?id=${result.id}`);
+          // Store the stack ID in a Jotai atom instead of using URL parameters
+          setSelectedTechStackId(result.id);
+          router.push("/mystacks/stack");
         } else {
           console.log("Navigating to stack page without ID");
           router.push("/mystacks/stack");

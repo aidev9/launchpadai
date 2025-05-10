@@ -2,6 +2,11 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { TechStack } from "@/lib/firebase/schema";
 import { deleteTechStack } from "@/lib/firebase/techstacks";
+import { useAtom } from "jotai";
+import {
+  isEditModeAtom,
+  selectedTechStackIdAtom,
+} from "@/lib/store/techstack-store";
 
 export function useTechStackHandlers(
   selectedTechStack: TechStack | null,
@@ -11,6 +16,8 @@ export function useTechStackHandlers(
 ) {
   const router = useRouter();
   const { toast } = useToast();
+  const [, setIsEditMode] = useAtom(isEditModeAtom);
+  const [, setSelectedTechStackId] = useAtom(selectedTechStackIdAtom);
 
   const handleBack = () => {
     router.push("/mystacks");
@@ -19,8 +26,12 @@ export function useTechStackHandlers(
   const handleEdit = () => {
     if (!selectedTechStack?.id) return;
 
-    // Navigate to the tech stack wizard with the tech stack ID as a query parameter
-    router.push(`/mystacks/create?id=${selectedTechStack.id}`);
+    // Set edit mode and selected tech stack ID using atoms
+    setIsEditMode(true);
+    setSelectedTechStackId(selectedTechStack.id);
+
+    // Navigate to the tech stack wizard
+    router.push("/mystacks/create");
   };
 
   const handleDelete = async () => {

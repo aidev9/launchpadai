@@ -23,6 +23,7 @@ import {
   FileSearch,
   Download,
   ChevronRight,
+  Plus,
 } from "lucide-react";
 import { deleteProduct } from "@/lib/firebase/products";
 import { useAtom } from "jotai";
@@ -30,6 +31,7 @@ import {
   selectedProductIdAtom,
   selectedProductAtom,
 } from "@/lib/store/product-store";
+import { featureWizardStateAtom } from "@/lib/store/feature-store";
 import { useProducts } from "@/hooks/useProducts";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
@@ -116,6 +118,9 @@ export function ProductDashboard() {
   // Use Jotai atoms and the optimized hook
   const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [selectedProduct] = useAtom(selectedProductAtom);
+  const [featureWizardState, setFeatureWizardState] = useAtom(
+    featureWizardStateAtom
+  );
   const { isLoading, selectProduct } = useProducts();
 
   // Performance tracking ref - no conditional rules
@@ -184,6 +189,19 @@ export function ProductDashboard() {
 
   const navigateToDownloadAssets = () => {
     router.push("/download_assets");
+  };
+
+  const navigateToFeatures = () => {
+    // Update the feature wizard state with the current product ID
+    if (selectedProductId) {
+      // This ensures the features page has access to the product ID via Jotai atom
+      // instead of relying on URL parameters
+      setFeatureWizardState({
+        ...featureWizardState,
+        productId: selectedProductId,
+      });
+    }
+    router.push("/myproducts/product/features");
   };
 
   // Handle product not found - return early
@@ -472,6 +490,26 @@ export function ProductDashboard() {
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
                     Get all files and documents
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400 ml-2 flex-shrink-0" />
+            </div>
+
+            <div
+              onClick={navigateToFeatures}
+              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900">
+                  <Plus className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium text-sm md:text-base truncate">
+                    Add Features
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    Manage product features
                   </p>
                 </div>
               </div>
