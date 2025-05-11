@@ -91,8 +91,6 @@ export async function updateNote({
       return { success: false, error: "Missing required data" };
     }
 
-    const timestamp = new Date().toISOString();
-
     const noteData = {
       note_body: noteBody,
       tags,

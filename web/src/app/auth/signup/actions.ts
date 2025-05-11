@@ -7,6 +7,7 @@ import { actionClient } from "@/lib/action";
 import { awardXpPoints } from "@/xp/server-actions"; // Import the XP award function
 import { Resend } from "resend";
 import SignupNotification from "@/lib/emails/signup-notification";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Initialize Resend with API key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -91,7 +92,8 @@ export const signupAction = actionClient
                 userType: userType || "user",
                 subscription: subscription || "free",
                 xp: 0, // Initialize XP field
-                createdAt: new Date().toISOString(),
+                createdAt: getCurrentUnixTimestamp(),
+                updatedAt: getCurrentUnixTimestamp(),
               },
               { merge: true }
             ); // Add merge option for safety

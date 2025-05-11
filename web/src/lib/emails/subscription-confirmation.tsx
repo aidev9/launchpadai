@@ -1,5 +1,5 @@
 import * as React from "react";
-import { BillingCycle, PlanType } from "@/stores/subscriptionStore";
+import { BillingCycle, PlanType } from "@/lib/firebase/schema";
 
 interface SubscriptionConfirmationProps {
   name: string;

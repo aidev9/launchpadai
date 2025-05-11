@@ -124,6 +124,7 @@ export const createSubscriptionAction = actionClient
           subscriptionStatus: "incomplete", // Will be updated by webhook
           xp: 0,
           createdAt: getCurrentUnixTimestamp(),
+          updatedAt: getCurrentUnixTimestamp(),
         });
 
         // 5. Send confirmation email to user

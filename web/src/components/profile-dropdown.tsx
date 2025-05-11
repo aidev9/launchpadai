@@ -22,7 +22,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { PlanType } from "@/stores/subscriptionStore";
 
 function getInitials(displayName: string | null | undefined): string {
   if (!displayName) {

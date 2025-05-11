@@ -173,13 +173,15 @@ async function ensureUserInFirestore(
       "@/lib/firebase/actions/user"
     );
 
+    const timestamp = getCurrentUnixTimestamp();
+
     // Call the server action directly
     const result = await ensureUserInFirestoreAction(user.uid, {
       name: user.displayName || "",
       email: user.email || "",
       photoURL: user.photoURL || "",
       provider,
-      createdAt: getCurrentUnixTimestamp(),
+      createdAt: timestamp,
     });
 
     // Log the result for debugging

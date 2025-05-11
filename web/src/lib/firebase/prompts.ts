@@ -4,6 +4,7 @@ import { adminDb } from "./admin";
 import { Prompt } from "@/lib/firebase/schema";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Get global prompts collection reference
 function getPromptsRef() {
@@ -157,14 +158,14 @@ export async function addPrompt(
         };
       }
 
-      // Use server timestamp from Firebase Admin
-      const now = new Date().toISOString();
+      // Use getCurrentUnixTimestamp for timestamp
+      const timestamp = getCurrentUnixTimestamp();
 
       // Prepare the data for Firestore
       const firestoreData = {
         ...promptData,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       };
 
       // Log attempt information
@@ -250,10 +251,10 @@ export async function updatePrompt(
       };
     }
 
-    // Use server timestamp for update time
+    // Use getCurrentUnixTimestamp for update time
     await promptRef.update({
       ...promptData,
-      updatedAt: new Date().toISOString(),
+      updatedAt: getCurrentUnixTimestamp(),
     });
 
     // Revalidate paths
@@ -374,7 +375,7 @@ export async function copyPromptToUserCollection(promptId: string) {
     }
 
     // Create a new prompt in the user's collection
-    const timestamp = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
     const userPromptRef = await getUserPromptsRef(userId);
     const newPromptRef = await userPromptRef.add({
       title: prompt.title,
@@ -407,7 +408,7 @@ export async function addUserPrompt(
   try {
     const userId = await getUserId();
 
-    const timestamp = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
     const userPromptRef = await getUserPromptsRef(userId);
     const newPromptRef = await userPromptRef.add({
       ...promptData,
@@ -450,7 +451,7 @@ export async function updateUserPrompt(
 
     await promptRef.update({
       ...promptData,
-      updatedAt: new Date().toISOString(),
+      updatedAt: getCurrentUnixTimestamp(),
     });
 
     // Revalidate paths

@@ -124,7 +124,7 @@ graph TD
 
 ## Data Flow
 
-````mermaid
+```mermaid
 sequenceDiagram
     participant User
     participant UI as User Interface
@@ -144,6 +144,23 @@ sequenceDiagram
     User->>UI: Click Delete Selected
     UI->>UI: Show confirmation dialog
     User->>UI: Confirm deletion
+
+    User->>UI: Click Invite User
+    UI->>UI: Show invite user dialog
+    User->>UI: Fill in user details
+    UI->>Firebase: inviteUser()
+    Firebase-->>UI: Return success/failure
+    UI->>Store: Update usersAtom
+    Store-->>UI: Re-render users table
+
+    User->>UI: Click View on a user
+    UI->>Store: Update currentUserAtom
+    UI->>UI: Navigate to /admin/users/user
+    UI->>Firebase: getUserById()
+    Firebase-->>UI: Return detailed user data
+    UI->>UI: Render user detail view
+```
+
 ## Detailed Implementation Steps
 
 ### Phase 1: Setup Basic Structure
@@ -156,7 +173,7 @@ First, we'll create the necessary directory structure and files:
 mkdir -p web/src/app/(protected)/admin/users/components
 mkdir -p web/src/app/(protected)/admin/users/actions
 mkdir -p web/src/app/(protected)/admin/users/user
-````
+```
 
 Create the main page component:
 
@@ -433,7 +450,7 @@ export async function inviteUser(
       displayName: name,
       userType: "user",
       subscription: subscriptionLevel.toLowerCase(),
-      createdAt: new Date().toISOString(),
+      createdAt: getCurrentUnixTimestamp(),
       isEmailVerified: false,
     });
 
@@ -584,7 +601,7 @@ export function DataTableColumnHeader<TData, TValue>({
 
 Next, create the pagination component:
 
-````tsx
+```tsx
 // web/src/app/(protected)/admin/users/components/data-table-pagination.tsx
 import {
   ChevronLeft,
@@ -646,6 +663,44 @@ export function DataTablePagination<TData>({
             className="hidden h-8 w-8 p-0 lg:flex"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
+          >
+            <span className="sr-only">Go to first page</span>
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 w-8 p-0"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <span className="sr-only">Go to previous page</span>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 w-8 p-0"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            <span className="sr-only">Go to next page</span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            className="hidden h-8 w-8 p-0 lg:flex"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+          >
+            <span className="sr-only">Go to last page</span>
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
 Now, let's create the filter dropdown component:
 
 ```tsx
@@ -696,7 +751,7 @@ export function FilterDropdown({
     </div>
   );
 }
-````
+```
 
 Next, create the table toolbar component:
 
@@ -915,7 +970,7 @@ export function DeleteUserDialog({
 
 Now, let's create the main users table component:
 
-````tsx
+```tsx
 // web/src/app/(protected)/admin/users/components/users-table.tsx
 "use client";
 
@@ -1191,10 +1246,13 @@ export function UsersTable() {
       // Check if any selected rows no longer exist
       const validSelections = Object.keys(rowSelection)
         .filter((index) => parseInt(index) < users.length)
-        .reduce((acc, key) => {
-          acc[key] = rowSelection[key];
-          return acc;
-        }, {} as Record<string, boolean>);
+        .reduce(
+          (acc, key) => {
+            acc[key] = rowSelection[key];
+            return acc;
+          },
+          {} as Record<string, boolean>
+        );
 
       // If some selections are no longer valid, update row selection
       if (
@@ -1345,684 +1403,6 @@ export function UsersTable() {
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
-#### 2.3 Update the main page component
-
-Now, let's update the main page component to include the users table and dialogs:
-
-```tsx
-// web/src/app/(protected)/admin/users/page.tsx
-"use client";
-
-import { useState } from "react";
-import { Main } from "@/components/layout/main";
-import { UsersTable } from "./components/users-table";
-import { Button } from "@/components/ui/button";
-import { PlusIcon, Trash2 } from "lucide-react";
-import { useAtom } from "jotai";
-import {
-  inviteDialogOpenAtom,
-  deleteDialogOpenAtom,
-  selectedUsersAtom,
-  usersAtom,
-  rowSelectionAtom,
-} from "./users-store";
-import { InviteUserDialog } from "./components/invite-user-dialog";
-import { DeleteUserDialog } from "./components/delete-user-dialog";
-import { Provider as JotaiProvider } from "jotai";
-import { useToast } from "@/hooks/use-toast";
-import { deleteUser } from "./actions";
-
-export default function UsersPage() {
-  const [inviteDialogOpen, setInviteDialogOpen] = useAtom(inviteDialogOpenAtom);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useAtom(deleteDialogOpenAtom);
-  const [selectedUsers] = useAtom(selectedUsersAtom);
-  const [users, setUsers] = useAtom(usersAtom);
-  const [, setRowSelection] = useAtom(rowSelectionAtom);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const { toast } = useToast();
-
-  // Handle deletion of selected users
-  const handleDeleteUsers = async () => {
-    if (selectedUsers.length === 0) return;
-
-    setIsDeleting(true);
-    try {
-      let successCount = 0;
-      let failedCount = 0;
-      const successfullyDeletedIds: string[] = [];
-
-      // Delete users one by one
-      for (const userId of selectedUsers) {
-        try {
-          const result = await deleteUser(userId);
-          if (result.success) {
-            successCount++;
-            successfullyDeletedIds.push(userId);
-          } else {
-            failedCount++;
-            console.error(`Failed to delete user ${userId}: ${result.error}`);
-          }
-        } catch (err) {
-          failedCount++;
-          console.error(`Error deleting user ${userId}:`, err);
-        }
-      }
-
-      // Update the UI based on the results
-      if (successCount > 0) {
-        // Update users state to remove deleted users
-        setUsers((prevUsers) =>
-          prevUsers.filter((user) => !successfullyDeletedIds.includes(user.uid))
-        );
-
-        // Clear row selection
-        setRowSelection({});
-
-        // Show success message
-        toast({
-          title: "Users deleted",
-          description: `Successfully deleted ${successCount} ${
-            successCount === 1 ? "user" : "users"
-          }${
-            failedCount > 0
-              ? `. Failed to delete ${failedCount} ${
-                  failedCount === 1 ? "user" : "users"
-                }.`
-              : ""
-          }`,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to delete selected users.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An error occurred while deleting users",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-      setDeleteDialogOpen(false);
-    }
-  };
-
-  const hasSelectedUsers = selectedUsers.length > 0;
-
-  return (
-    <JotaiProvider>
-      <Main>
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              User Management
-            </h1>
-            <p className="text-muted-foreground">
-              View, manage, and invite users to your platform.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {hasSelectedUsers && (
-              <Button
-                variant={hasSelectedUsers ? "destructive" : "outline"}
-                onClick={() => setDeleteDialogOpen(true)}
-                disabled={!hasSelectedUsers || isDeleting}
-                className={
-                  hasSelectedUsers
-                    ? ""
-                    : "text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
-                }
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Selected{" "}
-                {selectedUsers.length > 0 && `(${selectedUsers.length})`}
-              </Button>
-            )}
-            <Button onClick={() => setInviteDialogOpen(true)}>
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Invite User
-            </Button>
-          </div>
-        </div>
-
-        <UsersTable />
-
-        <InviteUserDialog
-          open={inviteDialogOpen}
-          onOpenChange={setInviteDialogOpen}
-        />
-
-        <DeleteUserDialog
-          open={deleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
-          onDelete={handleDeleteUsers}
-          isDeleting={isDeleting}
-        />
-      </Main>
-    </JotaiProvider>
-  );
-}
-````
-
-### Phase 3: Create Invite User Dialog
-
-Let's create the invite user dialog component:
-
-```tsx
-// web/src/app/(protected)/admin/users/components/invite-user-dialog.tsx
-"use client";
-
-import { useState } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import { inviteUser } from "../actions";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-interface InviteUserDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-const formSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
-  subscription: z.string().min(1, "Subscription level is required"),
-});
-
-type FormValues = z.infer<typeof formSchema>;
-
-export function InviteUserDialog({
-  open,
-  onOpenChange,
-}: InviteUserDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      subscription: "free",
-    },
-  });
-
-  async function onSubmit(values: FormValues) {
-    setIsSubmitting(true);
-
-    try {
-      const result = await inviteUser(
-        values.email,
-        values.name,
-        values.subscription
-      );
-
-      if (result.success) {
-        toast({
-          title: "User invited successfully",
-          description: `An invitation has been sent to ${values.email}`,
-        });
-
-        form.reset();
-        onOpenChange(false);
-      } else {
-        toast({
-          title: "Failed to invite user",
-          description: result.error || "Something went wrong",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Invite a new user</DialogTitle>
-          <DialogDescription>
-            Send an invitation email to add a new user to the platform.
-          </DialogDescription>
-        </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="john@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="subscription"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Subscription Level</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a subscription level" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="free">Free</SelectItem>
-                      <SelectItem value="pro">Pro</SelectItem>
-                      <SelectItem value="enterprise">Enterprise</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Invite User
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-```
-
-### Phase 4: Create User Detail View
-
-#### 4.1 Create functions to fetch user-related data
-
-First, let's create functions to fetch user-related data:
-
-```tsx
-// web/src/app/(protected)/admin/users/actions/user-data.ts
-"use server";
-
-import { adminDb } from "@/lib/firebase/admin";
-import { UserProfile } from "@/lib/firebase/schema";
-
-/**
- * Get user's products
- */
-export async function getUserProducts(userId: string) {
-  try {
-    const productsSnapshot = await adminDb
-      .collection("products")
-      .where("userId", "==", userId)
-      .get();
-
-    if (productsSnapshot.empty) {
-      return { success: true, products: [] };
-    }
-
-    const products = productsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    return { success: true, products };
-  } catch (error) {
-    console.error(`Error fetching products for user ${userId}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-/**
- * Get user's prompts
- */
-export async function getUserPrompts(userId: string) {
-  try {
-    const promptsSnapshot = await adminDb
-      .collection("prompts")
-      .where("userId", "==", userId)
-      .get();
-
-    if (promptsSnapshot.empty) {
-      return { success: true, prompts: [] };
-    }
-
-    const prompts = promptsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    return { success: true, prompts };
-  } catch (error) {
-    console.error(`Error fetching prompts for user ${userId}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-/**
- * Get user's tech stacks
- */
-export async function getUserTechStacks(userId: string) {
-  try {
-    const techStacksSnapshot = await adminDb
-      .collection("techStacks")
-      .where("userId", "==", userId)
-      .get();
-
-    if (techStacksSnapshot.empty) {
-      return { success: true, techStacks: [] };
-    }
-
-    const techStacks = techStacksSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    return { success: true, techStacks };
-  } catch (error) {
-    console.error(`Error fetching tech stacks for user ${userId}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-/**
- * Get user's subscription details
- */
-export async function getUserSubscription(userId: string) {
-  try {
-    const subscriptionSnapshot = await adminDb
-      .collection("subscriptions")
-      .where("userId", "==", userId)
-      .get();
-
-    if (subscriptionSnapshot.empty) {
-      return { success: true, subscription: null };
-    }
-
-    const subscription = {
-      id: subscriptionSnapshot.docs[0].id,
-      ...subscriptionSnapshot.docs[0].data(),
-    };
-
-    return { success: true, subscription };
-  } catch (error) {
-    console.error(`Error fetching subscription for user ${userId}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-/**
- * Get all user data in one call
- */
-export async function getUserAllData(userId: string) {
-  try {
-    const [
-      productsResult,
-      promptsResult,
-      techStacksResult,
-      subscriptionResult,
-    ] = await Promise.all([
-      getUserProducts(userId),
-      getUserPrompts(userId),
-      getUserTechStacks(userId),
-      getUserSubscription(userId),
-    ]);
-
-    return {
-      success: true,
-      products: productsResult.success ? productsResult.products : [],
-      prompts: promptsResult.success ? promptsResult.prompts : [],
-      techStacks: techStacksResult.success ? techStacksResult.techStacks : [],
-      subscription: subscriptionResult.success
-        ? subscriptionResult.subscription
-        : null,
-    };
-  } catch (error) {
-    console.error(`Error fetching all data for user ${userId}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-```
-
-#### 4.2 Create Send Email Modal
-
-Let's create the Send Email modal component:
-
-```tsx
-// web/src/app/(protected)/admin/users/components/send-email-dialog.tsx
-"use client";
-
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-
-interface SendEmailDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  userEmail: string;
-}
-
-const formSchema = z.object({
-  from: z.string().email("Invalid email address"),
-  subject: z.string().min(1, "Subject is required"),
-  body: z.string().min(1, "Body is required"),
-});
-
-type FormValues = z.infer<typeof formSchema>;
-
-export function SendEmailDialog({
-  open,
-  onOpenChange,
-  userEmail,
-}: SendEmailDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      from: "noreply@example.com",
-      subject: "",
-      body: "",
-    },
-  });
-
-  async function onSubmit(values: FormValues) {
-    setIsSubmitting(true);
-
-    try {
-      // TODO: Implement email sending functionality
-      // This would connect to your email service
-
-      // For now, just simulate a successful email send
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast({
-        title: "Email sent",
-        description: `Email has been sent to ${userEmail}`,
-      });
-
-      form.reset();
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        title: "Failed to send email",
-        description:
-          error instanceof Error ? error.message : "Something went wrong",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Send Email</DialogTitle>
-          <DialogDescription>Send an email to {userEmail}</DialogDescription>
-        </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="from"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>From</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="subject"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Subject</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="body"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Body</FormLabel>
-                  <FormControl>
-                    <Textarea rows={8} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Send Email
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-```
-
                       )}
                     </TableCell>
                   ))}
@@ -2043,10 +1423,8 @@ export function SendEmailDialog({
       </div>
       <DataTablePagination table={table} />
     </div>
-
-);
+  );
 }
-
 ```
 
           >
@@ -2115,7 +1493,7 @@ export function SendEmailDialog({
 
 ```
 
-```
+````
 
 #### 4.3 Create User Detail View Component
 
@@ -2667,7 +2045,7 @@ export default function UserDetailPage() {
     </Main>
   );
 }
-```
+````
 
 ## Timeline and Milestones
 

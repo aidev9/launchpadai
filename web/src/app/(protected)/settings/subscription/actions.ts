@@ -5,6 +5,7 @@ import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import Stripe from "stripe";
 import { revalidatePath } from "next/cache";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Initialize Stripe with the secret key from environment variables
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -96,7 +97,7 @@ export async function cancelSubscriptionAction() {
     // Update subscription status in Firestore
     await userRef.update({
       subscriptionStatus: "canceled",
-      updatedAt: new Date().toISOString(),
+      updatedAt: getCurrentUnixTimestamp(),
     });
 
     // Revalidate the subscription page
@@ -109,6 +110,39 @@ export async function cancelSubscriptionAction() {
     };
   } catch (error) {
     console.error("Error canceling subscription:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+// Update payment method
+export async function updatePaymentMethod(customerId: string) {
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/subscription`,
+    });
+
+    // Update the user document to record this action
+    try {
+      const userId = await getCurrentUserId();
+      if (userId) {
+        const userRef = adminDb.collection("users").doc(userId);
+        await userRef.update({
+          lastBillingPortalAccess: getCurrentUnixTimestamp(),
+          updatedAt: getCurrentUnixTimestamp(),
+        });
+      }
+    } catch (error) {
+      console.error("Error updating user billing access timestamp:", error);
+      // Non-critical error, don't block the redirect
+    }
+
+    return { success: true, url: session.url };
+  } catch (error) {
+    console.error("Error creating billing portal session:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

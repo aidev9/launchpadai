@@ -3,6 +3,7 @@
 import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 /**
  * Add sample courses to the database
@@ -22,7 +23,7 @@ export async function addSampleCourses() {
 
     // Create a batch to add all courses at once
     const batch = adminDb.batch();
-    const now = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
 
     // Create sample courses data
     const sampleCourses = [
@@ -37,8 +38,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1677442135132-6ca59297b63b?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/intro-to-ai",
         tags: ["AI", "Machine Learning", "Technology"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Machine Learning Fundamentals",
@@ -51,8 +52,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/ml-fundamentals",
         tags: ["Machine Learning", "Algorithms", "Data Science"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Deep Learning with Neural Networks",
@@ -65,8 +66,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/deep-learning",
         tags: ["Deep Learning", "Neural Networks", "AI"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Data Science for Beginners",
@@ -79,8 +80,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/data-science-beginners",
         tags: ["Data Science", "Python", "Statistics"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Natural Language Processing",
@@ -93,8 +94,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1546652013-eb09219f7b56?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/nlp",
         tags: ["NLP", "Language Processing", "Text Mining"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Computer Vision Applications",
@@ -107,8 +108,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1617791160505-6f00504e3519?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/computer-vision",
         tags: ["Computer Vision", "Image Processing", "AI"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Reinforcement Learning",
@@ -121,8 +122,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1596567068320-12aa0eb4af9?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/reinforcement-learning",
         tags: ["Reinforcement Learning", "AI", "Game Theory"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Python for Data Analysis",
@@ -135,8 +136,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/python-data-analysis",
         tags: ["Python", "Data Analysis", "Programming"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Generative AI and Creative Applications",
@@ -149,8 +150,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1675271591211-728362961835?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/generative-ai",
         tags: ["Generative AI", "Creative AI", "GANs"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "AI Ethics and Responsible Innovation",
@@ -163,8 +164,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1633613286991-611fe299c4be?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/ai-ethics",
         tags: ["AI Ethics", "Responsible AI", "Policy"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Big Data Processing with Spark",
@@ -177,8 +178,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1502810190503-8303352d8291?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/big-data-spark",
         tags: ["Big Data", "Spark", "Data Processing"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Time Series Analysis and Forecasting",
@@ -191,8 +192,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/time-series",
         tags: ["Time Series", "Forecasting", "Data Science"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Introduction to Blockchain Technology",
@@ -205,8 +206,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1644143379190-8b1347c5fc27?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/blockchain-intro",
         tags: ["Blockchain", "Cryptocurrency", "Web3"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Cloud Computing for AI Applications",
@@ -219,8 +220,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/cloud-ai",
         tags: ["Cloud Computing", "AI Deployment", "MLOps"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Recommendation Systems",
@@ -233,8 +234,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1493723843671-1d655e66ac1c?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/recommendation-systems",
         tags: ["Recommendations", "Personalization", "Machine Learning"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Edge AI and IoT",
@@ -247,8 +248,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1558346490-d2631a34e43c?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/edge-ai-iot",
         tags: ["Edge AI", "IoT", "Embedded Systems"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Conversational AI Assistants",
@@ -261,8 +262,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1581092921461-7312848b94fe?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/conversational-ai",
         tags: ["Chatbots", "Voice Assistants", "NLP"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Data Visualization Mastery",
@@ -275,8 +276,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/data-visualization",
         tags: ["Data Visualization", "Dashboards", "Design"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Quantum Computing Fundamentals",
@@ -289,8 +290,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/quantum-computing",
         tags: ["Quantum Computing", "Quantum ML", "Future Tech"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
       {
         title: "Cybersecurity in the Age of AI",
@@ -303,8 +304,8 @@ export async function addSampleCourses() {
           "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=500&auto=format&fit=crop",
         url: "/academy/courses/ai-cybersecurity",
         tags: ["Cybersecurity", "AI", "Security"],
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
       },
     ];
 

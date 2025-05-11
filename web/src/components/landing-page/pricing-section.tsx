@@ -8,29 +8,12 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   selectedPlanAtom,
-  BillingCycle,
   monthlyPricingPlansAtom,
   annualPricingPlansAtom,
   pricingPlansLoadingAtom,
-  PricingPlan,
 } from "@/stores/subscriptionStore";
+import { BillingCycle, PlanType } from "@/lib/firebase/schema";
 import { getSubscriptionPlans } from "@/app/(protected)/upgrade/actions";
-
-// Get button text based on plan title
-const getButtonText = (planTitle: string) => {
-  switch (planTitle) {
-    case "Free":
-      return "Start Free";
-    case "Explorer":
-      return "Get Started";
-    case "Builder":
-      return "Start Building";
-    case "Accelerator":
-      return "Scale Faster";
-    default:
-      return "Select Plan";
-  }
-};
 
 export function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(false);
@@ -64,7 +47,14 @@ export function PricingSection() {
           price: plan.monthly.price,
           description: plan.description,
           features: plan.features.map((feature) => ({ text: feature })),
-          buttonText: getButtonText(plan.title),
+          buttonText:
+            plan.title === "Free"
+              ? "Start Free"
+              : plan.title === "Explorer"
+                ? "Get Started"
+                : plan.title === "Builder"
+                  ? "Start Building"
+                  : "Scale Faster",
           buttonVariant:
             plan.title === "Builder"
               ? "default"
@@ -77,7 +67,14 @@ export function PricingSection() {
           price: plan.annual.price,
           description: plan.description,
           features: plan.features.map((feature) => ({ text: feature })),
-          buttonText: getButtonText(plan.title),
+          buttonText:
+            plan.title === "Free"
+              ? "Start Free"
+              : plan.title === "Explorer"
+                ? "Get Started"
+                : plan.title === "Builder"
+                  ? "Start Building"
+                  : "Scale Faster",
           buttonVariant:
             plan.title === "Builder"
               ? "default"
@@ -115,7 +112,7 @@ export function PricingSection() {
 
     // For paid plans, set the atom and redirect to plan signup
     setSelectedPlan({
-      planType: planTitle as "Explorer" | "Builder" | "Accelerator",
+      planType: planTitle as PlanType,
       billingCycle,
       price,
     });

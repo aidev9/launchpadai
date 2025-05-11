@@ -389,7 +389,7 @@ export const getPropertyId = () => {
 
 First, let's update the Firebase client initialization to include analytics:
 
-````typescript
+```typescript
 // web/src/lib/firebase/client.ts (update)
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, indexedDBLocalPersistence, signOut } from "firebase/auth";
@@ -398,15 +398,69 @@ import { getAnalytics, isSupported } from "firebase/analytics";
 import { useRouter } from "next/navigation";
 import { useSetAtom } from "jotai";
 import { clearUserProfileAtom } from "@/lib/store/user-store";
+
+// Initialize Firebase client for browser environments
+function getFirebaseClientApp() {
+  const apps = getApps();
+  if (apps.length > 0) {
+    return apps[0];
+  }
+
+  const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  };
+
+  return initializeApp(firebaseConfig);
+}
+
+export const clientApp = getFirebaseClientApp();
+
+// Initialize Auth with proper persistence for better integration with Next.js
+export const clientAuth = getAuth(clientApp);
+clientAuth.setPersistence(
+  typeof window !== "undefined"
+    ? indexedDBLocalPersistence
+    : indexedDBLocalPersistence
+);
+
+export const clientDb = getFirestore(
+  clientApp,
+  process.env.FIRESTORE_DATABASE_NAME as string
+);
+
+// Initialize Firebase Analytics (only in browser environment)
+export const initializeAnalytics = async () => {
+  if (typeof window !== "undefined") {
+    try {
+      const analyticsSupported = await isSupported();
+      if (analyticsSupported) {
+        return getAnalytics(clientApp);
+      }
+    } catch (error) {
+      console.error("Firebase Analytics initialization error:", error);
+    }
+  }
+  return null;
+};
+
+// Rest of the file remains the same...
+```
+
 ### 2. Create a Custom Hook for Firebase Analytics
 
 ```typescript
 // web/src/lib/firebase/hooks/useFirebaseAnalytics.ts
 "use client";
 
-import { useState, useEffect } from 'react';
-import { getAnalytics, isSupported, logEvent } from 'firebase/analytics';
-import { clientApp } from '../client';
+import { useState, useEffect } from "react";
+import { getAnalytics, isSupported, logEvent } from "firebase/analytics";
+import { clientApp } from "../client";
 
 export function useFirebaseAnalytics() {
   const [analytics, setAnalytics] = useState(null);
@@ -421,7 +475,7 @@ export function useFirebaseAnalytics() {
           const analyticsInstance = getAnalytics(clientApp);
           setAnalytics(analyticsInstance);
         } else {
-          setError('Firebase Analytics is not supported in this environment');
+          setError("Firebase Analytics is not supported in this environment");
         }
       } catch (err) {
         setError(err.message);
@@ -441,7 +495,7 @@ export function useFirebaseAnalytics() {
 
   return { analytics, isLoading, error, trackEvent };
 }
-````
+```
 
 ### 3. Create Functions to Fetch Firebase Analytics Data
 
@@ -652,7 +706,7 @@ flowchart TD
 
 Let's add a comprehensive custom events tracking system to your Firebase Analytics implementation:
 
-````typescript
+```typescript
 // web/src/lib/firebase/analytics/events.ts
 import {
   getAnalytics,
@@ -862,582 +916,39 @@ export const trackPageView = (pageName: string, pageType: string) => {
 export const trackSearch = (searchTerm: string, resultsCount: number) => {
   const analytics = getAnalyticsInstance();
   if (!analytics) return;
-## Dashboard Integration
 
-Now that we have set up both Google Analytics and Firebase Analytics, let's integrate them into our admin dashboard.
-
-### 1. Create Analytics Dashboard Components
-
-#### Google Analytics Dashboard Component
-
-```typescript
-// web/src/app/(protected)/admin/analytics/components/google-analytics-dashboard.tsx
-"use client";
-
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-export function GoogleAnalyticsDashboard({ timeframe = '30d' }) {
-  const [engagementData, setEngagementData] = useState([]);
-  const [acquisitionData, setAcquisitionData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    async function fetchData() {
-      setIsLoading(true);
-      try {
-        // Convert timeframe to Google Analytics format
-        let startDate;
-        switch (timeframe) {
-          case '7d':
-            startDate = '7daysAgo';
-            break;
-          case '30d':
-            startDate = '30daysAgo';
-            break;
-          case '90d':
-            startDate = '90daysAgo';
-            break;
-          case '1y':
-            startDate = '365daysAgo';
-            break;
-          default:
-            startDate = '30daysAgo';
-        }
-
-        // Fetch engagement metrics
-        const engagementResponse = await fetch(`/api/analytics/google/engagement?startDate=${startDate}&endDate=today`);
-        if (!engagementResponse.ok) {
-          throw new Error('Failed to fetch engagement data');
-        }
-        const engagementResult = await engagementResponse.json();
-
-        // Fetch acquisition data
-        const acquisitionResponse = await fetch(`/api/analytics/google/acquisition?startDate=${startDate}&endDate=today`);
-        if (!acquisitionResponse.ok) {
-          throw new Error('Failed to fetch acquisition data');
-        }
-        const acquisitionResult = await acquisitionResponse.json();
-
-        setEngagementData(engagementResult.data);
-        setAcquisitionData(acquisitionResult.data);
-      } catch (err) {
-        console.error('Error fetching Google Analytics data:', err);
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [timeframe]);
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Google Analytics</CardTitle>
-          <CardDescription>Error loading data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-red-500">{error}</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>User Engagement</CardTitle>
-          <CardDescription>Sessions, page views, and session duration</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-[350px] w-full" />
-          ) : (
-            <ResponsiveContainer width="100%" height={350}>
-              <LineChart
-                data={engagementData}
-                margin={{
-                  top: 5,
-                  right: 30,
-                  left: 20,
-                  bottom: 5,
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis dataKey="date" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--card)",
-                    borderColor: "var(--border)",
-                  }}
-                />
-                <Legend />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="sessions"
-                  name="Sessions"
-                  stroke="var(--chart-1, #3b82f6)"
-                  strokeWidth={2}
-                  activeDot={{ r: 8 }}
-                />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="pageviews"
-                  name="Page Views"
-                  stroke="var(--chart-2, #10b981)"
-                  strokeWidth={2}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="avgSessionDuration"
-                  name="Avg. Session Duration (s)"
-                  stroke="var(--chart-3, #ef4444)"
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Traffic Sources</CardTitle>
-          <CardDescription>Sessions by source and medium</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-[350px] w-full" />
-          ) : (
-            <div className="h-[350px] overflow-auto">
-              <table className="w-full">
-                <thead>
-                  <tr>
-                    <th className="text-left p-2">Source</th>
-                    <th className="text-left p-2">Medium</th>
-                    <th className="text-right p-2">Sessions</th>
-                    <th className="text-right p-2">Users</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {acquisitionData.map((row, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-muted/50' : ''}>
-                      <td className="p-2">{row.source}</td>
-                      <td className="p-2">{row.medium}</td>
-                      <td className="text-right p-2">{row.sessions}</td>
-                      <td className="text-right p-2">{row.users}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-````
-
-#### Firebase Analytics Dashboard Component
-
-```typescript
-// web/src/app/(protected)/admin/analytics/components/firebase-analytics-dashboard.tsx
-"use client";
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import {
-  useUserGrowthData,
-  useActiveUsersData,
-  useRetentionData,
-} from "@/lib/firebase/analytics";
-
-export function FirebaseAnalyticsDashboard({ timeframe = "30d" }) {
-  const {
-    data: userGrowthData,
-    isLoading: isLoadingGrowth,
-    error: growthError,
-  } = useUserGrowthData(timeframe);
-  const {
-    data: activeUsersData,
-    isLoading: isLoadingActive,
-    error: activeError,
-  } = useActiveUsersData();
-  const {
-    data: retentionData,
-    isLoading: isLoadingRetention,
-    error: retentionError,
-  } = useRetentionData(timeframe);
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>User Growth</CardTitle>
-            <CardDescription>New users over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingGrowth ? (
-              <Skeleton className="h-[350px] w-full" />
-            ) : growthError ? (
-              <div className="text-red-500">{growthError}</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart
-                  data={userGrowthData}
-                  margin={{
-                    top: 5,
-                    right: 30,
-                    left: 20,
-                    bottom: 5,
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      borderColor: "var(--border)",
-                    }}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="newUsers"
-                    name="New Users"
-                    stroke="var(--chart-1, #3b82f6)"
-                    strokeWidth={2}
-                    activeDot={{ r: 8 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>User Retention</CardTitle>
-            <CardDescription>Cohort retention over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingRetention ? (
-              <Skeleton className="h-[350px] w-full" />
-            ) : retentionError ? (
-              <div className="text-red-500">{retentionError}</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart
-                  data={retentionData}
-                  margin={{
-                    top: 5,
-                    right: 30,
-                    left: 20,
-                    bottom: 5,
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="cohort" />
-                  <YAxis domain={[0, 100]} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      borderColor: "var(--border)",
-                    }}
-                  />
-                  <Legend />
-                  <Bar
-                    dataKey="retention"
-                    name="Retention %"
-                    fill="var(--chart-2, #10b981)"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Real-time Active Users</CardTitle>
-          <CardDescription>Users active in the last 15 minutes</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingActive ? (
-            <Skeleton className="h-[100px] w-full" />
-          ) : activeError ? (
-            <div className="text-red-500">{activeError}</div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-[100px]">
-              <div className="text-4xl font-bold">
-                {activeUsersData.activeUsers}
-              </div>
-              <div className="text-sm text-muted-foreground">active users</div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-```
-
-### 2. Update the Main Analytics Page
-
-Finally, let's update the main analytics page to include our new components:
-
-```typescript
-// web/src/app/(protected)/admin/analytics/page.tsx (update)
-"use client";
-
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useState } from "react";
-import { Download } from "lucide-react";
-import { GoogleAnalyticsDashboard } from "./components/google-analytics-dashboard";
-import { FirebaseAnalyticsDashboard } from "./components/firebase-analytics-dashboard";
-import { CustomEventsDashboard } from "./components/custom-events-dashboard";
-
-// Import existing components
-import { UserMetricsChart } from "./components/user-metrics-chart";
-import { RevenueChart } from "./components/revenue-chart";
-// ... other imports
-
-export default function AdminAnalytics() {
-  const [timeframe, setTimeframe] = useState<string>("30d");
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Platform Analytics
-          </h1>
-          <p className="text-muted-foreground">
-            Comprehensive analytics and insights for the entire platform
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={timeframe} onValueChange={setTimeframe}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select timeframe" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
-              <SelectItem value="1y">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button>
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-        </div>
-      </div>
-
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="google-analytics">Google Analytics</TabsTrigger>
-          <TabsTrigger value="firebase-analytics">
-            Firebase Analytics
-          </TabsTrigger>
-          <TabsTrigger value="custom-events">Custom Events</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="courses">Courses</TabsTrigger>
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          {/* Top metrics cards */}
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Existing metrics cards */}
-          </div>
-
-          {/* Add integrated analytics overview */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Google Analytics Overview</CardTitle>
-                <CardDescription>
-                  Key metrics from Google Analytics
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-2">
-                <GoogleAnalyticsDashboard timeframe={timeframe} />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Firebase Analytics Overview</CardTitle>
-                <CardDescription>
-                  Real-time user metrics from Firebase
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-2">
-                <FirebaseAnalyticsDashboard timeframe={timeframe} />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Existing charts */}
-          {/* ... */}
-        </TabsContent>
-
-        <TabsContent value="google-analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Google Analytics</CardTitle>
-              <CardDescription>
-                Detailed metrics from Google Analytics
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <GoogleAnalyticsDashboard timeframe={timeframe} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="firebase-analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Firebase Analytics</CardTitle>
-              <CardDescription>
-                Real-time user metrics from Firebase
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <FirebaseAnalyticsDashboard timeframe={timeframe} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="custom-events">
-          <Card>
-            <CardHeader>
-              <CardTitle>Custom Events Analytics</CardTitle>
-              <CardDescription>
-                Detailed analysis of custom events across the platform
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <CustomEventsDashboard timeframe={timeframe} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Existing tabs */}
-        <TabsContent value="users">{/* ... */}</TabsContent>
-
-        <TabsContent value="courses">{/* ... */}</TabsContent>
-
-        <TabsContent value="revenue">{/* ... */}</TabsContent>
-      </Tabs>
-    </div>
-  );
-}
-```
-
-## Conclusion
-
-This comprehensive plan provides a detailed roadmap for integrating both Google Analytics and Firebase Analytics into your admin dashboard. By following these steps, you'll be able to:
-
-1. Set up Google Analytics API access for server-side data fetching
-2. Configure Firebase Analytics for real-time client-side tracking
-3. Implement custom event tracking for detailed user behavior analysis
-4. Create a unified dashboard that displays metrics from both platforms
-5. Visualize the data using the existing Recharts library
-
-The hybrid approach allows you to leverage the strengths of both platforms:
-
-- Google Analytics provides robust historical data and acquisition metrics
-- Firebase Analytics offers real-time user tracking and custom event capabilities
-
-By implementing this plan, you'll gain valuable insights into user behavior, platform performance, and business metrics, enabling data-driven decision making for your application.
-
-logEvent(analytics, "search", {
-search_term: searchTerm,
-results_count: resultsCount,
-});
+  logEvent(analytics, "search", {
+    search_term: searchTerm,
+    results_count: resultsCount,
+  });
 };
 
 // Error Events
 export const trackError = (
-errorCode: string,
-errorMessage: string,
-errorContext: string
+  errorCode: string,
+  errorMessage: string,
+  errorContext: string
 ) => {
-const analytics = getAnalyticsInstance();
-if (!analytics) return;
+  const analytics = getAnalyticsInstance();
+  if (!analytics) return;
 
-logEvent(analytics, "app_error", {
-error_code: errorCode,
-error_message: errorMessage,
-error_context: errorContext,
-});
+  logEvent(analytics, "app_error", {
+    error_code: errorCode,
+    error_message: errorMessage,
+    error_context: errorContext,
+  });
 };
 
 // Custom Event
 export const trackCustomEvent = (
-eventName: string,
-eventParams: Record<string, any>
+  eventName: string,
+  eventParams: Record<string, any>
 ) => {
-const analytics = getAnalyticsInstance();
-if (!analytics) return;
+  const analytics = getAnalyticsInstance();
+  if (!analytics) return;
 
-logEvent(analytics, eventName, eventParams);
+  logEvent(analytics, eventName, eventParams);
 };
-
 ```
 
 ### 3. Best Practices for Custom Event Tracking
@@ -1558,6 +1069,8 @@ return null;
 4. Click "Create" to create a new API secret
 5. Note the API secret value
    - Optimize rendering performance
+
+```
 
 ```
 

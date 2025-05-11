@@ -1,23 +1,11 @@
 import { atom } from "jotai";
-
-export type PlanType = "Free" | "Explorer" | "Builder" | "Accelerator";
-export type BillingCycle = "monthly" | "annual";
-
-export interface SubscriptionPlan {
-  planType: PlanType;
-  billingCycle: BillingCycle;
-  price: number;
-}
-
-export interface PricingPlan {
-  title: string;
-  price: number;
-  description: string;
-  features: { text: string }[];
-  buttonText: string;
-  buttonVariant: "default" | "outline";
-  isPopular: boolean;
-}
+import {
+  PlanType,
+  BillingCycle,
+  SubscriptionPlan,
+  PricingPlan,
+  calculateAnnualPrice,
+} from "@/lib/firebase/schema";
 
 // Default to free plan with monthly billing
 const defaultPlan: SubscriptionPlan = {
@@ -33,13 +21,6 @@ export const selectedPlanAtom = atom<SubscriptionPlan>(defaultPlan);
 export const monthlyPricingPlansAtom = atom<PricingPlan[]>([]);
 export const annualPricingPlansAtom = atom<PricingPlan[]>([]);
 export const pricingPlansLoadingAtom = atom<boolean>(true);
-
-// Helper function to calculate the annual price with 20% discount
-export const calculateAnnualPrice = (monthlyPrice: number): number => {
-  if (monthlyPrice === 0) return 0;
-  const annual = Math.round(monthlyPrice * 12 * 0.8);
-  return annual;
-};
 
 // Get plan price based on type and billing cycle
 export const getPlanPrice = (

@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PaymentForm } from "@/components/stripe/payment-form";
-import { SubscriptionPlan } from "@/stores/subscriptionStore";
+import { SubscriptionPlan } from "@/lib/firebase/schema";
 import { createSubscriptionAction, checkEmailExists } from "../actions";
 import { handleEmailPasswordSignIn } from "@/lib/firebase/clientAuth";
 import Link from "next/link";

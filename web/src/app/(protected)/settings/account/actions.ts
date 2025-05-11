@@ -4,6 +4,7 @@ import { z } from "zod";
 import { adminDb, adminAuth } from "@/lib/firebase/admin";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { revalidatePath } from "next/cache";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Define the schema for account updates
 const accountUpdateSchema = z.object({
@@ -50,7 +51,7 @@ export async function updateAccountAction(data: AccountUpdateData) {
     const updatePayload: Record<string, any> = {
       name: validatedData.name,
       timezone: validatedData.timezone,
-      updatedAt: new Date().toISOString(),
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     // Add optional fields if they exist
@@ -198,11 +199,11 @@ export async function deleteAccountAction() {
     if (userDoc.exists) {
       await userRef.update({
         archived: true,
-        archivedAt: new Date().toISOString(),
+        archivedAt: getCurrentUnixTimestamp(),
       });
     } else {
       await userRef.set(
-        { archived: true, archivedAt: new Date().toISOString() },
+        { archived: true, archivedAt: getCurrentUnixTimestamp() },
         { merge: true }
       );
     }

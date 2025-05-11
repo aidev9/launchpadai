@@ -81,13 +81,13 @@ export default function ProfileForm() {
       updateUserProfile({
         displayName: data.displayName,
         bio: data.bio,
-        urls: data.urls,
+        urls: data.urls || [],
       });
       // Only send necessary data to server action
       const profileData: ProfileUpdateData = {
         displayName: data.displayName,
         bio: data.bio,
-        urls: data.urls,
+        urls: data.urls || [],
       };
       const result = await updateProfileAction(profileData);
       if (result.success) {

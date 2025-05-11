@@ -8,6 +8,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { Course, CourseInput, courseInputSchema } from "./schema";
 import { deleteFromStorage } from "./storage";
 import { Module, moduleInputSchema } from "./schema";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 export interface ModuleAttachment {
   id: string;
@@ -99,13 +100,13 @@ export async function createCourse(data: CourseInput) {
     const courseId = uuidv4();
 
     // Add timestamps
-    const now = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
 
     const courseData = {
       ...validatedData,
       id: courseId,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
 
     // Add to Firestore
@@ -144,10 +145,10 @@ export async function updateCourse(id: string, data: Partial<CourseInput>) {
     }
 
     // Update timestamp
-    const now = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
     const updateData = {
       ...data,
-      updatedAt: now,
+      updatedAt: timestamp,
     };
 
     await courseRef.update(updateData);
@@ -289,13 +290,13 @@ export async function addModule(courseId: string, data: ModuleInput) {
     const moduleId = uuidv4();
 
     // Add timestamps
-    const now = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
 
     const moduleData = {
       ...validatedData,
       id: moduleId,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
 
     // Add module to the course
@@ -379,11 +380,11 @@ export async function updateModule(
     }
 
     // Update module data
-    const now = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
     const updatedModule = {
       ...modules[moduleIndex],
       ...data,
-      updatedAt: now,
+      updatedAt: timestamp,
     };
 
     modules[moduleIndex] = updatedModule;

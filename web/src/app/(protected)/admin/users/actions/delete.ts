@@ -2,6 +2,7 @@
 
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { revalidatePath } from "next/cache";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 /**
  * Delete a user from Firebase Auth and Firestore
@@ -24,7 +25,12 @@ export async function deleteUser(userId: string) {
 
     // Step 2: Delete user data from Firestore
     try {
-      await adminDb.collection("users").doc(userId).delete();
+      // Instead of deleting the document, update it to mark as deleted
+      await adminDb.collection("users").doc(userId).update({
+        deleted: true,
+        deletedAt: getCurrentUnixTimestamp(),
+        updatedAt: getCurrentUnixTimestamp(),
+      });
       firestoreDeleted = true;
     } catch (err) {
       error = err;
@@ -43,7 +49,7 @@ export async function deleteUser(userId: string) {
       if (!authDeleted) {
         // Log the auth deletion failure but don't fail the operation
         console.warn(
-          `Warning: User auth record for ${userId} was not deleted, but Firestore data was removed successfully.`
+          `Warning: User auth record for ${userId} was not deleted, but Firestore data was marked as deleted.`
         );
       }
 

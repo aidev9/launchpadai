@@ -9,7 +9,10 @@ import { UserProfile } from "@/lib/firebase/schema";
 export async function getAllUsers() {
   try {
     // Get users collection
-    const usersSnapshot = await adminDb.collection("users").get();
+    const usersSnapshot = await adminDb
+      .collection("users")
+      .orderBy("createdAt", "desc")
+      .get();
 
     if (usersSnapshot.empty) {
       return { success: true, users: [] };

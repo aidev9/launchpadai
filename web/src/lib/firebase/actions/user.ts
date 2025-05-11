@@ -2,6 +2,7 @@
 
 import { adminDb } from "../admin";
 import { awardXpPoints } from "@/xp/server-actions";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 /**
  * Server action to ensure a user record exists in Firestore
@@ -48,6 +49,7 @@ export async function ensureUserInFirestoreAction(
     const userDataWithDefaults = {
       ...userData,
       xp: userData.xp || 0,
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     // Create user record in Firestore

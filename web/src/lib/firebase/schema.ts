@@ -63,6 +63,10 @@ export const userSubscriptionSchema = z.object({
   stripeSubscriptionId: z.string(),
 });
 
+// Plan types
+export type PlanType = "Free" | "Explorer" | "Builder" | "Accelerator";
+export type BillingCycle = "monthly" | "annual";
+
 // Define plan types and pricing interface
 export interface PlanOption {
   title: string;
@@ -79,6 +83,31 @@ export interface PlanOption {
   };
   features: string[];
 }
+
+// Interface for selected subscription plan
+export interface SubscriptionPlan {
+  planType: PlanType;
+  billingCycle: BillingCycle;
+  price: number;
+}
+
+// Interface for pricing plan display data
+export interface PricingPlan {
+  title: string;
+  price: number;
+  description: string;
+  features: { text: string }[];
+  buttonText: string;
+  buttonVariant: "default" | "outline";
+  isPopular?: boolean;
+}
+
+// Helper function to calculate the annual price with 20% discount
+export const calculateAnnualPrice = (monthlyPrice: number): number => {
+  if (monthlyPrice === 0) return 0;
+  const annual = Math.round(monthlyPrice * 12 * 0.8);
+  return annual;
+};
 
 // END: SUBSCRIPTION
 
@@ -401,7 +430,7 @@ export interface Note {
   note_body: string;
   tags: string[];
   createdAt: number;
-  udpdatedAt: number;
+  updatedAt: number;
 }
 
 // START: FEEDBACK
@@ -415,10 +444,10 @@ export interface Feedback {
   subject: string;
   body: string;
   status: "new" | "in-progress" | "resolved";
-  createdAt: string;
-  updatedAt: string;
+  createdAt: number;
+  updatedAt: number;
   response?: string;
-  responseAt?: string;
+  responseAt?: number;
 }
 
 // Schema for feedback validation

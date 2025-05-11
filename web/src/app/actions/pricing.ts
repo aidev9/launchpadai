@@ -1,18 +1,12 @@
 "use server";
 
-import { BillingCycle } from "@/stores/subscriptionStore";
+import {
+  BillingCycle,
+  PricingPlan,
+  calculateAnnualPrice,
+} from "@/lib/firebase/schema";
 
 // Define types for pricing data
-export interface PricingPlan {
-  title: string;
-  price: number;
-  description: string;
-  features: Array<{ text: string }>;
-  buttonText: string;
-  buttonVariant: "outline" | "default";
-  isPopular?: boolean;
-}
-
 export interface PricingData {
   plans: PricingPlan[];
 }
@@ -93,10 +87,4 @@ export async function getPricingData(
 
   // Return monthly prices
   return { plans: basePricingData };
-}
-
-// Helper function to calculate annual price (20% discount)
-function calculateAnnualPrice(monthlyPrice: number): number {
-  const annual = Math.round(monthlyPrice * 12 * 0.8);
-  return annual;
 }

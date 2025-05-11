@@ -18,7 +18,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Subscription, PlanOption } from "@/lib/firebase/schema";
+import {
+  Subscription,
+  PlanOption,
+  BillingCycle,
+  PlanType,
+  SubscriptionPlan,
+} from "@/lib/firebase/schema";
 import { getCurrentUserProfileAtom } from "@/lib/store/user-store";
 import { useAtom } from "jotai";
 
@@ -28,9 +34,7 @@ interface UpgradeFormProps {
 
 export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">(
-    "annual"
-  );
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("annual");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
@@ -172,7 +176,7 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
     try {
       setIsLoading(true);
 
-      const planTitle = plans[selectedPlan].title;
+      const planTitle = plans[selectedPlan].title as PlanType;
       const price =
         billingCycle === "monthly"
           ? plans[selectedPlan].monthly.price
@@ -219,10 +223,10 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
   };
 
   // Get the current plan info if a plan is selected
-  const selectedPlanInfo =
+  const selectedPlanInfo: SubscriptionPlan | null =
     selectedPlan !== null && plans.length > 0
       ? {
-          planType: plans[selectedPlan].title,
+          planType: plans[selectedPlan].title as PlanType,
           billingCycle: billingCycle,
           price:
             billingCycle === "monthly"
@@ -245,22 +249,6 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
 
   // Get display plans (excluding Free)
   const displayPlans = plans.filter((p) => p.title !== "Free");
-
-  // Button text based on plan
-  const getButtonText = (planTitle: string) => {
-    switch (planTitle) {
-      case "Free":
-        return "Start Free";
-      case "Explorer":
-        return "Get Started";
-      case "Builder":
-        return "Start Building";
-      case "Accelerator":
-        return "Scale Faster";
-      default:
-        return "Select Plan";
-    }
-  };
 
   return (
     <div className="space-y-8">
@@ -286,7 +274,7 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
           <Tabs
             defaultValue="annual"
             className="w-full"
-            onValueChange={(v) => setBillingCycle(v as "monthly" | "annual")}
+            onValueChange={(v) => setBillingCycle(v as BillingCycle)}
           >
             <div className="flex justify-center mb-6">
               <TabsList className="grid w-[400px] grid-cols-2">
@@ -420,7 +408,7 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
                                   ? "Lower Plan"
                                   : selectedPlan === planIndex
                                     ? "Selected"
-                                    : getButtonText(planOption.title)}
+                                    : "Select Plan"}
                             </Button>
                           </CardFooter>
                         </Card>
@@ -549,7 +537,7 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
                                   ? "Lower Plan"
                                   : selectedPlan === planIndex
                                     ? "Selected"
-                                    : getButtonText(planOption.title)}
+                                    : "Select Plan"}
                             </Button>
                           </CardFooter>
                         </Card>

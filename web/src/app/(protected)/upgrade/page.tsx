@@ -1,5 +1,6 @@
 "use client";
 import UpgradeForm from "./components/upgrade-form";
+import { Subscription } from "@/lib/firebase/schema";
 import { useEffect, useState } from "react";
 import { getSubscriptionAction } from "../settings/subscription/actions";
 import { toast } from "@/hooks/use-toast";
@@ -7,7 +8,7 @@ import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { Button } from "@/components/ui/button";
 
 export default function UpgradePage() {
-  const [subscription, setSubscription] = useState<any>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

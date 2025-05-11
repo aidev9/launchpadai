@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import Stripe from "stripe";
 import { headers } from "next/headers";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -115,7 +116,7 @@ async function handleSubscriptionEvent(event: Stripe.Event) {
         return userDoc.ref.update({
           subscriptionStatus: status,
           // Update additional fields as needed, e.g., subscription end date
-          updatedAt: new Date().toISOString(),
+          updatedAt: getCurrentUnixTimestamp(),
         });
       }
     });
@@ -141,7 +142,7 @@ async function handleSubscriptionEvent(event: Stripe.Event) {
         const updatePromises = usersSnapshot.docs.map(async (userDoc) => {
           return userDoc.ref.update({
             subscriptionStatus: subscription.status,
-            updatedAt: new Date().toISOString(),
+            updatedAt: getCurrentUnixTimestamp(),
           });
         });
 

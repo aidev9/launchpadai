@@ -4,25 +4,19 @@ import { z } from "zod";
 import { adminDb } from "@/lib/firebase/admin";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { revalidatePath } from "next/cache";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Define the schema for profile updates
 const profileUpdateSchema = z.object({
-  displayName: z
-    .string()
-    .min(2, {
-      message: "Display name must be at least 2 characters.",
+  displayName: z.string().optional(),
+  bio: z.string().max(500, {
+    message: "Bio must not be longer than 500 characters.",
+  }),
+  urls: z.array(
+    z.object({
+      value: z.string().url({ message: "Please enter a valid URL." }),
     })
-    .max(30, {
-      message: "Display name must not be longer than 30 characters.",
-    }),
-  bio: z.string().max(160).min(4),
-  urls: z
-    .array(
-      z.object({
-        value: z.string().url({ message: "Please enter a valid URL." }),
-      })
-    )
-    .optional(),
+  ),
 });
 
 export type ProfileUpdateData = z.infer<typeof profileUpdateSchema>;
@@ -48,13 +42,15 @@ export async function updateProfileAction(data: ProfileUpdateData) {
     // Get reference to the user document
     const userRef = adminDb.collection("users").doc(userId);
 
-    // Update the profile with the new data
-    await userRef.update({
-      displayName: validatedData.displayName,
+    // Prepare update payload
+    const updatePayload = {
       bio: validatedData.bio,
       urls: validatedData.urls,
-      updatedAt: new Date().toISOString(),
-    });
+      updatedAt: getCurrentUnixTimestamp(),
+    };
+
+    // Update the user document
+    await userRef.update(updatePayload);
 
     // Revalidate the profile page
     revalidatePath("/settings/profile");

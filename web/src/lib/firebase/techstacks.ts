@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { TechStack, TechStackInput, techStackInputSchema } from "./schema";
 import { generateDefaultAssets } from "./techstack-assets";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Get the techStacksRef for a specific user
 function getUserTechStacksRef(userId: string) {
@@ -22,12 +23,12 @@ export async function createTechStack(data: TechStackInput) {
     const productsRef = getUserTechStacksRef(userId);
 
     // Add timestamps
-    const now = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
     const techStackData = {
       ...validatedData,
       userId,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
 
     // Add to Firestore
@@ -162,7 +163,7 @@ export async function updateTechStack(
     // Update with new data and updatedAt timestamp
     const updateData = {
       ...data,
-      updatedAt: new Date().toISOString(),
+      updatedAt: getCurrentUnixTimestamp(),
     };
 
     await productsRef

@@ -2,12 +2,13 @@
 
 import { userActionClient } from "@/lib/action";
 import { adminDb } from "@/lib/firebase/admin";
-import { z } from "zod";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
 import { revalidatePath } from "next/cache";
-import { getPlanPriceId } from "@/lib/stripe/server";
-import { calculateAnnualPrice } from "@/stores/subscriptionStore";
-import { userSubscriptionSchema } from "@/lib/firebase/schema";
+import {
+  userSubscriptionSchema,
+  calculateAnnualPrice,
+  PlanOption,
+} from "@/lib/firebase/schema";
 
 // Get a user's current subscription
 export async function getUserSubscription(userId: string) {
@@ -97,7 +98,7 @@ const builderAnnualPrice = calculateAnnualPrice(builderMonthlyPrice);
 const acceleratorAnnualPrice = calculateAnnualPrice(acceleratorMonthlyPrice);
 
 // Define plan types and pricing structure
-const plans = [
+const plans: PlanOption[] = [
   {
     title: "Free",
     description: "Thinkers exploring the possibilities",

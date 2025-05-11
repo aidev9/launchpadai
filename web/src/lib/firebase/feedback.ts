@@ -1,11 +1,14 @@
 "use server";
 
-import { adminDb } from "./admin";
+import { adminDb } from "@/lib/firebase/admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { Feedback, FeedbackInput, feedbackSchema } from "./schema";
+import { feedbackSchema } from "@/lib/firebase/schema";
+import { Feedback, FeedbackInput } from "@/lib/firebase/schema";
 import { Resend } from "resend";
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 import FeedbackNotification from "@/lib/emails/feedback-notification";
 
 // Initialize Resend with API key from environment variables
@@ -30,7 +33,7 @@ export async function createFeedback(
     const feedbackId = uuidv4();
 
     // Add timestamps
-    const now = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
 
     const feedbackData = {
       ...validatedData,
@@ -38,8 +41,8 @@ export async function createFeedback(
       userId,
       userEmail,
       status: "new",
-      createdAt: now,
-      updatedAt: now,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     } as Feedback;
 
     // Add to Firestore
@@ -142,10 +145,10 @@ export async function updateFeedback(id: string, data: Partial<FeedbackInput>) {
     }
 
     // Update timestamp
-    const now = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
     const updateData = {
       ...data,
-      updatedAt: now,
+      updatedAt: timestamp,
     };
 
     await feedbackRef.update(updateData);
@@ -210,12 +213,12 @@ export async function respondToFeedback(id: string, response: string) {
     }
 
     // Update timestamp and add response
-    const now = new Date().toISOString();
+    const timestamp = getCurrentUnixTimestamp();
     const updateData = {
       response,
-      responseAt: now,
+      responseAt: timestamp,
       status: "resolved",
-      updatedAt: now,
+      updatedAt: timestamp,
     };
 
     await feedbackRef.update(updateData);

@@ -106,10 +106,6 @@ export default function UsersPage() {
 
   const hasSelectedUsers = selectedUsers.length > 0;
 
-  // Debug logging
-  console.log("Page component - selectedUsers:", selectedUsers);
-  console.log("Page component - hasSelectedUsers:", hasSelectedUsers);
-
   return (
     <Main>
       <div className="mb-4 flex items-center justify-between">
