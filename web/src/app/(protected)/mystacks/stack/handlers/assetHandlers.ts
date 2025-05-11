@@ -1,7 +1,8 @@
 import { useState, Dispatch, SetStateAction } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { TechStack, TechStackAsset } from "@/lib/firebase/schema";
-import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
+import { useMutation } from "@tanstack/react-query";
 import {
   createTechStackAsset,
   updateTechStackAsset,
@@ -30,8 +31,10 @@ export function useAssetHandlersWithQuery(
   refetchAssets: () => void
 ) {
   const { toast } = useToast();
-  const { awardXp } = useXp();
   const [isDownloading, setIsDownloading] = useState(false);
+
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
   const handleCreateAsset = () => {
     setSelectedAsset(null);
@@ -73,7 +76,8 @@ export function useAssetHandlersWithQuery(
       if (result.success) {
         // Award XP only for creating new assets, not for updates
         if (!selectedAsset) {
-          await awardXp("create_stack_asset");
+          // Use background mutation instead of awaiting
+          xpMutation.mutate("create_stack_asset");
 
           toast({
             title: "Success",

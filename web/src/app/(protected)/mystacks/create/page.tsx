@@ -15,7 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAtom } from "jotai";
-import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
+import { useMutation } from "@tanstack/react-query";
 import {
   currentWizardStepAtom,
   techStackWizardStateAtom,
@@ -62,7 +63,9 @@ export default function TechStackWizard() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { awardXp } = useXp();
+
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
   // Only fetch tech stack data if we have a selected tech stack ID
   useEffect(() => {
@@ -283,7 +286,9 @@ export default function TechStackWizard() {
             title: "Success",
             description: "Tech stack created successfully.",
           });
-          awardXp("create_stack");
+          // Award XP in background without waiting
+          xpMutation.mutate("create_stack");
+
           setSelectedTechStackId(result.id); // Set the ID of the newly created stack
           setSelectedTechStack(null); // Clear the selected stack object to force refetch
           newStackIdForNavigation = result.id;

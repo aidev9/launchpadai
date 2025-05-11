@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
+import { useMutation } from "@tanstack/react-query";
 import {
   Plus,
   Search as SearchIcon,
@@ -64,7 +65,6 @@ export const dynamic = "force-dynamic";
 export default function MyPrompts() {
   const router = useRouter();
   const { toast } = useToast();
-  const { awardXp } = useXp();
   const [layoutView, setLayoutView] = useAtom(layoutViewAtom);
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
@@ -224,6 +224,9 @@ export default function MyPrompts() {
     }
   };
 
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
+
   const handleSubmitPrompt = async (data: PromptInput, promptId?: string) => {
     setIsSubmitting(true);
     try {
@@ -268,8 +271,8 @@ export default function MyPrompts() {
           // Optimistic update - add the new prompt
           addPrompt(result.prompt);
 
-          // Award XP for creating a new prompt
-          await awardXp("create_prompt");
+          // Award XP for creating a new prompt - using background mutation
+          xpMutation.mutate("create_prompt");
 
           toast({
             title: "Success",

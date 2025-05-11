@@ -40,6 +40,9 @@ import {
   TOAST_DEFAULT_DURATION,
 } from "@/utils/constants";
 import { get } from "http";
+import { useMutation } from "@tanstack/react-query";
+import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -161,8 +164,6 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [allQuestions, setAllQuestions] = useAtom(allQuestionsAtom);
-  const [userProfile] = useAtom(userProfileAtom);
-  const [, updateUserProfile] = useAtom(updateUserProfileAtom);
 
   // Store displayedQuestions as a ref to prevent re-renders
   const displayedQuestionsRef = useRef<Question[]>([]);
@@ -196,9 +197,13 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
 
     // Filter by phase
     if (!selectedPhases.includes("All")) {
-      filtered = filtered.filter((question) =>
-        question.phases?.some((phase) => selectedPhases.includes(phase))
-      );
+      filtered = filtered.filter((question) => {
+        return (
+          question.phases &&
+          Array.isArray(question.phases) &&
+          question.phases.some((phase) => selectedPhases.includes(phase))
+        );
+      });
     }
 
     // Filter by search term
@@ -311,78 +316,78 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
     }
   }, [selectedQuestionId, allQuestions]);
 
-  // Handle saving the answer
-  const handleSave = async () => {
-    if (!selectedProductId || !selectedQuestionId || !answer.trim()) return;
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
-    // Find the current question state *before* saving
-    const currentQuestion = allQuestions.find(
-      (q) => q.id === selectedQuestionId
-    );
-    const wasPreviouslyAnswered = !!currentQuestion?.answer?.trim();
+  // Handle saving the answer
+  const handleSaveAnswer = async () => {
+    if (!selectedProductId || !selectedQuestionId) {
+      onShowToast({
+        title: "Error",
+        description: "No product or question selected",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSaving(true);
     try {
-      const response = await answerProductQuestionAction(
+      // Optimistic update - apply changes locally first
+      setAllQuestions((prevQuestions) =>
+        prevQuestions.map((q) => {
+          if (q.id === selectedQuestionId) {
+            return {
+              ...q,
+              answer,
+              updatedAt: Date.now() / 1000, // current timestamp in seconds
+            };
+          }
+          return q;
+        })
+      );
+
+      const result = await answerProductQuestionAction(
         selectedProductId,
         selectedQuestionId,
         answer
       );
 
-      if (response.success) {
-        // Update the question in the local state
-        setAllQuestions((prev) =>
-          prev.map((q) =>
-            q.id === selectedQuestionId
-              ? { ...q, answer, updatedAt: getCurrentUnixTimestamp() }
-              : q
-          )
-        );
+      if (result.success) {
+        // Award XP in background for answering a question
+        xpMutation.mutate("answer_question");
 
-        const toastTitle = "Answer saved";
-        let toastDescription = "Your answer has been saved successfully.";
-        const toastVariant: "default" | "destructive" | undefined = "default";
-
-        // Conditional XP Update
-        if (!wasPreviouslyAnswered) {
-          const awardedXp = 5;
-          if (userProfile) {
-            const newXp = (userProfile.xp || 0) + awardedXp;
-            const updatedProfile = { ...userProfile, xp: newXp };
-            updateUserProfile(updatedProfile); // Update the atom
-            console.log(
-              `User profile atom updated locally after FIRST answer. New XP: ${newXp}`
-            );
-            toastDescription = `Your answer has been saved successfully and you earned ${awardedXp} XP!`;
-          } else {
-            console.warn("User profile not available to update XP locally.");
-            // Still show basic success message even if profile update fails locally
-          }
-        } else {
-          console.log(
-            "Question was previously answered, no XP awarded optimistically."
-          );
-          // Keep the default toastDescription
-        }
-        // Use callback for save success toast
+        // Show success toast immediately
         onShowToast({
-          title: toastTitle,
-          description: toastDescription,
+          title: "Answer saved",
+          description:
+            "Your answer has been saved successfully and you earned 10 XP!",
           duration: TOAST_DEFAULT_DURATION,
-          variant: toastVariant,
         });
       } else {
-        // Use callback for save failure toast
+        // If server update fails, show error and revert optimistic update
+        const errorMsg = result.error || "Failed to save answer";
+
         onShowToast({
           title: "Error saving answer",
-          description: response.error || "Failed to save answer",
+          description: errorMsg,
           variant: "destructive",
         });
-        // throw new Error(response.error || "Failed to save answer"); // Don't throw if showing toast
+
+        // Revert the optimistic update if the server request failed
+        setAllQuestions((prevQuestions) =>
+          prevQuestions.map((q) => {
+            if (q.id === selectedQuestionId) {
+              return {
+                ...q,
+                answer: null, // or fetch the previous value from somewhere
+              };
+            }
+            return q;
+          })
+        );
       }
     } catch (error) {
       console.error("Error saving answer:", error);
-      // Use callback for general save error toast
       onShowToast({
         title: "Error saving answer",
         description: error instanceof Error ? error.message : "Unknown error",
@@ -618,7 +623,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
 
                   <div className="mt-6 flex justify-end">
                     <Button
-                      onClick={handleSave}
+                      onClick={handleSaveAnswer}
                       disabled={isSaving || !answer.trim()}
                       className="flex items-center gap-2"
                     >

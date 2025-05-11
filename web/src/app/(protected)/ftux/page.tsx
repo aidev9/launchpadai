@@ -39,7 +39,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useXp } from "@/xp/useXp";
+import { useAtom } from "jotai";
+import { userProfileAtom } from "@/lib/store/user-store";
 import { Main } from "@/components/layout/main";
 
 export default function FTUXPage() {
@@ -48,7 +49,7 @@ export default function FTUXPage() {
     photoURL?: string | null;
   } | null>(null);
   const router = useRouter();
-  const { xp, error: _xpError } = useXp();
+  const [userProfile] = useAtom(userProfileAtom);
   const [tasks, setTasks] = useState<
     Array<{ id: string; text: string; completed: boolean }>
   >([
@@ -361,7 +362,7 @@ export default function FTUXPage() {
           </div>
           <CardDescription className="text-base mb-4">
             Create your first startup or product now and earn 50 XP. You
-            currently have {xp} XP.
+            currently have {userProfile?.xp || 0} XP.
           </CardDescription>
           <Button
             className="w-full bg-amber-500 hover:bg-amber-600 text-white"

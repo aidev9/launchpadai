@@ -198,15 +198,19 @@ export async function addProductQuestionAction(
 
     // Prepare the question data
     const phases = questionData.phases || [];
-    const phase =
-      questionData.phase || (phases.length > 0 ? phases[0] : "Discover");
+
+    // If phases array is empty, use the phase property or default to "Discover"
+    if (phases.length === 0 && questionData.phase) {
+      phases.push(questionData.phase);
+    } else if (phases.length === 0) {
+      phases.push("Discover");
+    }
 
     const newQuestion = {
       question: questionData.question,
       answer: questionData.answer,
       tags: questionData.tags,
       phases: phases,
-      phase: phase,
       order: getCurrentUnixTimestamp(), // Use timestamp for default ordering
       createdAt: getCurrentUnixTimestamp(),
       updatedAt: getCurrentUnixTimestamp(),
@@ -283,15 +287,19 @@ export async function updateProductQuestionAction(
 
     // Prepare the update data
     const phases = questionData.phases || [];
-    const phase =
-      questionData.phase || (phases.length > 0 ? phases[0] : "Discover");
+
+    // If phases array is empty, use the phase property or default to "Discover"
+    if (phases.length === 0 && questionData.phase) {
+      phases.push(questionData.phase);
+    } else if (phases.length === 0) {
+      phases.push("Discover");
+    }
 
     const updatedQuestion = {
       question: questionData.question,
       answer: questionData.answer,
       tags: questionData.tags,
       phases: phases,
-      phase: phase,
       updatedAt: getCurrentUnixTimestamp(),
     };
 

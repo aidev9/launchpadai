@@ -31,9 +31,11 @@ export function PhaseToolbar() {
         ).length;
         acc[phase] = { total: allQuestions.length, answered: totalAnswered };
       } else {
-        const phaseQuestions = allQuestions.filter((q) =>
-          q.phases?.includes(phase)
-        );
+        const phaseQuestions = allQuestions.filter((q) => {
+          return (
+            q.phases && Array.isArray(q.phases) && q.phases.includes(phase)
+          );
+        });
         const answeredCount = phaseQuestions.filter(
           (q) => q.answer && q.answer.trim().length > 0
         ).length;

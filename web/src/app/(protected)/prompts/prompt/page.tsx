@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getPhaseColor } from "@/components/prompts/phase-filter";
 import { copyPromptToUserCollectionAction } from "@/lib/firebase/actions/prompts";
-import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
 import { useAtom } from "jotai";
 import { selectedPromptAtom } from "@/lib/store/prompt-store";
 import { useState } from "react";
@@ -21,10 +21,12 @@ import { Prompt } from "@/lib/firebase/schema";
 export default function PromptDetail() {
   const router = useRouter();
   const { toast } = useToast();
-  const { awardXp } = useXp();
   const [prompt] = useAtom(selectedPromptAtom);
   const [isCopying, setIsCopying] = useState(false);
   const { setSelectedPrompt } = usePrompts();
+
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
   const handleUseAsTemplate = async () => {
     if (!prompt) return;
@@ -39,8 +41,8 @@ export default function PromptDetail() {
       );
 
       if (result.success) {
-        // Award XP for using a prompt as template
-        await awardXp("use_prompt_template");
+        // Award XP for using a prompt as template in background
+        xpMutation.mutate("use_prompt_template");
 
         toast({
           title: "Success",

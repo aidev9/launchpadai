@@ -40,6 +40,8 @@ import {
   getCurrentUnixTimestamp,
   TOAST_DEFAULT_DURATION,
 } from "@/utils/constants";
+import { useMutation } from "@tanstack/react-query";
+import { useXpMutation } from "@/xp/useXpMutation";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -83,7 +85,9 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [, setAllAssets] = useAtom(allAssetsAtom);
-  const { awardXp } = useXp();
+
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
   // Filter assets based on selected phases
   useEffect(() => {
@@ -352,21 +356,14 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
 
         const actionId = "generate_asset";
         const pointsAwarded = 5;
-        let toastDescription = "Content generated successfully.";
 
-        try {
-          await awardXp(actionId);
-          toastDescription += ` You earned ${pointsAwarded} XP!`;
-        } catch (xpError) {
-          console.error(
-            `Failed to initiate XP award for ${actionId}:`,
-            xpError
-          );
-        }
+        // Fire XP award in background without waiting
+        xpMutation.mutate(actionId);
 
+        // Show success toast immediately
         onShowToast({
           title: "Content Generated",
-          description: toastDescription,
+          description: `Content generated successfully. You earned ${pointsAwarded} XP!`,
           duration: TOAST_DEFAULT_DURATION,
         });
       } else {
@@ -417,21 +414,14 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
 
         const actionId = "download_asset";
         const pointsAwarded = 5;
-        let toastDescription = `\"${fileName}\" downloaded successfully.`;
 
-        try {
-          await awardXp(actionId);
-          toastDescription += ` You earned ${pointsAwarded} XP!`;
-        } catch (xpError) {
-          console.error(
-            `Failed to initiate XP award for ${actionId}:`,
-            xpError
-          );
-        }
+        // Fire XP award in background without waiting
+        xpMutation.mutate(actionId);
 
+        // Show success toast immediately
         onShowToast({
           title: "Download Successful",
-          description: toastDescription,
+          description: `\"${fileName}\" downloaded successfully. You earned ${pointsAwarded} XP!`,
           duration: TOAST_DEFAULT_DURATION,
         });
       } else {
@@ -490,21 +480,14 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
       if (response.success) {
         const actionId = "create_note";
         const pointsAwarded = 5;
-        let toastDescription = "Note added successfully.";
 
-        try {
-          await awardXp(actionId);
-          toastDescription += ` You earned ${pointsAwarded} XP!`;
-        } catch (xpError) {
-          console.error(
-            `Failed to initiate XP award for ${actionId}:`,
-            xpError
-          );
-        }
+        // Fire XP award in background without waiting
+        xpMutation.mutate(actionId);
 
+        // Show success toast immediately
         onShowToast({
           title: "Note Added",
-          description: toastDescription,
+          description: `Note added successfully. You earned ${pointsAwarded} XP!`,
           duration: TOAST_DEFAULT_DURATION,
         });
 

@@ -5,7 +5,7 @@ import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
 import { toast as showToast } from "@/hooks/use-toast";
 import { TagInput } from "@/components/ui/tag-input";
 import {
@@ -54,7 +54,9 @@ export function NotesDialogs({
   const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [selectedProductId] = useAtom(selectedProductIdAtom);
-  const { awardXp } = useXp();
+
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
   // Update form when editing a note
   useEffect(() => {
@@ -103,39 +105,35 @@ export function NotesDialogs({
       });
 
       if (result.success) {
-        try {
-          // Create the new note object with the server response data
-          const newNote: Note = {
-            // Use a fallback id if not present (e.g., Date.now().toString())
-            id:
-              result.note && "id" in result.note
-                ? (result.note as any).id
-                : Date.now().toString(),
-            note_body: result.note?.note_body || noteBody,
-            tags: result.note?.tags || tags,
-            createdAt: result.note?.createdAt || getCurrentUnixTimestamp(),
-            updatedAt: result.note?.updatedAt || getCurrentUnixTimestamp(),
-          };
+        // Create the new note object with the server response data
+        const newNote: Note = {
+          // Use a fallback id if not present (e.g., Date.now().toString())
+          id:
+            result.note && "id" in result.note
+              ? (result.note as any).id
+              : Date.now().toString(),
+          note_body: result.note?.note_body || noteBody,
+          tags: result.note?.tags || tags,
+          createdAt: result.note?.createdAt || getCurrentUnixTimestamp(),
+          updatedAt: result.note?.updatedAt || getCurrentUnixTimestamp(),
+        };
 
-          // Update the allNotes atom directly
-          setAllNotes((prevNotes) => [newNote, ...prevNotes]);
+        // Update the allNotes atom directly
+        setAllNotes((prevNotes) => [newNote, ...prevNotes]);
 
-          // Award XP for creating a note
-          const createNoteActionId = "create_note";
-          const pointsAwarded = 5;
-          await awardXp(createNoteActionId);
-          onShowToast({
-            title: "Note added",
-            description: `Your note has been added successfully and you earned ${pointsAwarded} XP!`,
-            duration: TOAST_DEFAULT_DURATION,
-          });
-        } catch (error) {
-          onShowToast({
-            title: "Note added",
-            description: "Your note has been added successfully.",
-            duration: TOAST_DEFAULT_DURATION,
-          });
-        }
+        // Award XP for creating a note - using background mutation
+        const createNoteActionId = "create_note";
+        const pointsAwarded = 5;
+
+        // Fire XP award in background without waiting
+        xpMutation.mutate(createNoteActionId);
+
+        // Show success toast immediately
+        onShowToast({
+          title: "Note added",
+          description: `Your note has been added successfully and you earned ${pointsAwarded} XP!`,
+          duration: TOAST_DEFAULT_DURATION,
+        });
 
         // Call onSuccess to ensure any additional refreshing logic is executed
         onSuccess();

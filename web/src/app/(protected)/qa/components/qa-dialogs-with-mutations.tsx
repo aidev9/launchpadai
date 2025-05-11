@@ -46,7 +46,7 @@ import {
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Question } from "@/lib/firebase/schema";
 import { toast as showToast } from "@/hooks/use-toast";
-import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
 import { TOAST_DEFAULT_DURATION, phaseOptions } from "@/utils/constants";
 import { useQuestionsQuery } from "../hooks/useQuestionsQuery";
 
@@ -80,8 +80,10 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
   const [allQuestions, setAllQuestions] = useAtom(allQuestionsAtom);
   const [tableInstance] = useAtom(tableInstanceAtom);
   const [selectedProductId] = useAtom(selectedProductIdAtom);
-  const { awardXp } = useXp();
   const [tags, setTags] = useState<string[]>([]);
+
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
   // Get the mutations from our custom hook
   const {
@@ -163,7 +165,8 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
 
         // Award XP for answering if an answer was added and wasn't there before
         if (data.answer && !selectedQuestion.answer) {
-          await awardXp("answer_question");
+          // Using background mutation
+          xpMutation.mutate("answer_question");
         }
       } else {
         // Add new question using Tanstack Query mutation
@@ -172,8 +175,8 @@ export function QADialogs({ onSuccess, onShowToast }: QADialogsProps) {
           productId: selectedProductId,
         });
 
-        // Award XP for adding a question
-        await awardXp("add_question");
+        // Award XP for adding a question - using background mutation
+        xpMutation.mutate("add_question");
       }
 
       if (response.success) {

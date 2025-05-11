@@ -163,8 +163,8 @@ async function createProductQuestions(userId: string, productId: string) {
         const questionData = {
           question: staticQuestion.text,
           answer: null,
-          tags: [staticQuestion.phase.toLowerCase()],
-          phase: staticQuestion.phase,
+          tags: [staticQuestion.phases[0].toLowerCase()],
+          phases: staticQuestion.phases,
           order: staticQuestion.order,
           createdAt: getCurrentUnixTimestamp(),
           updatedAt: getCurrentUnixTimestamp(),

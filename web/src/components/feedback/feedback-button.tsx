@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAtom } from "jotai";
 import { userProfileAtom } from "@/lib/store/user-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
 
 // Create a new QueryClient instance for this component
 const queryClient = new QueryClient({
@@ -73,7 +73,9 @@ function FeedbackButtonInner({
   const createFeedbackMutation = useCreateFeedback();
   const { toast } = useToast();
   const [userProfile] = useAtom(userProfileAtom);
-  const { awardXp } = useXp();
+
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
   const handleSubmitFeedback = async (data: FeedbackInput) => {
     try {
@@ -86,8 +88,8 @@ function FeedbackButtonInner({
         userEmail,
       });
 
-      // Award XP for submitting feedback
-      awardXp("submit_feedback");
+      // Award XP for submitting feedback in background
+      xpMutation.mutate("submit_feedback");
 
       // Show success toast with XP award
       toast({

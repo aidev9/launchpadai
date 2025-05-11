@@ -52,7 +52,7 @@ import { Product } from "@/lib/firebase/schema";
 import { useAtom } from "jotai";
 import { CountrySelect } from "@/components/ui/country-select";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
 import { Skeleton } from "@/components/ui/skeleton";
 import SkeletonForm from "@/components/layout/skeletonForm";
 
@@ -111,7 +111,9 @@ export default function ProductWizard() {
   // Use Jotai to sync with global state
   const [, setSelectedProduct] = useAtom(selectedProductAtom);
   const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
-  const { awardXp } = useXp();
+
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -258,12 +260,9 @@ export default function ProductWizard() {
             console.log(
               `Product created. Awarding XP for action: ${createProductActionId}`
             );
-            try {
-              await awardXp(createProductActionId);
-            } catch (error) {
-              // Non-critical, don't block navigation
-              console.log("error:", error);
-            }
+
+            // Use the background mutation instead of awaiting
+            xpMutation.mutate(createProductActionId);
           }
 
           // Add a small delay before navigation to ensure state is updated

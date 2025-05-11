@@ -8,7 +8,7 @@ import { PackageOpen, AlertCircle, Download, Check } from "lucide-react";
 import { selectedPromptsAtom } from "./prompts-column";
 import { downloadAssets } from "../actions/download-assets";
 import { selectedAssetsAtom } from "./assets-atoms";
-import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
 import { toast as showToast } from "@/hooks/use-toast";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
@@ -20,42 +20,40 @@ interface DownloadButtonProps {
 
 export function DownloadButton({ onShowToast }: DownloadButtonProps) {
   const [selectedProductId] = useAtom(selectedProductIdAtom);
-  const [selectedPrompts] = useAtom(selectedPromptsAtom);
   const [selectedAssets] = useAtom(selectedAssetsAtom);
-  const { awardXp } = useXp();
+  const [selectedPrompts] = useAtom(selectedPromptsAtom);
   const [downloadStatus, setDownloadStatus] = useState<
-    "idle" | "downloading" | "success" | "error"
+    "idle" | "loading" | "success" | "error"
   >("idle");
+
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
   const handleDownload = async () => {
     if (!selectedProductId) {
       onShowToast({
-        title: "No product selected",
-        duration: TOAST_DEFAULT_DURATION,
-        description: "Please select a product first",
+        title: "Error",
+        description: "No product selected",
         variant: "destructive",
       });
       return;
     }
 
-    // Get selected asset IDs
-    const assetIds = Object.entries(selectedAssets)
-      .filter(([_, selected]) => selected)
-      .map(([id]) => id);
+    const assetIds = Object.keys(selectedAssets).filter(
+      (id) => selectedAssets[id]
+    );
     const numSelected = assetIds.length + selectedPrompts.length;
 
     if (numSelected === 0) {
       onShowToast({
         title: "No items selected",
-        duration: TOAST_DEFAULT_DURATION,
-        description:
-          "Please select at least one asset or guideline to download",
+        description: "Please select assets or prompts to download",
         variant: "destructive",
       });
       return;
     }
 
-    setDownloadStatus("downloading");
+    setDownloadStatus("loading");
 
     try {
       // Call the server action
@@ -81,26 +79,23 @@ export function DownloadButton({ onShowToast }: DownloadButtonProps) {
           numSelected > 1 ? "download_multiple_assets" : "download_asset";
         // Get points from schedule (assuming 5 for single, 10 for multiple based on /qa route)
         const pointsAwarded = numSelected > 1 ? 10 : 5;
-        let toastDescription = `Download successful (${result.fileName}).`;
 
-        try {
-          await awardXp(actionId);
-          toastDescription += ` You earned ${pointsAwarded} XP!`;
-        } catch (xpError) {
-          console.error(
-            `Failed to initiate XP award for ${actionId}:`,
-            xpError
-          );
-        }
+        // Fire XP award in background without waiting
+        xpMutation.mutate(actionId);
 
+        // Show success toast immediately
         onShowToast({
           title: "Download Complete",
-          description: toastDescription,
+          description: `Download successful (${result.fileName}). You earned ${pointsAwarded} XP!`,
           duration: TOAST_DEFAULT_DURATION,
         });
 
-        // Reset status after a delay
-        setTimeout(() => setDownloadStatus("idle"), 3000);
+        // Reset status after a delay without setTimeout
+        // Using requestAnimationFrame for smoother UI transition
+        requestAnimationFrame(() => {
+          // Add a small delay before resetting status
+          setTimeout(() => setDownloadStatus("idle"), 2000);
+        });
       } else {
         throw new Error(
           result.error || "Download failed: URL or filename missing"
@@ -114,7 +109,11 @@ export function DownloadButton({ onShowToast }: DownloadButtonProps) {
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
-      setTimeout(() => setDownloadStatus("idle"), 3000);
+
+      // Reset status using requestAnimationFrame instead of setTimeout
+      requestAnimationFrame(() => {
+        setTimeout(() => setDownloadStatus("idle"), 2000);
+      });
     }
   };
 
@@ -138,7 +137,7 @@ export function DownloadButton({ onShowToast }: DownloadButtonProps) {
             Download Selected <Download className="h-4 w-4" />
           </>
         )}
-        {downloadStatus === "downloading" && (
+        {downloadStatus === "loading" && (
           <>
             Downloading... <PackageOpen className="h-4 w-4 animate-pulse" />
           </>

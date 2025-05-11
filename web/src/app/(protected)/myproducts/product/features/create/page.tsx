@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { useXp } from "@/xp/useXp";
+import { useXpMutation } from "@/xp/useXpMutation";
 import {
   Card,
   CardContent,
@@ -48,8 +48,10 @@ export default function FeatureWizard() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { awardXp } = useXp();
   const [selectedProductId] = useAtom(selectedProductIdAtom);
+
+  // Use the common XP mutation hook
+  const xpMutation = useXpMutation();
 
   // Get the product ID from Jotai atoms
   const productId = wizardState.productId || selectedProductId;
@@ -240,8 +242,9 @@ export default function FeatureWizard() {
       } else {
         const result = await createFeature(featureData);
         if (result.success && result.id) {
-          // Award XP for creating a feature
-          awardXp("create_feature");
+          // Award XP for creating a feature - using background mutation
+          xpMutation.mutate("create_feature");
+
           toast({
             title: "Success",
             description: "Feature created successfully. +50 XP awarded!",
