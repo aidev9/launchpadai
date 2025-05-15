@@ -12,7 +12,7 @@ import {
 import { fetchPromptCredits } from "@/lib/firebase/actions/promptCreditActions";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { useRouter } from "next/navigation";
-
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 /**
  * Hook for fetching available prompt packs to purchase
  * @returns Tanstack Query hook with the available prompt packs
@@ -52,6 +52,7 @@ export function usePromptPacks() {
 }
 
 /**
+ * TODO: Delete this function, it's not used anywhere
  * Hook for fetching the current user's prompt credits
  * Syncs with the promptCreditsAtom for global state
  * @returns Tanstack Query hook with the current user's prompt credits
@@ -71,13 +72,15 @@ export function usePromptCredits() {
           setPromptCredits(result.credits);
           return result.credits;
         } else {
-          toast({
-            title: "Error",
-            description: result.error || "Failed to load prompt credits",
-            variant: "destructive",
-            duration: TOAST_DEFAULT_DURATION,
-          });
-          return null;
+          const dailyCredits = {
+            userId: await getCurrentUserId(),
+            dailyCredits: 10,
+            monthlyCredits: 300,
+            remainingCredits: 10,
+            totalUsedCredits: 0,
+          };
+          setPromptCredits(dailyCredits);
+          return dailyCredits;
         }
       } catch (error) {
         toast({

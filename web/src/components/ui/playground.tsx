@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw, RotateCw, Copy, Download, ArrowLeft } from "lucide-react";
+import { RotateCcw, Copy, Download, ArrowLeft } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import InsufficientCreditsAlert from "@/components/prompt-credits/insufficient-credits-alert";
@@ -19,7 +19,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { Prompt } from "@/lib/firebase/schema";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { selectedPromptAtom } from "@/lib/store/prompt-store";
 import { enhancePromptStream } from "@/app/(protected)/prompts/prompt/actions";
 import { enhancePromptStream as streamPrompt } from "@/app/actions/prompt-stream-action";
@@ -38,9 +38,11 @@ import {
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
 import { useToast } from "@/hooks/use-toast";
-import { promptCreditsAtom } from "@/stores/promptCreditStore";
-import { fetchPromptCredits } from "@/lib/firebase/actions/promptCreditActions";
 import { cn } from "@/lib/utils";
+import {
+  incrementPromptCreditsAtom,
+  promptCreditsAtom,
+} from "@/stores/promptCreditStore";
 
 // Import components from the prompts section
 // These will be used temporarily until we move them to the ui folder
@@ -65,8 +67,10 @@ export default function Playground({
 }) {
   // Selection atoms
   const [selectedPrompt, setSelectedPrompt] = useAtom(selectedPromptAtom);
-  const [selectedProduct] = useAtom(selectedProductAtom);
   const [promptCredits, setPromptCredits] = useAtom(promptCreditsAtom);
+  const incrementPromptCredits = useSetAtom(incrementPromptCreditsAtom);
+
+  const [selectedProduct] = useAtom(selectedProductAtom);
   const [hasInsufficientCredits, setHasInsufficientCredits] = useState(false);
   const [isStreamingEnabled, setIsStreamingEnabled] = useState(true);
   const { toast } = useToast();
@@ -221,13 +225,14 @@ export default function Playground({
 
     try {
       // Optimistically update credit count if the credits store is available
-      if (promptCredits) {
-        setPromptCredits({
-          ...promptCredits,
-          remainingCredits: promptCredits.remainingCredits - 1,
-          totalUsedCredits: (promptCredits.totalUsedCredits || 0) + 1,
-        });
-      }
+      // if (promptCredits) {
+      //   setPromptCredits({
+      //     ...promptCredits,
+      //     remainingCredits: promptCredits.remainingCredits - 1,
+      //     totalUsedCredits: (promptCredits.totalUsedCredits || 0) + 1,
+      //   });
+      // }
+      incrementPromptCredits(-1);
 
       // Get instructions if we're in the edit tab
       const currentInstructions =
@@ -392,16 +397,6 @@ export default function Playground({
             setHasInsufficientCredits(true);
           }
         }
-      }
-
-      // After completion, update credit balance with actual data from server
-      try {
-        const creditResult = await fetchPromptCredits();
-        if (creditResult.success && creditResult.credits) {
-          setPromptCredits(creditResult.credits);
-        }
-      } catch (error) {
-        console.error("Failed to update credit balance:", error);
       }
     } catch (error) {
       console.error("Error enhancing prompt:", error);

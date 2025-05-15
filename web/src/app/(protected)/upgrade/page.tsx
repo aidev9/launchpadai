@@ -86,7 +86,7 @@ export default function UpgradePage() {
 
       {/* Benefits Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-white rounded-lg p-6 shadow-sm">
+        <div className="rounded-lg p-6 shadow-sm border-1">
           <div className="mb-4 text-primary">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -108,7 +108,7 @@ export default function UpgradePage() {
             monthly billing.
           </p>
         </div>
-        <div className="bg-white rounded-lg p-6 shadow-sm">
+        <div className="rounded-lg p-6 shadow-sm border-1">
           <div className="mb-4 text-primary">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -134,7 +134,7 @@ export default function UpgradePage() {
             analytics, and access to our complete prompt library.
           </p>
         </div>
-        <div className="bg-white rounded-lg p-6 shadow-sm">
+        <div className="rounded-lg p-6 shadow-sm border-1">
           <div className="mb-4 text-primary">
             <svg
               xmlns="http://www.w3.org/2000/svg"

@@ -5,26 +5,18 @@ import Providers from "@/app/providers";
 import { useRouter } from "next/navigation";
 import { clientAuth } from "@/lib/firebase/client";
 import { useEffect, useState } from "react";
-import { onAuthStateChanged, getIdToken } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { useAtom, useSetAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { setUserProfileAtom } from "@/lib/store/user-store";
-import {
-  fetchUserProfile,
-  fetchUserPromptCredits,
-} from "@/lib/firebase/actions/profile";
 import { Header } from "@/components/layout/header";
-import { TopNav } from "@/components/layout/top-nav";
-import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { motion } from "framer-motion";
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { set } from "nprogress";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
 import { useAtom as useJotaiAtom } from "jotai";
 import { promptCreditsAtom } from "@/stores/promptCreditStore";
-import { PromptCredit } from "@/lib/firebase/schema";
 
 const topNav = [
   {
@@ -111,7 +103,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>): React.ReactElement {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
   const setUserProfile = useSetAtom(setUserProfileAtom);
@@ -121,93 +113,7 @@ export default function RootLayout({
   useEffect(() => {
     // Initialize auth state
     const unsubscribe = onAuthStateChanged(clientAuth, async (user) => {
-      if (user) {
-        setIsLoading(true);
-        setAuthError(null);
-
-        try {
-          // Get a fresh ID token
-          const idToken = await getIdToken(user, true);
-
-          // Update the session cookie on the server
-          const sessionResponse = await fetch("/api/auth/session", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ idToken }),
-          });
-
-          if (!sessionResponse.ok) {
-            throw new Error("Failed to create session");
-          }
-
-          // Fetch user profile data from server action
-          const profileResult = await fetchUserProfile();
-
-          // Fetch user prompt credits
-          const creditsResult = await fetchUserPromptCredits();
-          if (creditsResult.success && creditsResult.credits) {
-            const credits: PromptCredit = {
-              userId: user.uid,
-              totalUsedCredits: creditsResult.credits.totalUsedCredits,
-              remainingCredits: creditsResult.credits.remainingCredits,
-              dailyCredits: creditsResult.credits.dailyCredits,
-              monthlyCredits: creditsResult.credits.monthlyCredits,
-              lastRefillDate: creditsResult.credits.lastRefillDate || 0,
-              updatedAt: creditsResult.credits.updatedAt || 0,
-            };
-            setPromptCredits(credits);
-            console.log("Prompt credits loaded from Firebase:", credits);
-          } else {
-            // Handle case when credits couldn't be loaded
-            console.error(
-              "Failed to load prompt credits:",
-              creditsResult.error
-            );
-            setPromptCredits(null);
-          }
-
-          if (profileResult.success && profileResult.profile) {
-            // Set the user profile in the Jotai atom
-            setUserProfile(profileResult.profile);
-
-            // Check if user is admin and redirect if needed
-            const isAdmin =
-              profileResult.profile.userType === "admin" ||
-              profileResult.profile.userType === "superadmin";
-          } else {
-            setUserProfile(null); // Ensure atom is null if profile fetch fails
-          }
-
-          // Load the selected product from localStorage if it exists
-          try {
-            const storedProductId = localStorage.getItem("selectedProductId");
-            if (storedProductId) {
-              try {
-                const parsedValue = JSON.parse(storedProductId);
-                setSelectedProductId(parsedValue);
-              } catch {
-                setSelectedProductId(storedProductId);
-              }
-            }
-          } catch (error) {
-            console.log("error:", error);
-          }
-
-          // Only set loading to false after session and profile are handled
-          setIsLoading(false);
-          setAuthError(null);
-        } catch (error) {
-          console.log("error:", error);
-          setUserProfile(null);
-          setAuthError(
-            "Failed to create a valid session or load profile. Please sign in again."
-          );
-          // Wait a bit before redirecting to allow user to see the error
-          router.push("/auth/signin");
-        }
-      } else {
+      if (!user) {
         console.log("User is signed out");
         await fetch("/api/auth/session", {
           method: "DELETE",
@@ -256,7 +162,7 @@ export default function RootLayout({
 
           <AnimatedCode />
           <span className="text-sm text-muted-foreground">
-            Loading lauch sequences...
+            Loading lauch codes...
           </span>
         </div>
       </div>

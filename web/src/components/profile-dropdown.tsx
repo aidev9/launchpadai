@@ -14,7 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import { SignOutHelper } from "@/lib/firebase/client";
 import { Compass, Star } from "lucide-react";
-import XpDisplay from "@/xp/xp-display";
+import XpDisplay from "@/xp/mini-xp-display";
 import { MiniCreditDisplay } from "@/components/prompt-credits/mini-credit-display";
 import { useAtomValue } from "jotai";
 import { userProfileAtom } from "@/lib/store/user-store";
@@ -55,15 +55,17 @@ export function ProfileDropdown() {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 rounded-full bg-gradient-to-r text-amber-950 hover:from-amber-100 hover:to-amber-200 border-amber-400"
+              className="h-7 px-2 rounded-full hover:border-amber-400"
               onClick={() => router.push("/upgrade")}
             >
               <Star className="h-4 w-4 mr-0 fill-amber-500 stroke-0" />
               <span className="text-xs font-medium">Upgrade</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Upgrade your subscription for more features!</p>
+          <TooltipContent className="w-64">
+            <p data-testid="upgrade-tooltip">
+              Upgrade today and unlock more features and prompts
+            </p>
           </TooltipContent>
         </Tooltip>
       )}

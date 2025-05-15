@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Main } from "@/components/layout/main";
-import { Copy, Download, Edit, Trash, Save } from "lucide-react";
+import { Edit, Trash, Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getPhaseColor } from "@/components/prompts/phase-filter";
@@ -16,7 +16,7 @@ import {
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { PromptForm } from "../components/prompt-form";
 import { useState } from "react";
-import { Prompt, PromptInput } from "@/lib/firebase/schema";
+import { PromptInput } from "@/lib/firebase/schema";
 import { deletePromptAction, updatePromptAction } from "../actions";
 import Playground from "@/components/ui/playground";
 import {

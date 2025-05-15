@@ -6,41 +6,29 @@ import { Main } from "@/components/layout/main";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
-import { useAtom } from "jotai";
-import { promptCreditsAtom } from "@/stores/promptCreditStore";
-import { fetchPromptCredits } from "@/lib/firebase/actions/promptCreditActions";
+import { useAtom, useSetAtom } from "jotai";
+import {
+  incrementPromptCreditsAtom,
+  promptCreditsAtom,
+} from "@/stores/promptCreditStore";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import Link from "next/link";
 import InsufficientCreditsAlert from "@/components/prompt-credits/insufficient-credits-alert";
 
 export default function AInamingAssistant() {
   const [promptCredits, setPromptCredits] = useAtom(promptCreditsAtom);
+  const incrementPromptCredits = useSetAtom(incrementPromptCreditsAtom);
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error } =
     useChat({
       api: "/api/ai-naming-assistant",
       onResponse: (response) => {
-        // Immediate update when message is sent (decrease credits)
         if (promptCredits && response.status === 200) {
-          // Optimistically update the credit count for immediate feedback
-          setPromptCredits({
-            ...promptCredits,
-            remainingCredits: promptCredits.remainingCredits - 1,
-            totalUsedCredits: (promptCredits.totalUsedCredits || 0) + 1,
-          });
+          // Do nothing if credits are available
         }
       },
       onFinish: async () => {
-        // After completion, update credit balance with actual data from server
-        try {
-          const result = await fetchPromptCredits();
-          if (result.success && result.credits) {
-            setPromptCredits(result.credits);
-          }
-        } catch (error) {
-          console.error("Failed to update credit balance:", error);
-        }
+        const l = incrementPromptCredits(-1);
       },
     });
 

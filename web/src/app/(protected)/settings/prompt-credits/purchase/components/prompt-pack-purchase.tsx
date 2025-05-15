@@ -18,10 +18,11 @@ import { PromptCreditPack } from "@/lib/firebase/schema";
 import { AlertCircle, Check, Coins, Loader2 } from "lucide-react";
 import {
   usePromptPacks,
-  usePromptCredits,
   useCreatePaymentIntent,
   useHandlePayment,
 } from "@/hooks/usePromptCredits";
+import { promptCreditsQueryAtom } from "@/stores/promptCreditStore";
+import { useAtom } from "jotai";
 
 export function PromptPackPurchase() {
   // State
@@ -33,6 +34,9 @@ export function PromptPackPurchase() {
   const [formProcessing, setFormProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch credits using the query atom (will update promptCreditsAtom)
+  const [{ data, isLoading }] = useAtom(promptCreditsQueryAtom);
+
   // Queries and mutations
   const {
     data: packs = [],
@@ -40,12 +44,6 @@ export function PromptPackPurchase() {
     error: packsError,
     refetch: refetchPacks,
   } = usePromptPacks();
-
-  const {
-    data: promptCredits,
-    isLoading: isLoadingCredits,
-    error: creditsError,
-  } = usePromptCredits();
 
   const createPaymentIntent = useCreatePaymentIntent();
   const handlePayment = useHandlePayment();
@@ -102,7 +100,7 @@ export function PromptPackPurchase() {
     refetchPacks();
   };
 
-  if (isLoadingPacks || isLoadingCredits) {
+  if (isLoadingPacks || isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -161,7 +159,7 @@ export function PromptPackPurchase() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {promptCredits ? promptCredits.remainingCredits : 0} credits
+            {data?.remainingCredits ? data?.remainingCredits : 0} credits
           </div>
         </CardContent>
       </Card>

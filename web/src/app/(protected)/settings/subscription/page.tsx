@@ -28,6 +28,7 @@ import ContentSection from "../components/content-section";
 import { useRouter } from "next/navigation";
 
 export default function SubscriptionSettings() {
+  // TODO: subscription should be an atom
   const [subscription, setSubscription] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCanceling, setIsCanceling] = useState(false);
@@ -58,7 +59,7 @@ export default function SubscriptionSettings() {
     }
 
     fetchSubscription();
-  }, []);
+  }, [isCanceling]);
 
   const handleCancelSubscription = async () => {
     try {

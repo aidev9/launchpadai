@@ -6,6 +6,7 @@ import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import Stripe from "stripe";
 import { revalidatePath } from "next/cache";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { initializePromptCredits } from "@/lib/firebase/prompt-credits";
 
 // Initialize Stripe with the secret key from environment variables
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -80,7 +81,7 @@ export async function cancelSubscriptionAction() {
     }
 
     const userData = userDoc.data();
-    const subscriptionId = userData?.stripeSubscriptionId;
+    const subscriptionId = userData?.subscription?.stripeSubscriptionId;
 
     if (!subscriptionId) {
       return {
@@ -96,9 +97,21 @@ export async function cancelSubscriptionAction() {
 
     // Update subscription status in Firestore
     await userRef.update({
-      subscriptionStatus: "canceled",
-      updatedAt: getCurrentUnixTimestamp(),
+      subscription: {
+        ...userData.subscription,
+        stripeSubscriptionId: subscriptionId,
+        planType: "Free",
+        billingCycle: "daily",
+        price: 0,
+        stripeCustomerId: null,
+        stripePriceId: null,
+        status: "canceled",
+        updatedAt: getCurrentUnixTimestamp(),
+      },
     });
+
+    // Reset the prompt credit count
+    await initializePromptCredits(userId, "free");
 
     // Revalidate the subscription page
     revalidatePath("/settings/subscription");
@@ -131,7 +144,9 @@ export async function updatePaymentMethod(customerId: string) {
       if (userId) {
         const userRef = adminDb.collection("users").doc(userId);
         await userRef.update({
-          lastBillingPortalAccess: getCurrentUnixTimestamp(),
+          subscription: {
+            lastBillingPortalAccess: getCurrentUnixTimestamp(),
+          },
           updatedAt: getCurrentUnixTimestamp(),
         });
       }

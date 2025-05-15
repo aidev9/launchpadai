@@ -25,7 +25,7 @@ import {
   PlanType,
   SubscriptionPlan,
 } from "@/lib/firebase/schema";
-import { getCurrentUserProfileAtom } from "@/lib/store/user-store";
+import { userProfileQueryAtom } from "@/lib/store/user-store";
 import { useAtom } from "jotai";
 
 interface UpgradeFormProps {
@@ -44,7 +44,8 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
-  const [userProfile] = useAtom(getCurrentUserProfileAtom);
+  const [{ data: userProfile, isLoading: isProfileLoading }] =
+    useAtom(userProfileQueryAtom);
 
   // For the payment form component
   const formProcessing = isLoading;
@@ -250,385 +251,387 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
   // Get display plans (excluding Free)
   const displayPlans = plans.filter((p) => p.title !== "Free");
 
-  return (
-    <div className="space-y-8">
-      {isSuccess ? (
-        <Alert className="bg-green-50 border-green-200">
-          <Check className="h-5 w-5 text-green-600" />
-          <AlertTitle className="text-green-800 font-bold text-lg">
-            Subscription Upgraded!
-          </AlertTitle>
-          <AlertDescription className="text-green-700">
-            Thank you for upgrading your subscription. Your account has been
-            updated with the new plan.
-          </AlertDescription>
-          <div className="mt-4">
-            <Button onClick={() => (window.location.href = "/dashboard")}>
-              Go to Dashboard
-            </Button>
-          </div>
-        </Alert>
-      ) : (
-        <>
-          {/* Plan selection tabs */}
-          <Tabs
-            defaultValue="annual"
-            className="w-full"
-            onValueChange={(v) => setBillingCycle(v as BillingCycle)}
-          >
-            <div className="flex justify-center mb-6">
-              <TabsList className="grid w-[400px] grid-cols-2">
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                <TabsTrigger value="annual">
-                  Annual{" "}
-                  <Badge
-                    variant="outline"
-                    className="ml-2 bg-green-50 text-green-700 border-green-200"
-                  >
-                    Save 20%
-                  </Badge>
-                </TabsTrigger>
-              </TabsList>
+  if (userProfile) {
+    return (
+      <div className="space-y-8">
+        {isSuccess ? (
+          <Alert className="bg-green-50 border-green-200">
+            <Check className="h-5 w-5 text-green-600" />
+            <AlertTitle className="text-green-800 font-bold text-lg">
+              Subscription Upgraded!
+            </AlertTitle>
+            <AlertDescription className="text-green-700">
+              Thank you for upgrading your subscription. Your account has been
+              updated with the new plan.
+            </AlertDescription>
+            <div className="mt-4">
+              <Button onClick={() => (window.location.href = "/dashboard")}>
+                Go to Dashboard
+              </Button>
             </div>
-
-            <TabsContent value="monthly" className="mt-0">
-              {upgradePlans.length === 0 ? (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>You're already on our highest plan!</AlertTitle>
-                  <AlertDescription>
-                    You're currently on the highest available plan. Contact us
-                    for custom enterprise solutions.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {displayPlans.map((planOption, index) => {
-                    const planIndex = plans.findIndex(
-                      (p) => p.title === planOption.title
-                    );
-                    // Skip if this is the current plan or a lower plan
-                    const isCurrentPlan =
-                      currentSubscription &&
-                      currentSubscription.planType === planOption.title;
-                    // Use !! to ensure isLowerPlan is a boolean
-                    const isLowerPlan = !!(
-                      currentSubscription &&
-                      plans.findIndex(
-                        (p) => p.title === currentSubscription.planType
-                      ) > planIndex
-                    );
-                    const isRecommended = planOption.title === "Builder";
-
-                    console.log(`Plan ${planOption.title}:`, {
-                      planIndex,
-                      isCurrentPlan,
-                      isLowerPlan,
-                      currentPlanIndex: currentSubscription
-                        ? plans.findIndex(
-                            (p) => p.title === currentSubscription.planType
-                          )
-                        : -1,
-                    });
-
-                    // Don't skip lower plans, just disable them
-                    console.log(
-                      isLowerPlan
-                        ? `Plan ${planOption.title} is lower than current plan - will be disabled`
-                        : `Plan ${planOption.title} will be selectable`
-                    );
-
-                    return (
-                      <div className="relative" key={planOption.title}>
-                        {isRecommended && (
-                          <div className="absolute -top-4 inset-x-0 flex justify-center">
-                            <Badge className="bg-primary text-white px-4 py-1 text-xs">
-                              Recommended
-                            </Badge>
-                          </div>
-                        )}
-                        <Card
-                          className={`h-full flex flex-col ${
-                            isRecommended
-                              ? "border-primary shadow-md"
-                              : isCurrentPlan
-                                ? "border-blue-200 bg-blue-50"
-                                : ""
-                          }`}
-                        >
-                          {isCurrentPlan && (
-                            <Badge className="absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 bg-blue-500 z-10">
-                              Current Plan
-                            </Badge>
-                          )}
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-xl">
-                              {planOption.title}
-                            </CardTitle>
-                            <CardDescription>
-                              {planOption.description}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent className="pb-2 flex-grow">
-                            <div className="mb-4">
-                              <span className="text-3xl font-bold">
-                                ${planOption.monthly.price}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                /month
-                              </span>
-                            </div>
-                            <ul className="space-y-2 text-sm mb-6">
-                              {planOption.features.map((feature, i) => (
-                                <li key={i} className="flex items-start">
-                                  <Check className="mr-2 h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                                  <span>{feature}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </CardContent>
-                          <CardFooter>
-                            <Button
-                              variant={
-                                isCurrentPlan
-                                  ? "outline"
-                                  : isRecommended
-                                    ? "default"
-                                    : "outline"
-                              }
-                              className="w-full"
-                              disabled={
-                                isCurrentPlan === true || isLowerPlan === true
-                              }
-                              onClick={() => handleSelectPlan(planIndex)}
-                            >
-                              {isCurrentPlan
-                                ? "Current Plan"
-                                : isLowerPlan
-                                  ? "Lower Plan"
-                                  : selectedPlan === planIndex
-                                    ? "Selected"
-                                    : "Select Plan"}
-                            </Button>
-                          </CardFooter>
-                        </Card>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="annual" className="mt-0">
-              {upgradePlans.length === 0 ? (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>You're already on our highest plan!</AlertTitle>
-                  <AlertDescription>
-                    You're currently on the highest available plan. Contact us
-                    for custom enterprise solutions.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {displayPlans.map((planOption, index) => {
-                    const planIndex = plans.findIndex(
-                      (p) => p.title === planOption.title
-                    );
-                    // Skip if this is the current plan or a lower plan
-                    const isCurrentPlan =
-                      currentSubscription &&
-                      currentSubscription.planType === planOption.title &&
-                      currentSubscription.billingCycle === "annual";
-                    // Use !! to ensure isLowerPlan is a boolean
-                    const isLowerPlan = !!(
-                      currentSubscription &&
-                      plans.findIndex(
-                        (p) => p.title === currentSubscription.planType
-                      ) > planIndex
-                    );
-                    const isRecommended = planOption.title === "Builder";
-
-                    console.log(`Annual Plan ${planOption.title}:`, {
-                      planIndex,
-                      isCurrentPlan,
-                      isLowerPlan,
-                      currentPlanIndex: currentSubscription
-                        ? plans.findIndex(
-                            (p) => p.title === currentSubscription.planType
-                          )
-                        : -1,
-                    });
-
-                    // Don't skip lower plans, just disable them
-                    console.log(
-                      isLowerPlan
-                        ? `Annual plan ${planOption.title} is lower than current plan - will be disabled`
-                        : `Annual plan ${planOption.title} will be selectable`
-                    );
-
-                    return (
-                      <div className="relative" key={planOption.title}>
-                        {isRecommended && (
-                          <div className="absolute -top-4 inset-x-0 flex justify-center">
-                            <Badge className="bg-primary text-white px-4 py-1 text-xs">
-                              Recommended
-                            </Badge>
-                          </div>
-                        )}
-                        <Card
-                          className={`h-full flex flex-col ${
-                            isRecommended
-                              ? "border-primary shadow-md"
-                              : isCurrentPlan
-                                ? "border-blue-200 bg-blue-50"
-                                : ""
-                          }`}
-                        >
-                          {isCurrentPlan && (
-                            <Badge className="absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 bg-blue-500 z-10">
-                              Current Plan
-                            </Badge>
-                          )}
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-xl">
-                              {planOption.title}
-                            </CardTitle>
-                            <CardDescription>
-                              {planOption.description}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent className="pb-2 flex-grow">
-                            <div className="mb-4">
-                              <span className="text-3xl font-bold">
-                                ${planOption.annual.price}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                /year
-                              </span>
-                            </div>
-                            <ul className="space-y-2 text-sm mb-6">
-                              {planOption.features.map((feature, i) => (
-                                <li key={i} className="flex items-start">
-                                  <Check className="mr-2 h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                                  <span>{feature}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </CardContent>
-                          <CardFooter>
-                            <Button
-                              variant={
-                                isCurrentPlan
-                                  ? "outline"
-                                  : isRecommended
-                                    ? "default"
-                                    : "outline"
-                              }
-                              className="w-full"
-                              disabled={
-                                isCurrentPlan === true || isLowerPlan === true
-                              }
-                              onClick={() => handleSelectPlan(planIndex)}
-                            >
-                              {isCurrentPlan
-                                ? "Current Plan"
-                                : isLowerPlan
-                                  ? "Lower Plan"
-                                  : selectedPlan === planIndex
-                                    ? "Selected"
-                                    : "Select Plan"}
-                            </Button>
-                          </CardFooter>
-                        </Card>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-
-          {/* Payment form */}
-          {showPaymentForm && (
-            <div
-              id="payment-section"
-              className="mt-12 border rounded-lg p-6 bg-white"
+          </Alert>
+        ) : (
+          <>
+            {/* Plan selection tabs */}
+            <Tabs
+              defaultValue="annual"
+              className="w-full"
+              onValueChange={(v) => setBillingCycle(v as BillingCycle)}
             >
-              <div className="mb-6">
-                <h3 className="text-xl font-bold mb-4">
-                  Complete Your Upgrade
-                </h3>
-                {selectedPlanInfo && (
-                  <div className="bg-muted p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                    <div>
-                      <p className="font-medium text-lg">
-                        {selectedPlanInfo.planType} Plan
-                      </p>
+              <div className="flex justify-center mb-6">
+                <TabsList className="grid w-[400px] grid-cols-2">
+                  <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                  <TabsTrigger value="annual">
+                    Annual{" "}
+                    <Badge
+                      variant="outline"
+                      className="ml-2 bg-green-50 text-green-700 border-green-200"
+                    >
+                      Save 20%
+                    </Badge>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="monthly" className="mt-0">
+                {upgradePlans.length === 0 ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>You're already on our highest plan!</AlertTitle>
+                    <AlertDescription>
+                      You're currently on the highest available plan. Contact us
+                      for custom enterprise solutions.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {displayPlans.map((planOption, index) => {
+                      const planIndex = plans.findIndex(
+                        (p) => p.title === planOption.title
+                      );
+                      // Skip if this is the current plan or a lower plan
+                      const isCurrentPlan =
+                        currentSubscription &&
+                        currentSubscription.planType === planOption.title;
+                      // Use !! to ensure isLowerPlan is a boolean
+                      const isLowerPlan = !!(
+                        currentSubscription &&
+                        plans.findIndex(
+                          (p) => p.title === currentSubscription.planType
+                        ) > planIndex
+                      );
+                      const isRecommended = planOption.title === "Builder";
+
+                      console.log(`Plan ${planOption.title}:`, {
+                        planIndex,
+                        isCurrentPlan,
+                        isLowerPlan,
+                        currentPlanIndex: currentSubscription
+                          ? plans.findIndex(
+                              (p) => p.title === currentSubscription.planType
+                            )
+                          : -1,
+                      });
+
+                      // Don't skip lower plans, just disable them
+                      console.log(
+                        isLowerPlan
+                          ? `Plan ${planOption.title} is lower than current plan - will be disabled`
+                          : `Plan ${planOption.title} will be selectable`
+                      );
+
+                      return (
+                        <div className="relative" key={planOption.title}>
+                          {isRecommended && (
+                            <div className="absolute -top-4 inset-x-0 flex justify-center">
+                              <Badge className=" px-4 py-1 text-xs">
+                                Recommended
+                              </Badge>
+                            </div>
+                          )}
+                          <Card
+                            className={`h-full flex flex-col ${
+                              isRecommended
+                                ? "border-primary shadow-md"
+                                : isCurrentPlan
+                                  ? "border-blue-200"
+                                  : ""
+                            }`}
+                          >
+                            {isCurrentPlan && (
+                              <Badge className="absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 bg-blue-500 z-10">
+                                Current Plan
+                              </Badge>
+                            )}
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-xl">
+                                {planOption.title}
+                              </CardTitle>
+                              <CardDescription>
+                                {planOption.description}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent className="pb-2 flex-grow">
+                              <div className="mb-4">
+                                <span className="text-3xl font-bold">
+                                  ${planOption.monthly.price}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  /month
+                                </span>
+                              </div>
+                              <ul className="space-y-2 text-sm mb-6">
+                                {planOption.features.map((feature, i) => (
+                                  <li key={i} className="flex items-start">
+                                    <Check className="mr-2 h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                                    <span>{feature}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </CardContent>
+                            <CardFooter>
+                              <Button
+                                variant={
+                                  isCurrentPlan
+                                    ? "outline"
+                                    : isRecommended
+                                      ? "default"
+                                      : "outline"
+                                }
+                                className="w-full"
+                                disabled={
+                                  isCurrentPlan === true || isLowerPlan === true
+                                }
+                                onClick={() => handleSelectPlan(planIndex)}
+                              >
+                                {isCurrentPlan
+                                  ? "Current Plan"
+                                  : isLowerPlan
+                                    ? "Lower Plan"
+                                    : selectedPlan === planIndex
+                                      ? "Selected"
+                                      : "Select Plan"}
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="annual" className="mt-0">
+                {upgradePlans.length === 0 ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>You're already on our highest plan!</AlertTitle>
+                    <AlertDescription>
+                      You're currently on the highest available plan. Contact us
+                      for custom enterprise solutions.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {displayPlans.map((planOption, index) => {
+                      const planIndex = plans.findIndex(
+                        (p) => p.title === planOption.title
+                      );
+                      // Skip if this is the current plan or a lower plan
+                      const isCurrentPlan =
+                        currentSubscription &&
+                        currentSubscription.planType === planOption.title &&
+                        currentSubscription.billingCycle === "annual";
+                      // Use !! to ensure isLowerPlan is a boolean
+                      const isLowerPlan = !!(
+                        currentSubscription &&
+                        plans.findIndex(
+                          (p) => p.title === currentSubscription.planType
+                        ) > planIndex
+                      );
+                      const isRecommended = planOption.title === "Builder";
+
+                      console.log(`Annual Plan ${planOption.title}:`, {
+                        planIndex,
+                        isCurrentPlan,
+                        isLowerPlan,
+                        currentPlanIndex: currentSubscription
+                          ? plans.findIndex(
+                              (p) => p.title === currentSubscription.planType
+                            )
+                          : -1,
+                      });
+
+                      // Don't skip lower plans, just disable them
+                      console.log(
+                        isLowerPlan
+                          ? `Annual plan ${planOption.title} is lower than current plan - will be disabled`
+                          : `Annual plan ${planOption.title} will be selectable`
+                      );
+
+                      return (
+                        <div className="relative" key={planOption.title}>
+                          {isRecommended && (
+                            <div className="absolute -top-4 inset-x-0 flex justify-center">
+                              <Badge className=" px-4 py-1 text-xs">
+                                Recommended
+                              </Badge>
+                            </div>
+                          )}
+                          <Card
+                            className={`h-full flex flex-col ${
+                              isRecommended
+                                ? "border-primary shadow-md"
+                                : isCurrentPlan
+                                  ? "border-blue-200 bg-blue-50"
+                                  : ""
+                            }`}
+                          >
+                            {isCurrentPlan && (
+                              <Badge className="absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 bg-blue-500 z-10">
+                                Current Plan
+                              </Badge>
+                            )}
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-xl">
+                                {planOption.title}
+                              </CardTitle>
+                              <CardDescription>
+                                {planOption.description}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent className="pb-2 flex-grow">
+                              <div className="mb-4">
+                                <span className="text-3xl font-bold">
+                                  ${planOption.annual.price}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  /year
+                                </span>
+                              </div>
+                              <ul className="space-y-2 text-sm mb-6">
+                                {planOption.features.map((feature, i) => (
+                                  <li key={i} className="flex items-start">
+                                    <Check className="mr-2 h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                                    <span>{feature}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </CardContent>
+                            <CardFooter>
+                              <Button
+                                variant={
+                                  isCurrentPlan
+                                    ? "outline"
+                                    : isRecommended
+                                      ? "default"
+                                      : "outline"
+                                }
+                                className="w-full"
+                                disabled={
+                                  isCurrentPlan === true || isLowerPlan === true
+                                }
+                                onClick={() => handleSelectPlan(planIndex)}
+                              >
+                                {isCurrentPlan
+                                  ? "Current Plan"
+                                  : isLowerPlan
+                                    ? "Lower Plan"
+                                    : selectedPlan === planIndex
+                                      ? "Selected"
+                                      : "Select Plan"}
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+
+            {/* Payment form */}
+            {showPaymentForm && (
+              <div
+                id="payment-section"
+                className="mt-12 border rounded-lg p-6 bg-white"
+              >
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold mb-4">
+                    Complete Your Upgrade
+                  </h3>
+                  {selectedPlanInfo && (
+                    <div className="bg-muted p-4 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                      <div>
+                        <p className="font-medium text-lg">
+                          {selectedPlanInfo.planType} Plan
+                        </p>
+                        <p className="text-muted-foreground">
+                          {selectedPlanInfo.billingCycle === "monthly"
+                            ? "Monthly"
+                            : "Annual"}{" "}
+                          billing · ${selectedPlanInfo.price}/
+                          {selectedPlanInfo.billingCycle === "monthly"
+                            ? "month"
+                            : "year"}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedPlan(null);
+                          setShowPaymentForm(false);
+                          setClientSecret(null);
+                        }}
+                      >
+                        Change Plan
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {clientSecret ? (
+                  <Elements
+                    stripe={getStripe()}
+                    options={{
+                      clientSecret,
+                      appearance: { theme: "stripe" },
+                    }}
+                  >
+                    <PaymentForm
+                      clientSecret={clientSecret}
+                      customerId={customerId || ""}
+                      onSuccess={handlePaymentSuccess}
+                      onError={(error) => setError(error)}
+                      processing={formProcessing}
+                      setProcessing={setFormProcessing}
+                    />
+                  </Elements>
+                ) : (
+                  <div className="flex justify-center items-center py-8">
+                    <div className="animate-pulse text-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto mb-4" />
                       <p className="text-muted-foreground">
-                        {selectedPlanInfo.billingCycle === "monthly"
-                          ? "Monthly"
-                          : "Annual"}{" "}
-                        billing · ${selectedPlanInfo.price}/
-                        {selectedPlanInfo.billingCycle === "monthly"
-                          ? "month"
-                          : "year"}
+                        Preparing your payment form...
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setSelectedPlan(null);
-                        setShowPaymentForm(false);
-                        setClientSecret(null);
-                      }}
-                    >
-                      Change Plan
-                    </Button>
                   </div>
                 )}
               </div>
+            )}
 
-              {clientSecret ? (
-                <Elements
-                  stripe={getStripe()}
-                  options={{
-                    clientSecret,
-                    appearance: { theme: "stripe" },
-                  }}
-                >
-                  <PaymentForm
-                    clientSecret={clientSecret}
-                    customerId={customerId || ""}
-                    onSuccess={handlePaymentSuccess}
-                    onError={(error) => setError(error)}
-                    processing={formProcessing}
-                    setProcessing={setFormProcessing}
-                  />
-                </Elements>
-              ) : (
-                <div className="flex justify-center items-center py-8">
-                  <div className="animate-pulse text-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                      Preparing your payment form...
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Error display */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-        </>
-      )}
-    </div>
-  );
+            {/* Error display */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
 }

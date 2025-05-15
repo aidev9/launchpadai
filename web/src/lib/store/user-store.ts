@@ -1,13 +1,36 @@
 "use client";
 
-import { atom } from "jotai";
+import { atom, createStore } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { UserProfile } from "../firebase/schema";
+import { atomWithQuery } from "jotai-tanstack-query";
+import { fetchUserProfile } from "@/lib/firebase/actions/profile";
 
 // Create a persistent storage atom for user profile
 export const userProfileAtom = atomWithStorage<UserProfile | null>(
   "userProfile",
   null
+);
+
+// Create a query atom to fetch user profile
+export const userProfileQueryAtom = atomWithQuery<UserProfile | null>(
+  (get) => ({
+    queryKey: ["userProfileQueryAtom"],
+    queryFn: async () => {
+      try {
+        const result = await fetchUserProfile();
+        if (result.success && result.profile) {
+          return result.profile;
+        }
+        return null; // Explicitly return null when conditions aren't met
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    },
+    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000, // 30 seconds - credits can change during usage
+  })
 );
 
 // Create a derived atom to check if user is authenticated

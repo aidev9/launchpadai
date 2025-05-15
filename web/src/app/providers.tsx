@@ -11,18 +11,27 @@ import Cookies from "js-cookie";
 import { cn } from "@/lib/utils";
 import { FontProvider } from "@/context/font-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useHydrateAtoms } from "jotai/react/utils";
+import { queryClientAtom } from "@/stores/promptCreditStore";
 
 interface ProvidersProps {
   children: ReactNode;
 }
 
+function JotaiProvider({ children }: { children: ReactNode }) {
+  // This ensures queryClient is properly hydrated into the queryClientAtom
+  // before any components try to use it
+  useHydrateAtoms([[queryClientAtom, queryClient]]);
+  return children;
+}
+
 // Create a new QueryClient instance
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 30000,
+      refetchOnWindowFocus: true,
+      retry: 2,
+      staleTime: 10000,
     },
   },
 });
@@ -62,7 +71,7 @@ export default function Providers({ children }: ProvidersProps) {
                     "group-data-[scroll-locked=1]/body:has-[main.fixed-main]:h-svh"
                   )}
                 >
-                  {children}
+                  <JotaiProvider>{children}</JotaiProvider>
                 </div>
               </SidebarProvider>
             </SearchProvider>

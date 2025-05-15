@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
     let decodedToken;
     try {
       decodedToken = await adminAuth.verifyIdToken(idToken, true); // Force refresh check
-      console.log("ID token successfully verified for user:", decodedToken.uid);
     } catch (verifyError) {
       console.error("ID token verification failed:", verifyError);
 
@@ -78,13 +77,6 @@ export async function POST(request: NextRequest) {
         path: "/",
         // Use lax for better compatibility with redirects
         sameSite: "lax",
-      });
-
-      console.log("Session cookie set successfully:", {
-        cookieLength: sessionCookie.length,
-        cookieName: "session",
-        expiresIn: SESSION_EXPIRY,
-        uid: decodedToken.uid,
       });
 
       return response;

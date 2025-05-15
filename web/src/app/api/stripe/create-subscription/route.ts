@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
     const { plan, billingCycle, price, email, name } = await request.json();
 
     if (!plan || !billingCycle || !price || !email || !name) {
+      console.log("data::::", plan, billingCycle, price, email, name);
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
