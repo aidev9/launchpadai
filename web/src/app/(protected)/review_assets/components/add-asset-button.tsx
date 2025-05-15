@@ -111,6 +111,7 @@ export function AddAssetButton() {
       <Button
         className="flex items-center gap-2 bg-black text-white hover:bg-black/90"
         onClick={() => setDialogOpen(true)}
+        data-testid="generate-asset-button"
       >
         <Plus className="h-4 w-4" />
         Add Asset
@@ -129,6 +130,7 @@ export function AddAssetButton() {
                 placeholder="e.g. Custom Report"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                data-testid="asset-title-input"
               />
             </div>
 
@@ -139,13 +141,14 @@ export function AddAssetButton() {
                 placeholder="Brief description of this asset"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                data-testid="asset-description-input"
               />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="phase">Phase</Label>
               <Select value={phase} onValueChange={setPhase}>
-                <SelectTrigger id="phase">
+                <SelectTrigger id="phase" data-testid="asset-phase-select">
                   <SelectValue placeholder="Select phase" />
                 </SelectTrigger>
                 <SelectContent>
@@ -168,6 +171,7 @@ export function AddAssetButton() {
                 placeholder="Enter document content here..."
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
+                data-testid="asset-prompt-input"
               />
             </div>
           </div>
@@ -182,6 +186,7 @@ export function AddAssetButton() {
               onClick={handleAddAsset}
               disabled={isSaving || !title || !phase || !content}
               className="bg-black text-white hover:bg-black/90"
+              data-testid="start-generation-button"
             >
               {isSaving ? "Adding..." : "Add Asset"}
             </Button>

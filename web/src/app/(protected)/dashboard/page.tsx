@@ -180,7 +180,12 @@ export default function Dashboard() {
             <p className="text-muted-foreground mb-6">
               Create a new product to get started.
             </p>
-            <Button onClick={handleCreateProduct}>Create New Product</Button>
+            <Button
+              onClick={handleCreateProduct}
+              data-testid="create-first-product-button"
+            >
+              Create New Product
+            </Button>
           </div>
         </div>
       </Main>
@@ -206,7 +211,11 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">My Products</h1>
-          <Button onClick={handleCreateProduct} className="w-full md:w-auto">
+          <Button
+            onClick={handleCreateProduct}
+            className="w-full md:w-auto"
+            data-testid="create-product-button"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Create New Product
           </Button>

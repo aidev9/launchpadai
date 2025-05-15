@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { TechStack } from "@/lib/firebase/schema";
+import { TechStack, TechStackAsset } from "@/lib/firebase/schema";
 import { Table, ColumnFiltersState, SortingState } from "@tanstack/react-table";
 
 // Layout view type
@@ -121,3 +121,22 @@ export const addTechStackAtom = atom(
     set(allTechStacksAtom, (prev) => [...prev, newTechStack]);
   }
 );
+
+// Asset-related atoms
+export const techStackAssetsAtom = atom<TechStackAsset[]>([]);
+export const selectedAssetAtom = atom<TechStackAsset | null>(null);
+export const selectedAssetIdAtom = atom<string | null>(null);
+
+// Asset UI state atoms
+export const assetsLoadingAtom = atom<boolean>(false);
+export const assetsErrorAtom = atom<string | null>(null);
+export const assetGeneratingAtom = atom<boolean>(false);
+export const generatingAssetsAtom = atom<Record<string, boolean>>({});
+export const activeTabAtom = atom<string>("general");
+export const hasInsufficientCreditsAtom = atom<boolean>(false);
+
+// Derived atoms for assets
+export const filteredAssetsAtom = atom((get) => {
+  const assets = get(techStackAssetsAtom);
+  return assets;
+});

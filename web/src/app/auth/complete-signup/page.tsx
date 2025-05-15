@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
-import { revokeUserTokens } from "../actions";
+import { revokeUserTokens, initializeUserPromptCredits } from "../actions";
 
 const formSchema = z
   .object({
@@ -148,6 +148,12 @@ function CompleteSignupContent() {
             emailVerified: true,
             createdAt: getCurrentUnixTimestamp(),
             updatedAt: getCurrentUnixTimestamp(),
+          });
+
+          // Initialize prompt credits with free plan for new users
+          await initializeUserPromptCredits({
+            userId: result.user.uid,
+            planType: "free",
           });
         }
 

@@ -1,6 +1,7 @@
 import { LinkProps as NextLinkProps } from "next/link";
 import { ComponentType } from "react";
 import { IconProps } from "@tabler/icons-react";
+import { LucideIcon } from "lucide-react";
 
 interface Team {
   name: string;
@@ -11,7 +12,7 @@ interface Team {
 export interface NavLink {
   title: string;
   url: string;
-  icon?: ComponentType<IconProps>;
+  icon?: ComponentType<IconProps> | LucideIcon;
   badge?: string;
   disabled?: boolean;
 }

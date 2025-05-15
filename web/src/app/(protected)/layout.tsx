@@ -9,7 +9,10 @@ import { onAuthStateChanged, getIdToken } from "firebase/auth";
 import { useAtom, useSetAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { setUserProfileAtom } from "@/lib/store/user-store";
-import { fetchUserProfile } from "@/lib/firebase/actions/profile";
+import {
+  fetchUserProfile,
+  fetchUserPromptCredits,
+} from "@/lib/firebase/actions/profile";
 import { Header } from "@/components/layout/header";
 import { TopNav } from "@/components/layout/top-nav";
 import { Search } from "@/components/search";
@@ -19,6 +22,9 @@ import { motion } from "framer-motion";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { set } from "nprogress";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
+import { useAtom as useJotaiAtom } from "jotai";
+import { promptCreditsAtom } from "@/stores/promptCreditStore";
+import { PromptCredit } from "@/lib/firebase/schema";
 
 const topNav = [
   {
@@ -110,6 +116,7 @@ export default function RootLayout({
   const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
   const setUserProfile = useSetAtom(setUserProfileAtom);
   const [redirectedToAdmin, setRedirectedToAdmin] = useState(false);
+  const [promptCredits, setPromptCredits] = useJotaiAtom(promptCreditsAtom);
 
   useEffect(() => {
     // Initialize auth state
@@ -137,6 +144,29 @@ export default function RootLayout({
 
           // Fetch user profile data from server action
           const profileResult = await fetchUserProfile();
+
+          // Fetch user prompt credits
+          const creditsResult = await fetchUserPromptCredits();
+          if (creditsResult.success && creditsResult.credits) {
+            const credits: PromptCredit = {
+              userId: user.uid,
+              totalUsedCredits: creditsResult.credits.totalUsedCredits,
+              remainingCredits: creditsResult.credits.remainingCredits,
+              dailyCredits: creditsResult.credits.dailyCredits,
+              monthlyCredits: creditsResult.credits.monthlyCredits,
+              lastRefillDate: creditsResult.credits.lastRefillDate || 0,
+              updatedAt: creditsResult.credits.updatedAt || 0,
+            };
+            setPromptCredits(credits);
+            console.log("Prompt credits loaded from Firebase:", credits);
+          } else {
+            // Handle case when credits couldn't be loaded
+            console.error(
+              "Failed to load prompt credits:",
+              creditsResult.error
+            );
+            setPromptCredits(null);
+          }
 
           if (profileResult.success && profileResult.profile) {
             // Set the user profile in the Jotai atom

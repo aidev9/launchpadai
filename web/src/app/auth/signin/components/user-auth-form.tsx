@@ -142,6 +142,7 @@ export function UserAuthForm({
                       placeholder="name@example.com"
                       {...field}
                       autoComplete="email"
+                      data-testid="email-input"
                     />
                   </FormControl>
                   <FormMessage />
@@ -167,13 +168,18 @@ export function UserAuthForm({
                       autoComplete="current-password"
                       placeholder="********"
                       {...field}
+                      data-testid="password-input"
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button className="mt-2" disabled={isLoading}>
+            <Button
+              className="mt-2"
+              disabled={isLoading}
+              data-testid="signin-button"
+            >
               Sign In
             </Button>
 

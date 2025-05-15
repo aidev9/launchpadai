@@ -14,6 +14,7 @@ import {
 } from "@/stores/subscriptionStore";
 import { BillingCycle, PlanType } from "@/lib/firebase/schema";
 import { getSubscriptionPlans } from "@/app/(protected)/upgrade/actions";
+import { motion } from "framer-motion";
 
 export function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(false);
@@ -124,9 +125,15 @@ export function PricingSection() {
   const currentPlans = isAnnual ? annualPlans : monthlyPlans;
 
   return (
-    <section id="pricing" className="bg-muted/50 py-20">
+    <section id="pricing" className="bg-muted/50 py-20 scroll-mt-20">
       <div className="container space-y-12">
-        <div className="text-center space-y-4">
+        <motion.div
+          className="text-center space-y-4"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          viewport={{ once: true, margin: "-100px" }}
+        >
           <h2 className="text-3xl md:text-4xl font-bold">
             Simple, Transparent Pricing
           </h2>
@@ -147,7 +154,7 @@ export function PricingSection() {
               Annual <span className="text-xs text-primary">(Save 20%)</span>
             </Label>
           </div>
-        </div>
+        </motion.div>
 
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -156,25 +163,44 @@ export function PricingSection() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            viewport={{ once: true, margin: "-100px" }}
+          >
             {currentPlans.map((plan, index) => (
-              <PricingCard
+              <motion.div
                 key={index}
-                title={plan.title}
-                price={plan.price}
-                billingPeriod={isAnnual ? "year" : "mo"}
-                description={plan.description}
-                features={plan.features}
-                buttonText={plan.buttonText}
-                buttonVariant={plan.buttonVariant}
-                isPopular={plan.isPopular}
-                onClick={() => handlePlanSelection(plan.title, plan.price)}
-              />
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 * index }}
+                viewport={{ once: true, margin: "-100px" }}
+              >
+                <PricingCard
+                  title={plan.title}
+                  price={plan.price}
+                  billingPeriod={isAnnual ? "year" : "mo"}
+                  description={plan.description}
+                  features={plan.features}
+                  buttonText={plan.buttonText}
+                  buttonVariant={plan.buttonVariant}
+                  isPopular={plan.isPopular}
+                  onClick={() => handlePlanSelection(plan.title, plan.price)}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
-        <div className="text-center mt-8">
+        <motion.div
+          className="text-center mt-8"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          viewport={{ once: true }}
+        >
           <p className="text-muted-foreground">
             Enterprise plans available for accelerators and incubators.{" "}
             <a href="#" className="text-primary hover:underline">
@@ -182,7 +208,7 @@ export function PricingSection() {
             </a>{" "}
             for details.
           </p>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

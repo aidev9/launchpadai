@@ -73,7 +73,6 @@ export default function NotesPage() {
         const response = await fetchNotes({
           productId: selectedProductId,
         });
-        console.log("fetchNotes response:::", response);
 
         if (response.success && response.notes) {
           setNotes(response.notes);

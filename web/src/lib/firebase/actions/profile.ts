@@ -2,7 +2,7 @@
 
 import { adminDb } from "../admin";
 import { getCurrentUserId } from "../adminAuth";
-import { UserProfile } from "../schema";
+import { PromptCredit, UserProfile } from "../schema";
 import { revalidatePath } from "next/cache";
 import { FieldValue } from "firebase-admin/firestore";
 import { xpActions } from "@/xp/points-schedule"; // Import the XP schedule
@@ -57,8 +57,6 @@ export async function fetchUserProfile(): Promise<{
     const currentData = userDoc.data() || {};
 
     const currentXp = currentData.xp;
-
-    console.log("currentXp:::", currentXp);
 
     // Calculate the new XP value. Default to current XP if award is not positive.
     let newXp = currentXp;
@@ -123,6 +121,97 @@ export async function fetchUserProfile(): Promise<{
     return {
       success: false,
       error: `Failed to fetch or update profile: ${errorMessage}`, // Updated error message
+    };
+  }
+}
+
+// Server action to fetch user prompt credits
+export async function fetchUserPromptCredits(): Promise<{
+  success: boolean;
+  credits?: PromptCredit;
+  error?: string;
+}> {
+  try {
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      console.error("Not authenticated - no user ID returned");
+      return {
+        success: false,
+        error: "Not authenticated",
+      };
+    }
+
+    // Fetch user's prompt credits from Firestore
+    const ref = adminDb.collection("prompt_credits").doc(userId);
+    const doc = await ref.get();
+
+    if (!doc.exists) {
+      console.error(`Prompt credits not found for user ID: ${userId}`);
+      return {
+        success: false,
+        error: "Prompt credits not found",
+      };
+    }
+
+    const data = doc.data();
+    if (!data) {
+      console.error(`No data found for user ID: ${userId}`);
+      return {
+        success: false,
+        error: "No data found",
+      };
+    }
+
+    const totalUsedCreditsValue = data.totalUsedCredits || 0;
+    const remainingCreditsValue = data.remainingCredits || 0;
+
+    // Ensure numeric values are returned
+    if (typeof totalUsedCreditsValue !== "number") {
+      console.error(`Invalid totalUsedCredits value for user ID: ${userId}`);
+      return {
+        success: false,
+        error: "Invalid totalUsedCredits value",
+      };
+    }
+
+    if (typeof remainingCreditsValue !== "number") {
+      console.error(`Invalid remainingCredits value for user ID: ${userId}`);
+      return {
+        success: false,
+        error: "Invalid remainingCredits value",
+      };
+    }
+
+    // Create a credits object reflecting the user's credit balance
+    const credits = {
+      totalUsedCredits: totalUsedCreditsValue,
+      remainingCredits: remainingCreditsValue,
+      dailyCredits: data.dailyCredits || 10, // Default to 10 if not set
+      monthlyCredits: data.monthlyCredits || 300, // Default to 300 if not set
+      lastRefillDate: data.lastRefillDate || 0, // Default to 0 if not set
+      lastUsedDate: data.lastUsedDate || 0, // Default to 0 if not set
+      updatedAt: data.updatedAt || 0, // Default to 0 if not set
+      userId: userId,
+    };
+
+    return {
+      success: true,
+      credits,
+    };
+  } catch (error) {
+    console.error("Error fetching user prompt credits:", error);
+    // More detailed error message
+    const errorMessage =
+      error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : "Unknown error";
+
+    console.error(`Error details: ${errorMessage}`);
+
+    return {
+      success: false,
+      error: `Failed to fetch prompt credits: ${errorMessage}`, // Updated error message
     };
   }
 }

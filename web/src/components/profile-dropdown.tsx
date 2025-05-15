@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { SignOutHelper } from "@/lib/firebase/client";
 import { Compass, Star } from "lucide-react";
 import XpDisplay from "@/xp/xp-display";
+import { MiniCreditDisplay } from "@/components/prompt-credits/mini-credit-display";
 import { useAtomValue } from "jotai";
 import { userProfileAtom } from "@/lib/store/user-store";
 import {
@@ -46,6 +47,7 @@ export function ProfileDropdown() {
   return (
     <div className="flex items-center gap-3">
       <XpDisplay />
+      <MiniCreditDisplay />
 
       {needsUpgrade && (
         <Tooltip>

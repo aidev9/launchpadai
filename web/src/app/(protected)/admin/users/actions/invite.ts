@@ -129,7 +129,7 @@ export async function inviteUser(
       planType: subscriptionLevel.toLowerCase(),
       billingCycle: "monthly", // Default to monthly
       price: getPlanPrice(subscriptionLevel.toLowerCase()),
-      active: true,
+      status: "active",
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       createdAt: timestamp,

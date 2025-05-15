@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Pencil, Trash } from "lucide-react";
+import InsufficientCreditsAlert from "@/components/prompt-credits/insufficient-credits-alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,91 +25,158 @@ import { AssetForm } from "./components/asset-form";
 import { TechStackGeneral } from "./components/tabs/TechStackGeneral";
 import { TechStackAssets } from "./components/tabs/TechStackAssets";
 
-// Import our hooks and handlers
-import { useTechStackDetailWithQuery } from "./hooks/useTechStackDetail";
-import { useTechStackHandlers } from "./handlers/techStackHandlers";
-import { useAssetHandlersWithQuery } from "./handlers/assetHandlers";
+// Import our hooks
+import { useTechStackAssets } from "./hooks/useTechStackAssets";
+import { useToast } from "@/hooks/use-toast";
+import { useAtom } from "jotai";
+import {
+  selectedTechStackAtom,
+  selectedTechStackIdAtom,
+} from "@/lib/store/techstack-store";
+import { deleteTechStack } from "@/lib/firebase/techstacks";
 
-export default function TechStackDetailWithQuery() {
-  // Use our enhanced custom hooks
+export default function TechStackDetailPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+
+  // Use the tech stack atoms directly
+  const [selectedTechStack] = useAtom(selectedTechStackAtom);
+
+  // Use our tech stack assets hook without passing techStackId
   const {
-    router,
-    toast,
-    selectedTechStack,
-    setSelectedTechStack,
-    isLoading,
-    setIsLoading,
-    error,
-    setError,
-    isDeleteDialogOpen,
-    setIsDeleteDialogOpen,
-    activeTab,
-    setActiveTab,
     assets,
     selectedAsset,
     setSelectedAsset,
-    isAssetDialogOpen,
-    setIsAssetDialogOpen,
-    isGeneratingContent,
-    isDownloading,
-    setIsDownloading,
+    isLoading,
+    error,
+    isGenerating,
     generatingAssets,
-    onGenerateContent,
-    refetchAssets,
-  } = useTechStackDetailWithQuery();
+    activeTab,
+    setActiveTab,
+    hasInsufficientCredits,
+    generateAsset,
+  } = useTechStackAssets();
 
-  // State for asset deletion confirmation
+  // Local UI state
+  const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAssetDeleteDialogOpen, setIsAssetDeleteDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<any>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  // Use our tech stack handlers
-  const { handleBack, handleEdit, handleDelete, handleDownloadAssets } =
-    useTechStackHandlers(
-      selectedTechStack,
-      setIsLoading,
-      setIsDeleteDialogOpen,
-      setIsDownloading
-    );
+  // Handle back navigation
+  const handleBack = () => {
+    router.push("/mystacks");
+  };
 
-  // Create an adapter function to convert between the two function signatures
-  const generateAssetAdapter = (params: {
-    assetId: string;
-    assetType: string;
-    techStackDetails: any;
-    userInstructions?: string;
-  }) => {
-    // Find the asset with the given ID
-    const asset = assets.find((a) => a.id === params.assetId);
-    if (asset) {
-      // Call the original function with the asset and instructions
-      onGenerateContent(asset, params.userInstructions);
+  // Handle tech stack edit
+  const handleEdit = () => {
+    if (selectedTechStack?.id) {
+      // Use jotai state instead of URL params
+      // The edit page should read the selectedTechStackId from jotai state
+      router.push(`/mystacks/edit`);
     }
   };
 
-  // Use our enhanced asset handlers
-  const {
-    handleCreateAsset,
-    handleEditAsset,
-    handleSaveAsset,
-    handleDeleteAsset,
-    confirmDeleteAsset,
-    handleGenerateContent,
-    handleCopyAsset,
-    handleDownloadAsset,
-  } = useAssetHandlersWithQuery(
-    selectedTechStack,
-    assets,
-    selectedAsset,
-    setSelectedAsset,
-    setIsAssetDialogOpen,
-    isAssetDeleteDialogOpen,
-    setIsAssetDeleteDialogOpen,
-    assetToDelete,
-    setAssetToDelete,
-    generateAssetAdapter,
-    refetchAssets
-  );
+  // Handle tech stack delete
+  const handleDelete = async () => {
+    if (!selectedTechStack?.id) return;
 
+    try {
+      const result = await deleteTechStack(selectedTechStack.id);
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Tech stack deleted successfully",
+        });
+        router.push("/mystacks");
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete tech stack",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
+  // Handle asset creation
+  const handleCreateAsset = () => {
+    setSelectedAsset(null);
+    setIsAssetDialogOpen(true);
+  };
+
+  // Handle asset edit
+  const handleEditAsset = (asset: any) => {
+    setSelectedAsset(asset);
+    setIsAssetDialogOpen(true);
+  };
+
+  // Handle asset save
+  const handleSaveAsset = async (assetData: any) => {
+    // Implementation will be added later
+    setIsAssetDialogOpen(false);
+  };
+
+  // Handle asset delete
+  const handleDeleteAsset = (asset: any) => {
+    setAssetToDelete(asset);
+    setIsAssetDeleteDialogOpen(true);
+  };
+
+  // Confirm asset delete
+  const confirmDeleteAsset = async () => {
+    // Implementation will be added later
+    setIsAssetDeleteDialogOpen(false);
+  };
+
+  // Handle asset generation
+  const handleGenerateContent = async (asset: any, instructions?: string) => {
+    if (!selectedTechStack) return;
+
+    try {
+      console.log("Page: Starting generateAsset call");
+      await generateAsset({
+        assetId: asset.id,
+        assetType: asset.assetType,
+        techStackDetails: selectedTechStack,
+        userInstructions: instructions,
+      });
+      console.log("Page: generateAsset completed");
+    } catch (error) {
+      console.error("Page: Error in handleGenerateContent:", error);
+      // Error handling is done in the hook
+    }
+  };
+
+  // Handle asset copy
+  const handleCopyAsset = (asset: any) => {
+    // Implementation will be added later
+  };
+
+  // Handle asset download
+  const handleDownloadAsset = (asset: any) => {
+    // Implementation will be added later
+  };
+
+  // Handle all assets download
+  const handleDownloadAssets = () => {
+    // Implementation will be added later
+  };
+
+  // Loading state
   if (isLoading) {
     return (
       <Main>
@@ -118,13 +187,14 @@ export default function TechStackDetailWithQuery() {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <Main>
         <div className="flex flex-col items-center justify-center h-64">
           <h2 className="text-xl font-semibold mb-2">Error</h2>
           <p className="text-muted-foreground">{error}</p>
-          <Button onClick={() => router.push("/mystacks")} className="mt-4">
+          <Button onClick={handleBack} className="mt-4">
             Back to Tech Stacks
           </Button>
         </div>
@@ -132,6 +202,7 @@ export default function TechStackDetailWithQuery() {
     );
   }
 
+  // No tech stack selected
   if (!selectedTechStack) {
     return (
       <Main>
@@ -140,7 +211,7 @@ export default function TechStackDetailWithQuery() {
           <p className="text-muted-foreground">
             Please select a tech stack to view details.
           </p>
-          <Button onClick={() => router.push("/mystacks")} className="mt-4">
+          <Button onClick={handleBack} className="mt-4">
             Back to Tech Stacks
           </Button>
         </div>
@@ -188,11 +259,19 @@ export default function TechStackDetailWithQuery() {
           {selectedTechStack.deploymentStack && (
             <Badge variant="outline">{selectedTechStack.deploymentStack}</Badge>
           )}
-          {selectedTechStack.phase.map((phase) => (
-            <Badge key={phase}>{phase}</Badge>
-          ))}
+          {selectedTechStack.phase &&
+            selectedTechStack.phase.map((phase) => (
+              <Badge key={phase}>{phase}</Badge>
+            ))}
         </div>
       </div>
+
+      {/* Display insufficient credits alert when needed */}
+      {hasInsufficientCredits && (
+        <div className="mb-6">
+          <InsufficientCreditsAlert />
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -208,15 +287,8 @@ export default function TechStackDetailWithQuery() {
             selectedAsset={selectedAsset}
             setSelectedAsset={setSelectedAsset}
             generatingAssets={generatingAssets}
-            isGeneratingContent={isGeneratingContent}
             isDownloading={isDownloading}
-            techStack={selectedTechStack}
             handleCreateAsset={handleCreateAsset}
-            handleEditAsset={handleEditAsset}
-            handleDeleteAsset={handleDeleteAsset}
-            handleGenerateContent={handleGenerateContent}
-            handleCopyAsset={handleCopyAsset}
-            handleDownloadAsset={handleDownloadAsset}
             handleDownloadAssets={handleDownloadAssets}
           />
         </TabsContent>

@@ -58,6 +58,7 @@ export function PaymentForm({
         // Show error to your customer
         setErrorMessage(error.message || "An unexpected error occurred.");
         onError(error.message || "An unexpected error occurred.");
+        setProcessing(false);
       } else if (paymentIntent && paymentIntent.status === "succeeded") {
         // Payment succeeded, notify the parent component
         onSuccess(paymentIntent, customerId);
@@ -67,16 +68,17 @@ export function PaymentForm({
         console.log("Payment requires additional action");
       } else {
         // Handle any other status
-        setErrorMessage("Something went wrong with your payment.");
-        onError("Something went wrong with your payment.");
+        const errorMsg = "Something went wrong with your payment.";
+        setErrorMessage(errorMsg);
+        onError(errorMsg);
+        setProcessing(false);
       }
     } catch (err) {
+      setProcessing(false);
       const errorMessage =
         err instanceof Error ? err.message : "An unexpected error occurred";
       setErrorMessage(errorMessage);
       onError(errorMessage);
-    } finally {
-      setProcessing(false);
     }
   };
 
@@ -97,7 +99,7 @@ export function PaymentForm({
         className="w-full"
         disabled={!stripe || !elements || processing}
       >
-        {processing ? "Processing..." : "Complete Subscription"}
+        {processing ? "Processing..." : "Complete Purchase"}
       </Button>
     </form>
   );

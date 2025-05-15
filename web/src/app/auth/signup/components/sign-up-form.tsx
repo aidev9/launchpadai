@@ -153,6 +153,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                       autoComplete="name"
                       placeholder="John Doe"
                       {...field}
+                      data-testid="name-input"
                     />
                   </FormControl>
                   <FormMessage />
@@ -171,6 +172,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                         autoComplete="email"
                         placeholder="name@example.com"
                         {...field}
+                        data-testid="email-input"
                       />
                     </FormControl>
                     <FormMessage />
@@ -188,6 +190,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                         autoComplete="current-password"
                         placeholder="********"
                         {...field}
+                        data-testid="password-input"
                       />
                     </FormControl>
                     <FormMessage />
@@ -284,7 +287,12 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               />
             </div>
 
-            <Button className="mt-2" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="mt-4"
+              disabled={isLoading || status === "executing"}
+              data-testid="signup-button"
+            >
               Create Account
             </Button>
 

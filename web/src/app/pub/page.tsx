@@ -9,6 +9,7 @@ import { TestimonialsSection } from "@/components/landing-page/testimonials-sect
 import { PricingSection } from "@/components/landing-page/pricing-section";
 import { CTASection } from "@/components/landing-page/cta-section";
 import { FooterSection } from "@/components/landing-page/footer-section";
+import { LayoutWrapper } from "@/components/landing-page/layout-wrapper";
 import ChatWidget from "@/components/ui/chat-widget";
 
 // Force dynamic rendering since the page uses client components
@@ -16,23 +17,25 @@ export const dynamic = "force-dynamic";
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <NavbarSection />
+    <LayoutWrapper>
+      <div className="flex flex-col min-h-screen bg-background">
+        <NavbarSection />
 
-      <main className="flex-1">
-        <HeroSection />
-        <FeaturesSection />
-        <HowItWorksSection />
-        <FAQSection />
-        <TestimonialsSection />
-        <PricingSection />
-        <CTASection />
-      </main>
+        <main className="flex-1">
+          <HeroSection />
+          <FeaturesSection />
+          <HowItWorksSection />
+          <FAQSection />
+          <TestimonialsSection />
+          <PricingSection />
+          <CTASection />
+        </main>
 
-      <FooterSection />
+        <FooterSection />
 
-      {/* Chat Widget */}
-      <ChatWidget />
-    </div>
+        {/* Chat Widget */}
+        <ChatWidget />
+      </div>
+    </LayoutWrapper>
   );
 }

@@ -435,7 +435,11 @@ export default function ProductWizard() {
                       <FormItem>
                         <FormLabel>Product/Startup Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter a name" {...field} />
+                          <Input
+                            placeholder="Enter a name"
+                            {...field}
+                            data-testid="product-name-input"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -452,6 +456,7 @@ export default function ProductWizard() {
                           <Textarea
                             placeholder="Briefly describe your product or startup"
                             {...field}
+                            data-testid="product-description-input"
                           />
                         </FormControl>
                         <FormMessage />
@@ -471,7 +476,7 @@ export default function ProductWizard() {
                           value={field.value}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="product-stage-select">
                               <SelectValue placeholder="Select the current stage" />
                             </SelectTrigger>
                           </FormControl>
@@ -617,6 +622,7 @@ export default function ProductWizard() {
                 type="button"
                 onClick={handleFinalSubmit}
                 disabled={isSubmitting}
+                data-testid="submit-product-button"
               >
                 {isSubmitting ? "Saving..." : isEditMode ? "Update" : "Create"}
                 <Check className="ml-2 h-4 w-4" />

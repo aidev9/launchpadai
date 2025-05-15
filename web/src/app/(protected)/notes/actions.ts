@@ -186,8 +186,6 @@ export async function fetchNotes({ productId }: { productId: string | null }) {
       ...doc.data(),
     }));
 
-    console.log("notes::::", notes);
-
     return {
       success: true,
       notes,

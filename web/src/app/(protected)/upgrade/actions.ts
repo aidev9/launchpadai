@@ -9,6 +9,7 @@ import {
   calculateAnnualPrice,
   PlanOption,
 } from "@/lib/firebase/schema";
+import { initializePromptCredits } from "@/lib/firebase/prompt-credits";
 
 // Get a user's current subscription
 export async function getUserSubscription(userId: string) {
@@ -66,7 +67,7 @@ export const createUserSubscription = userActionClient
           planType,
           billingCycle,
           price,
-          active: true,
+          status: "active",
           createdAt: now,
           stripeCustomerId,
           stripeSubscriptionId,
@@ -74,6 +75,12 @@ export const createUserSubscription = userActionClient
         },
         updatedAt: now,
       });
+
+      // Also update the user's prompt credits based on the new plan
+      await initializePromptCredits(userId, planType);
+      console.log(
+        `Updated prompt credits for user ${userId} with new plan ${planType}`
+      );
 
       revalidatePath("/settings/subscription");
       return { success: true };

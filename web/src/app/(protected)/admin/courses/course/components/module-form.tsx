@@ -122,7 +122,6 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({
 
   // Form submission handler uses refs to get file data
   const onSubmit = async (data: ModuleInput) => {
-    console.log("data:::", data);
     if (currentStepRef.current === totalSteps) {
       try {
         // Immediately set submitting state

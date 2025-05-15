@@ -1,23 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useAtom } from "jotai";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TechStackAsset } from "@/lib/firebase/schema";
+import {
+  techStackAssetsAtom,
+  selectedAssetAtom,
+  generatingAssetsAtom,
+} from "@/lib/store/techstack-store";
 
-interface AssetsListProps {
-  assets: TechStackAsset[];
-  selectedAsset: TechStackAsset | null;
-  onSelectAsset: (asset: TechStackAsset) => void;
-  generatingAssets: Record<string, boolean>;
-}
-
-export function AssetsList({
-  assets,
-  selectedAsset,
-  onSelectAsset,
-  generatingAssets,
-}: AssetsListProps) {
+export function AssetsList() {
+  // Use jotai atoms directly instead of props
+  const [assets] = useAtom(techStackAssetsAtom);
+  const [selectedAsset, setSelectedAsset] = useAtom(selectedAssetAtom);
+  const [generatingAssets] = useAtom(generatingAssetsAtom);
   return (
     <Card>
       <CardContent className="space-y-4 mt-4">
@@ -30,7 +27,7 @@ export function AssetsList({
               className={`p-3 border rounded-md cursor-pointer hover:bg-accent/50 ${
                 selectedAsset?.id === asset.id ? "bg-accent" : ""
               }`}
-              onClick={() => onSelectAsset(asset)}
+              onClick={() => setSelectedAsset(asset)}
             >
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
@@ -67,11 +64,12 @@ export function AssetsList({
               </div>
               <div className="flex flex-wrap gap-1 mt-2 justify-between items-center">
                 <div className="flex flex-wrap gap-1">
-                  {asset.tags.map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
+                  {asset.tags &&
+                    asset.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
                 </div>
                 {/* Show green dot for generated assets */}
                 {asset.body &&

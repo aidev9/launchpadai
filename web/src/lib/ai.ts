@@ -10,6 +10,12 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { Annotation, START, END } from "@langchain/langgraph";
 import { MemorySaver } from "@langchain/langgraph";
 import { v4 as uuidv4 } from "uuid";
+import { consumePromptCredit } from "@/lib/firebase/prompt-credits";
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
+import { Agent } from "@mastra/core/agent";
+import { openai } from "@ai-sdk/openai";
+import { streamText } from "ai";
+import { generateText } from "ai";
 
 /**
  * Interface for asset generation data
@@ -37,14 +43,14 @@ Format your response using proper Markdown syntax.
 Be specific, detailed, and professional.
 If notes are provided, they take precedence over question/answer pairs.
 Document should be well-structured and easy to read.
-The document MUST be at least 2000 words.
+The document MUST be at least 20 words.
 Expand on all sections with more detailed information, examples, and analysis.
 `;
 
 /**
  * Format product details for display
  */
-function formatProductDetails(product: Product): string {
+export async function formatProductDetails(product: Product): Promise<string> {
   return `Product Name: ${product.name || "Unnamed Product"}
           Product Description: ${product.description || "Not provided"}
           Problem: ${product.problem || "Not provided"}
@@ -74,15 +80,15 @@ ${asset.systemPrompt ? `Additional Instructions: ${asset.systemPrompt}` : ""}`;
 /**
  * Generate a standard user message with product details
  */
-function createStandardUserMessage(
+async function createStandardUserMessage(
   document: string,
   product: Product,
   noQANote = true
-): { role: "user"; content: string } {
+): Promise<{ role: "user"; content: string }> {
   let content = `
 Generate a detailed ${document} for a product with these details:
 
-${formatProductDetails(product)}`;
+${await formatProductDetails(product)}`;
 
   if (noQANote) {
     content += `
@@ -156,11 +162,11 @@ const AssetGenerationStateAnnotation = Annotation.Root({
 /**
  * Create a consolidated system prompt combining base system prompt with document-specific instructions
  */
-function createUnifiedSystemPrompt(
+export async function createUnifiedSystemPrompt(
   baseSystemPrompt: string,
   document: string,
   asset?: AssetGenerationData["asset"]
-): string {
+): Promise<string> {
   return `${baseSystemPrompt}
 
 ${STANDARD_DOCUMENT_PROMPT.replace("{document}", document)}
@@ -193,7 +199,7 @@ const MODEL_CONFIG = {
   },
   verbose: {
     modelName: "gpt-4o-mini",
-    temperature: 1.0, // Higher temperature for more verbose output during retries
+    temperature: 0.9,
   },
 };
 
@@ -232,6 +238,30 @@ export async function generateAssetContent({
   questionAnswers,
 }: AssetGenerationData): Promise<string> {
   try {
+    // Get current user ID
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    // Check and consume prompt credit
+    const creditResult = await consumePromptCredit({ userId });
+
+    // Type assertion for the credit result
+    const typedResult = creditResult as unknown as {
+      data: {
+        success: boolean;
+        error?: string;
+        needMoreCredits?: boolean;
+        remainingCredits?: number;
+      };
+    };
+
+    if (!typedResult.data?.success) {
+      throw new Error(typedResult.data?.error || "Insufficient prompt credits");
+    }
+
     const { formattedQAs, answeredQuestions } =
       formatQuestionsAndAnswers(questionAnswers);
 
@@ -239,7 +269,7 @@ export async function generateAssetContent({
     const model = new ChatOpenAI(MODEL_CONFIG.standard);
 
     // Use the consolidated system prompt
-    const unifiedSystemPrompt = createUnifiedSystemPrompt(
+    const unifiedSystemPrompt = await createUnifiedSystemPrompt(
       systemPrompt,
       document
     );
@@ -250,12 +280,12 @@ export async function generateAssetContent({
       [
         "user",
         `
-${formatProductDetails(product)}
+${await formatProductDetails(product)}
 
 Here are all the question/answer pairs available for this product:
 {question_answers}
 
-Please generate a comprehensive ${document} based on this information. The document MUST be at least 2000 words.
+Please generate a comprehensive ${document} based on this information. The document MUST be at least 20 words.
       `,
       ],
     ]);
@@ -288,13 +318,13 @@ Please generate a comprehensive ${document} based on this information. The docum
           [
             "user",
             `
-${formatProductDetails(product)}
+${await formatProductDetails(product)}
 
 Here are all the question/answer pairs available for this product:
 ${formattedQAs}
 
 Please generate a comprehensive and DETAILED ${document} based on this information. 
-The document MUST be at least 2000 words. Your previous attempt was too short.
+The document MUST be at least 20 words. Your previous attempt was too short.
 Expand on all sections with more detailed information, examples, and analysis.
             `,
           ],
@@ -328,6 +358,30 @@ export async function generateAssetContentWithLangGraph({
 }: AssetGenerationData): Promise<string> {
   console.log("[LangGraph]");
   try {
+    // Get current user ID
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    // Check and consume prompt credit
+    const creditResult = await consumePromptCredit({ userId });
+
+    // Type assertion for the credit result
+    const typedResult = creditResult as unknown as {
+      data: {
+        success: boolean;
+        error?: string;
+        needMoreCredits?: boolean;
+        remainingCredits?: number;
+      };
+    };
+
+    if (!typedResult.data?.success) {
+      throw new Error(typedResult.data?.error || "Insufficient prompt credits");
+    }
+
     // Use the utility function for formatting questions and answers
     const { formattedQAs, answeredQuestions } =
       formatQuestionsAndAnswers(questionAnswers);
@@ -364,7 +418,7 @@ export async function generateAssetContentWithLangGraph({
       const model = new ChatOpenAI(MODEL_CONFIG.standard);
 
       // Use the unified system prompt
-      const unifiedSystemPrompt = createUnifiedSystemPrompt(
+      const unifiedSystemPrompt = await createUnifiedSystemPrompt(
         state.systemPrompt,
         state.document,
         state.asset
@@ -376,13 +430,13 @@ export async function generateAssetContentWithLangGraph({
         [
           "user",
           `
-${formatProductDetails(state.product)}
+${await formatProductDetails(state.product)}
 
 ${state.hasNotes ? "Here are the notes for this product (these take precedence):\n" + state.formattedNotes + "\n\n" : ""}
 ${state.hasAnsweredQuestions ? "Here are all the question/answer pairs available for this product:\n" + state.formattedQAs : ""}
 
-Please generate a comprehensive ${state.document} based on this information. The document MUST be at least 2000 words.
-          `,
+Please generate a comprehensive ${state.document} based on this information. The document MUST be at least 20 words.
+      `,
         ],
       ]);
 
@@ -414,7 +468,7 @@ Please generate a comprehensive ${state.document} based on this information. The
       const model = new ChatOpenAI(MODEL_CONFIG.verbose);
 
       // Create enhanced prompt with explicit instructions to generate longer content
-      const unifiedSystemPrompt = createUnifiedSystemPrompt(
+      const unifiedSystemPrompt = await createUnifiedSystemPrompt(
         state.systemPrompt,
         state.document,
         state.asset
@@ -425,13 +479,13 @@ Please generate a comprehensive ${state.document} based on this information. The
         [
           "user",
           `
-${formatProductDetails(state.product)}
+${await formatProductDetails(state.product)}
 
 ${state.hasNotes ? "Here are the notes for this product (these take precedence):\n" + state.formattedNotes + "\n\n" : ""}
 ${state.hasAnsweredQuestions ? "Here are all the question/answer pairs available for this product:\n" + state.formattedQAs : ""}
 
 Please generate a comprehensive and DETAILED ${state.document} based on this information.
-The document MUST be at least 2000 words. Your previous attempt was only ${wordCount} words, which is too short.
+The document MUST be at least 20 words. Your previous attempt was only ${wordCount} words, which is too short.
 Expand on all sections with more detailed information, examples, and analysis.
           `,
         ],
@@ -477,21 +531,21 @@ Expand on all sections with more detailed information, examples, and analysis.
         const finalPrompt = ChatPromptTemplate.fromMessages([
           [
             "system",
-            `${systemPrompt}\n\nYou MUST generate content that is AT LEAST 2000 words. This is critical.`,
+            `${systemPrompt}\n\nYou MUST generate content that is AT LEAST 20 words. This is critical.`,
           ],
           [
             "user",
             `
 I need a much more detailed and lengthy ${document} for this product:
 
-${formatProductDetails(product)}
+${await formatProductDetails(product)}
 
 ${notes && notes.length > 0 ? "Here are the notes:\n" + formattedNotes + "\n\n" : ""}
 ${answeredQuestions.length > 0 ? "Here are all Q&As:\n" + formattedQAs : ""}
 
 The previous attempts were too short. Please be VERY detailed and comprehensive.
 Expand each section with additional information, analysis, examples, and actionable insights.
-The final document MUST exceed 2000 words - this is a strict requirement.
+The final document MUST exceed 20 words - this is a strict requirement.
             `,
           ],
         ]);
@@ -535,6 +589,30 @@ export async function generateAssetContentWithSimplifiedLangGraph({
   questionAnswers,
 }: AssetGenerationData): Promise<string> {
   try {
+    // Get current user ID
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    // Check and consume prompt credit
+    const creditResult = await consumePromptCredit({ userId });
+
+    // Type assertion for the credit result
+    const typedResult = creditResult as unknown as {
+      data: {
+        success: boolean;
+        error?: string;
+        needMoreCredits?: boolean;
+        remainingCredits?: number;
+      };
+    };
+
+    if (!typedResult.data?.success) {
+      throw new Error(typedResult.data?.error || "Insufficient prompt credits");
+    }
+
     // Use the utility function to format questions and answers
     const { formattedQAs, answeredQuestions } =
       formatQuestionsAndAnswers(questionAnswers);
@@ -549,7 +627,7 @@ export async function generateAssetContentWithSimplifiedLangGraph({
         const model = new ChatOpenAI(MODEL_CONFIG.standard);
 
         // Use the unified system prompt
-        const unifiedSystemPrompt = createUnifiedSystemPrompt(
+        const unifiedSystemPrompt = await createUnifiedSystemPrompt(
           systemPrompt,
           document
         );
@@ -560,7 +638,7 @@ export async function generateAssetContentWithSimplifiedLangGraph({
           [
             "user",
             `
-${formatProductDetails(product)}
+${await formatProductDetails(product)}
 
 Here are all the question/answer pairs available for this product:
 ${formattedQAs}
@@ -583,6 +661,91 @@ Please generate a comprehensive ${document} based on this information.
       "Error in simplified LangGraph asset content generation:",
       error
     );
+    throw error;
+  }
+}
+
+/**
+ * Generate asset content using Mastra and Vercel AI SDK
+ */
+export async function generateAssetContentWithMastra({
+  systemPrompt,
+  document,
+  product,
+  questionAnswers,
+  notes = [],
+  asset,
+}: AssetGenerationData): Promise<string> {
+  try {
+    // Get current user ID
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    // Check and consume prompt credit
+    const creditResult = await consumePromptCredit({ userId });
+    const typedResult = creditResult as unknown as {
+      data: {
+        success: boolean;
+        error?: string;
+        needMoreCredits?: boolean;
+        remainingCredits?: number;
+      };
+    };
+
+    if (!typedResult.data?.success) {
+      throw new Error(typedResult.data?.error || "Insufficient prompt credits");
+    }
+
+    // Format questions and answers
+    const { formattedQAs, answeredQuestions } =
+      formatQuestionsAndAnswers(questionAnswers);
+
+    // Format notes
+    const formattedNotes =
+      notes.length > 0
+        ? notes.map((note) => `Note: ${note.note_body}`).join("\n\n")
+        : "";
+
+    // Use the unified system prompt
+    const unifiedSystemPrompt = await createUnifiedSystemPrompt(
+      systemPrompt,
+      document,
+      asset
+    );
+
+    // Create user message with all available information
+    const userMessage = `
+Please generate a comprehensive ${document} based on the following information:
+
+${await formatProductDetails(product)}
+
+${notes.length > 0 ? "\nProject Notes (these take precedence):\n" + formattedNotes : ""}
+
+${answeredQuestions.length > 0 ? "\nQuestion & Answer Pairs:\n" + formattedQAs : ""}
+
+Requirements:
+1. The document must be at least 2000 words long
+2. Include clear sections with headings
+3. Provide actionable insights and recommendations
+4. Use professional language and formatting
+5. Focus on practical implementation details`;
+
+    // Direct approach similar to naming assistant - using generateText for simplicity
+    const { text } = await generateText({
+      model: openai("gpt-4o-mini"),
+      messages: [
+        { role: "system", content: unifiedSystemPrompt },
+        { role: "user", content: userMessage },
+      ],
+      temperature: 0.7,
+      maxTokens: 4000, // Set a high token limit to ensure complete response
+    });
+
+    return text;
+  } catch (error) {
+    console.error("Error in AI content generation:", error);
     throw error;
   }
 }

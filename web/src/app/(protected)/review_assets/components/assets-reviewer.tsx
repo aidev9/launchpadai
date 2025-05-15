@@ -1,11 +1,13 @@
 "use client";
 // TODO: Refactor this component - break it down into smaller components
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
+import { useCompletion } from "ai/react";
 import { useAtom } from "jotai";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import InsufficientCreditsAlert from "@/components/prompt-credits/insufficient-credits-alert";
 import {
   AlertCircle,
   CheckCircle,
@@ -17,6 +19,7 @@ import {
   Wand2,
   Download,
   Check,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -42,6 +45,23 @@ import {
 } from "@/utils/constants";
 import { useMutation } from "@tanstack/react-query";
 import { useXpMutation } from "@/xp/useXpMutation";
+import { promptCreditsAtom } from "@/stores/promptCreditStore";
+import { fetchPromptCredits } from "@/lib/firebase/actions/promptCreditActions";
+import dynamic from "next/dynamic";
+import "@uiw/react-md-editor/markdown-editor.css";
+import "@uiw/react-markdown-preview/markdown.css";
+
+// Dynamically import MDEditor
+const MDEditor = dynamic(() => import("@uiw/react-md-editor"), {
+  ssr: false,
+  loading: () => <p>Loading editor...</p>,
+});
+
+// Dynamically import MarkdownPreview
+const MarkdownPreview = dynamic(() => import("@uiw/react-markdown-preview"), {
+  ssr: false,
+  loading: () => <p>Loading preview...</p>,
+});
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -66,7 +86,6 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   const [assetContent, setAssetContent] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "success" | "error"
@@ -75,6 +94,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   const [firestoreAssets, setFirestoreAssets] = useState<
     Record<string, FirestoreAsset>
   >({});
+  const [hasInsufficientCredits, setHasInsufficientCredits] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [noteContent, setNoteContent] = useState("");
   const [notes, setNotes] = useState<Note[]>([]);
@@ -85,9 +105,137 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [, setAllAssets] = useAtom(allAssetsAtom);
+  const [promptCredits, setPromptCredits] = useAtom(promptCreditsAtom);
 
   // Use the common XP mutation hook
   const xpMutation = useXpMutation();
+
+  // --- useCompletion Hook Setup ---
+  const {
+    completion,
+    input,
+    setInput,
+    handleInputChange,
+    handleSubmit,
+    isLoading: isGenerating,
+    error: generationError,
+    stop,
+    complete,
+  } = useCompletion({
+    api: "/api/ai-asset-generation",
+
+    onResponse: (response) => {
+      if (promptCredits && response.status === 200) {
+        setPromptCredits((prev) =>
+          prev
+            ? {
+                ...prev,
+                remainingCredits: prev.remainingCredits - 1,
+                totalUsedCredits: (prev.totalUsedCredits || 0) + 1,
+              }
+            : null
+        );
+      }
+    },
+
+    onFinish: async (prompt, completionText) => {
+      const assetIdToPreserve = selectedAssetId;
+      if (!assetIdToPreserve || !selectedProductId) return;
+
+      setAssetContent(completionText);
+      setIsEditing(true);
+
+      setFirestoreAssets((prev) => ({
+        ...prev,
+        [assetIdToPreserve]: {
+          ...prev[assetIdToPreserve],
+          content: completionText,
+        },
+      }));
+
+      try {
+        const { saveAsset } = await import("@/lib/firebase/assets");
+        await saveAsset(selectedProductId, {
+          id: assetIdToPreserve,
+          content: completionText,
+          updatedAt: getCurrentUnixTimestamp(),
+        });
+      } catch (saveError) {
+        console.error(
+          "Error saving generated content post-completion:",
+          saveError
+        );
+      }
+
+      const actionId = "generate_asset";
+      const pointsAwarded = 5;
+      xpMutation.mutate(actionId);
+
+      try {
+        const result = await fetchPromptCredits();
+        if (result.success && result.credits) {
+          setPromptCredits(result.credits);
+        }
+      } catch (error) {
+        console.error(
+          "Failed to update credit balance post-completion:",
+          error
+        );
+      }
+
+      onShowToast({
+        title: "Content Generated",
+        description: `Content generated successfully. You earned ${pointsAwarded} XP!`,
+        duration: TOAST_DEFAULT_DURATION,
+      });
+
+      setSelectedAssetId(assetIdToPreserve);
+    },
+
+    onError: (error) => {
+      // Check if the error is related to insufficient credits
+      const errorStr =
+        typeof error === "object" && error !== null
+          ? JSON.stringify(error)
+          : String(error);
+      const errorObj =
+        error.message &&
+        typeof error.message === "string" &&
+        error.message.startsWith("{")
+          ? JSON.parse(error.message)
+          : null;
+      const isInsufficientCreditsError =
+        errorStr.toLowerCase().includes("insufficient prompt credits") ||
+        errorObj?.error === "Insufficient prompt credits" ||
+        errorObj?.needMoreCredits === true;
+
+      if (isInsufficientCreditsError) {
+        // Set state to show the alert instead of toast
+        setHasInsufficientCredits(true);
+      } else {
+        // Only log non-credit related errors to console
+        console.error("Error generating content via useCompletion:", error);
+        // For other errors, show toast as before
+        onShowToast({
+          title: "Generation Error",
+          description:
+            error.message || "An unknown error occurred during generation.",
+          variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      }
+
+      fetchPromptCredits()
+        .then((result) => {
+          if (result.success && result.credits)
+            setPromptCredits(result.credits);
+        })
+        .catch((err) =>
+          console.error("Failed to refetch credits after error:", err)
+        );
+    },
+  });
+  // --- End useCompletion Hook Setup ---
 
   // Filter assets based on selected phases
   useEffect(() => {
@@ -106,7 +254,6 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
 
     setDisplayedAssets(filteredAssets);
 
-    // Only clear selection if the currently selected asset is not in the filtered assets
     if (selectedAssetId) {
       const assetStillVisible = filteredAssets.some(
         (asset) => asset.id === selectedAssetId
@@ -330,58 +477,19 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     if (!selectedAssetId || !selectedProductId) return;
 
-    const assetIdToPreserve = selectedAssetId;
-    setIsGenerating(true);
-    try {
-      const { generateAsset } = await import("../actions/generate-asset");
-      const response = await generateAsset({
+    // Reset the insufficient credits state before attempting to generate
+    setHasInsufficientCredits(false);
+
+    await complete("", {
+      body: {
         productId: selectedProductId,
-        assetId: assetIdToPreserve,
-      });
-
-      if (response.success && response.content) {
-        setAssetContent(response.content);
-        setIsEditing(true);
-
-        setFirestoreAssets((prev) => ({
-          ...prev,
-          [assetIdToPreserve]: {
-            ...prev[assetIdToPreserve],
-            content: response.content,
-          },
-        }));
-
-        const actionId = "generate_asset";
-        const pointsAwarded = 5;
-
-        // Fire XP award in background without waiting
-        xpMutation.mutate(actionId);
-
-        // Show success toast immediately
-        onShowToast({
-          title: "Content Generated",
-          description: `Content generated successfully. You earned ${pointsAwarded} XP!`,
-          duration: TOAST_DEFAULT_DURATION,
-        });
-      } else {
-        throw new Error(response.error || "Failed to generate content");
-      }
-    } catch (error) {
-      console.error("Error generating content:", error);
-      onShowToast({
-        title: "Generation Error",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-        duration: TOAST_DEFAULT_DURATION,
-      });
-    } finally {
-      setIsGenerating(false);
-      setSelectedAssetId(assetIdToPreserve);
-    }
-  };
+        assetId: selectedAssetId,
+      },
+    });
+  }, [complete, selectedAssetId, selectedProductId]);
 
   const handleDownload = async () => {
     if (!selectedAssetId || !selectedProductId) return;
@@ -415,10 +523,8 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         const actionId = "download_asset";
         const pointsAwarded = 5;
 
-        // Fire XP award in background without waiting
         xpMutation.mutate(actionId);
 
-        // Show success toast immediately
         onShowToast({
           title: "Download Successful",
           description: `\"${fileName}\" downloaded successfully. You earned ${pointsAwarded} XP!`,
@@ -437,11 +543,6 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
       });
     }
   };
-
-  // Check if an asset exists in our Firestore cache
-  // const assetExistsInFirestore = (assetId: string) => {
-  //   return !!firestoreAssets[assetId];
-  // };
 
   const handleSaveNote = async () => {
     if (!selectedProductId || !noteContent.trim()) {
@@ -481,10 +582,8 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         const actionId = "create_note";
         const pointsAwarded = 5;
 
-        // Fire XP award in background without waiting
         xpMutation.mutate(actionId);
 
-        // Show success toast immediately
         onShowToast({
           title: "Note Added",
           description: `Note added successfully. You earned ${pointsAwarded} XP!`,
@@ -609,12 +708,10 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
     }
   };
 
-  // Helper function to check if asset has content
   const hasContent = (asset: FirestoreAsset) => {
     return asset.content && asset.content.trim().length > 0;
   };
 
-  // Update all assets when firestoreAssets changes
   useEffect(() => {
     if (Object.keys(firestoreAssets).length) {
       const assets = Object.values(firestoreAssets);
@@ -624,14 +721,18 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
 
   return (
     <div className="border rounded-lg bg-card text-card-foreground shadow-sm">
+      {/* Display insufficient credits alert at the top of the card component */}
+      {hasInsufficientCredits && (
+        <div className="p-4">
+          <InsufficientCreditsAlert />
+        </div>
+      )}
       <div className="flex flex-col lg:flex-row lg:min-h-[500px]">
-        {/* Left sidebar with assets list */}
         <div className="w-full lg:w-1/4 border-r">
           <ScrollArea className="h-[500px]">
             <div className="p-4">
               <h3 className="text-xl font-bold mb-4">Assets</h3>
 
-              {/* Search/filter input */}
               <div className="relative mb-4">
                 <input
                   type="text"
@@ -640,7 +741,6 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
                   onChange={(e) => {
                     const searchTerm = e.target.value.toLowerCase();
                     if (searchTerm.trim() === "") {
-                      // Reset to filtered by phase if search is empty
                       const assets = Object.values(firestoreAssets);
                       if (selectedPhases.includes("All")) {
                         setDisplayedAssets(assets);
@@ -652,7 +752,6 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
                         );
                       }
                     } else {
-                      // Filter by both phase and search term
                       const assets = Object.values(firestoreAssets);
                       let filteredByPhase;
 
@@ -664,7 +763,6 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
                         );
                       }
 
-                      // Further filter by search term
                       setDisplayedAssets(
                         filteredByPhase.filter((asset) =>
                           asset.title.toLowerCase().includes(searchTerm)
@@ -688,7 +786,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
                     ))}
                 </div>
               ) : (
-                <ul className="space-y-2">
+                <ul className="space-y-2" data-testid="asset-list-container">
                   {displayedAssets
                     .sort((a, b) => a.order - b.order)
                     .map((asset) => {
@@ -740,7 +838,6 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
           </ScrollArea>
         </div>
 
-        {/* Right content area with selected asset */}
         <div className="flex-1 lg:flex-[3]">
           {selectedAssetId ? (
             <div className="p-4 h-full flex flex-col">
@@ -809,6 +906,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
                         size="sm"
                         variant="outline"
                         className="flex items-center gap-1"
+                        disabled={isGenerating}
                       >
                         Edit <FileEdit className="h-4 w-4" />
                       </Button>
@@ -817,24 +915,52 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
                         size="sm"
                         variant="outline"
                         className="flex items-center gap-1 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                        disabled={isGenerating}
                       >
                         Delete <Trash2 className="h-4 w-4" />
                       </Button>
                       <Button
                         onClick={handleGenerate}
-                        disabled={isGenerating}
+                        disabled={
+                          isGenerating ||
+                          isSaving ||
+                          isEditing ||
+                          hasInsufficientCredits
+                        }
                         size="sm"
                         variant="outline"
                         className="flex items-center gap-1"
+                        data-testid="generate-button"
                       >
-                        {isGenerating ? "Generating..." : "Generate"}{" "}
-                        <Wand2 className="h-4 w-4" />
+                        {isGenerating ? (
+                          <>
+                            <div className="animate-spin mr-1 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            Generate <Wand2 className="h-4 w-4 ml-1" />
+                          </>
+                        )}
                       </Button>
+                      {isGenerating && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={stop}
+                          className="h-auto w-auto p-1 text-muted-foreground hover:text-destructive"
+                          title="Stop generation"
+                        >
+                          <X className="h-4 w-4" />
+                          <span className="sr-only">Stop Generation</span>
+                        </Button>
+                      )}
                       <Button
                         onClick={handleDownload}
                         size="sm"
                         variant="outline"
                         className="flex items-center gap-1"
+                        disabled={isGenerating}
                       >
                         Download <Download className="h-4 w-4" />
                       </Button>
@@ -842,22 +968,63 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
                   )}
                 </div>
               </div>
-              <div className="p-4">
-                {isLoading ? (
-                  <div className="flex justify-center items-center h-[calc(100vh-280px)]">
+              <div className="flex-grow overflow-hidden">
+                {isGenerating && !completion && (
+                  <div className="flex justify-center items-center h-full">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
-                ) : isEditing ? (
-                  <Textarea
-                    value={assetContent}
-                    onChange={(e) => setAssetContent(e.target.value)}
-                    className="font-mono text-sm min-h-[calc(100vh-280px)]"
-                  />
-                ) : (
-                  <div className="prose max-w-none dark:prose-invert overflow-auto h-[calc(100vh-280px)] p-2">
-                    <pre className="whitespace-pre-wrap font-mono text-sm">
-                      {assetContent}
-                    </pre>
+                )}
+
+                {isGenerating && completion && (
+                  <div className="relative overflow-auto h-full">
+                    <div className="p-2 sticky top-0 bg-blue-50 text-blue-800 flex items-center gap-2 border-b z-10">
+                      <div className="animate-pulse flex gap-1">
+                        <div className="w-1 h-1 rounded-full bg-blue-600"></div>
+                        <div className="w-1 h-1 rounded-full bg-blue-600 animate-bounce delay-100"></div>
+                        <div className="w-1 h-1 rounded-full bg-blue-600 animate-bounce delay-200"></div>
+                      </div>
+                      <span className="text-sm font-medium">
+                        AI is generating content...
+                      </span>
+                    </div>
+                    <div className="overflow-auto h-[calc(100%-2.5rem)] p-2 border-t border-blue-200">
+                      <MarkdownPreview
+                        source={completion}
+                        style={{ whiteSpace: "pre-wrap", height: "100%" }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {isEditing && !isGenerating && (
+                  <div className="h-[calc(100%-0rem)] overflow-auto border rounded-md">
+                    {" "}
+                    <MDEditor
+                      value={assetContent}
+                      onChange={(value?: string) =>
+                        setAssetContent(value || "")
+                      }
+                      height="400px"
+                      preview="edit"
+                      visibleDragbar={false}
+                    />
+                  </div>
+                )}
+
+                {!isEditing && !isGenerating && (
+                  <div
+                    className="overflow-auto h-[380px] p-2 border rounded-md" // Fixed height container
+                    data-testid="content-display"
+                  >
+                    <MDEditor
+                      value={assetContent}
+                      onChange={(value?: string) =>
+                        setAssetContent(value || "")
+                      }
+                      height="400px"
+                      preview="preview"
+                      visibleDragbar={false}
+                    />
                   </div>
                 )}
               </div>
@@ -876,7 +1043,6 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         </div>
       </div>
 
-      {/* Add Note Dialog */}
       <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -908,7 +1074,6 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -943,12 +1108,10 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   );
 }
 
-// Define props for the wrapper component
 interface AssetsReviewerProps {
   onShowToast: (options: ShowToastOptions) => void;
 }
 
-// Export the component with error boundary
 export default function AssetsReviewer({ onShowToast }: AssetsReviewerProps) {
   return <AssetsReviewerContent onShowToast={onShowToast} />;
 }

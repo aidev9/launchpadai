@@ -93,7 +93,7 @@ export default function SignUpPlan() {
             Join LaunchpadAI
           </h1>
           <p className="text-sm text-muted-foreground">
-            You selected the{" "}
+            You have selected the{" "}
             <span className="font-bold">
               {selectedPlan.planType} plan ({selectedPlan.billingCycle} billing)
             </span>

@@ -14,11 +14,11 @@ import {
   updatePromptAtom,
 } from "@/lib/store/prompt-store";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import Playground from "./playground";
 import { PromptForm } from "../components/prompt-form";
 import { useState } from "react";
 import { Prompt, PromptInput } from "@/lib/firebase/schema";
 import { deletePromptAction, updatePromptAction } from "../actions";
+import Playground from "@/components/ui/playground";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -306,7 +306,7 @@ export default function UserPromptDetail() {
         </div> */}
 
         {/* Start Playground */}
-        <Playground prompt={prompt} />
+        <Playground prompt={prompt} title="Prompt Editor" />
         {/* End Playground */}
 
         {/* Prompt edit modal */}

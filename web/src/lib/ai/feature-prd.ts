@@ -6,6 +6,7 @@ import { getProduct } from "@/lib/firebase/products";
 import { adminDb } from "@/lib/firebase/admin";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { getProjectNotes } from "@/lib/firebase/notes";
+import { consumePromptCredit } from "@/lib/firebase/prompt-credits";
 import {
   Feature,
   Product,
@@ -189,6 +190,37 @@ export async function enhancePrd(formData: FormData) {
       currentPrd,
       instructions,
     });
+
+    // Get user ID for prompt credits
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    // Check and consume prompt credit
+    const creditResult = await consumePromptCredit({ userId });
+
+    // Type assertion for the credit result
+    const typedResult = creditResult as unknown as {
+      data: {
+        success: boolean;
+        error?: string;
+        needMoreCredits?: boolean;
+        remainingCredits?: number;
+      };
+    };
+
+    if (!typedResult.data?.success) {
+      return {
+        success: false,
+        error: typedResult.data?.error || "Insufficient prompt credits",
+        needMoreCredits: typedResult.data?.needMoreCredits,
+      };
+    }
 
     // Fetch additional product context
     const productResult = await getProduct(productId);

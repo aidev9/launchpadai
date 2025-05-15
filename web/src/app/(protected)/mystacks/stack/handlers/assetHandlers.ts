@@ -12,6 +12,13 @@ import {
 /**
  * Enhanced asset handlers using React Query for asset generation
  */
+interface GenerateAssetResult {
+  success?: boolean;
+  error?: string;
+  needMoreCredits?: boolean;
+  body?: string;
+}
+
 export function useAssetHandlersWithQuery(
   selectedTechStack: TechStack | null,
   assets: TechStackAsset[],
@@ -27,7 +34,7 @@ export function useAssetHandlersWithQuery(
     assetType: string;
     techStackDetails: any;
     userInstructions?: string;
-  }) => void,
+  }) => Promise<GenerateAssetResult>,
   refetchAssets: () => void
 ) {
   const { toast } = useToast();
@@ -171,25 +178,47 @@ export function useAssetHandlersWithQuery(
       });
 
       // Use the React Query mutation to generate content
-      generateAsset({
+      const result = await generateAsset({
         assetId: asset.id,
         assetType: asset.assetType,
         techStackDetails: selectedTechStack,
         userInstructions,
       });
 
+      // Check if it's an insufficient credits error from the result
+      if (result?.needMoreCredits) {
+        throw { needMoreCredits: true, message: "Insufficient prompt credits" };
+      }
+
       console.log(
         `[assetHandlers] Content generation initiated for ${asset.id}`
       );
     } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-        variant: "destructive",
-      });
+      // Don't show error toast for insufficient credits as we'll show the alert instead
+      const isInsufficientCredits =
+        (typeof error === "object" &&
+          error !== null &&
+          "needMoreCredits" in error) ||
+        (typeof error === "object" &&
+          error !== null &&
+          "message" in error &&
+          String(error.message)
+            .toLowerCase()
+            .includes("insufficient prompt credits"));
+
+      if (!isInsufficientCredits) {
+        toast({
+          title: "Error",
+          description:
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred",
+          variant: "destructive",
+        });
+      }
+
+      // Rethrow the error so the component can handle it
+      throw error;
     }
   };
 

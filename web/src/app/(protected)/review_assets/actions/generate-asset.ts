@@ -33,8 +33,8 @@ const generateAIContent = async (params: {
   };
 }) => {
   // Import the AI module only on the server
-  const { generateAssetContentWithLangGraph } = await import("@/lib/ai");
-  return generateAssetContentWithLangGraph(params);
+  const { generateAssetContentWithMastra } = await import("@/lib/ai");
+  return generateAssetContentWithMastra(params);
 };
 
 async function handleAssetGeneration(data: {
@@ -94,7 +94,7 @@ async function handleAssetGeneration(data: {
         }))
       : [];
 
-    // Generate the content using our AI module with LangGraph
+    // Generate the content using our AI module with Mastra
     const generatedContent: string = await generateAIContent({
       systemPrompt: asset.systemPrompt ?? "",
       document: asset.title, // Use title instead of document

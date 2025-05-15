@@ -2,6 +2,9 @@ import { NextRequest } from "next/server";
 import { Message } from "ai";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
+import { consumePromptCredit } from "@/lib/firebase/prompt-credits";
+import { SafeActionResult } from "next-safe-action";
 
 // IMPORTANT! Set the runtime to edge
 // export const runtime = "edge";
@@ -47,6 +50,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Get current user ID
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({
+          error: "User not authenticated",
+        }),
+        { status: 401 }
+      );
+    }
+
+    // Check and consume prompt credit
+    const creditResult = await consumePromptCredit({ userId });
+
+    // Type assertion for the credit result
+    const typedResult = creditResult as unknown as {
+      data: {
+        success: boolean;
+        error?: string;
+        needMoreCredits?: boolean;
+        remainingCredits?: number;
+      };
+    };
+
+    if (!typedResult.data?.success) {
+      // User doesn't have enough credits
+      return new Response(
+        JSON.stringify({
+          error: typedResult.data?.error || "Insufficient prompt credits",
+          needMoreCredits: typedResult.data?.needMoreCredits || false,
+        }),
+        { status: 402 } // 402 Payment Required
+      );
+    }
+
     // Add the system message to the conversation
     const allMessages: Message[] = [
       { id: "system", role: "system", content: systemPrompt },
@@ -61,7 +100,13 @@ export async function POST(req: NextRequest) {
     });
 
     // Return the result as a stream
-    return result.toDataStreamResponse();
+    return result.toDataStreamResponse({
+      headers: {
+        // Add a custom header that will be accessible to the client
+        // This will help trigger a refresh of prompt credits
+        "X-Credits-Updated": "true",
+      },
+    });
   } catch (error) {
     console.error("Error processing request:", error);
     return new Response(

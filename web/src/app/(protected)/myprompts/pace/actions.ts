@@ -5,6 +5,8 @@ import { openai } from "@ai-sdk/openai";
 import { createStreamableValue } from "ai/rsc";
 import { Message } from "ai";
 import { AIModelSettings } from "@/lib/firebase/schema";
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
+import { consumePromptCredit } from "@/lib/firebase/prompt-credits";
 
 // Default settings for AI model
 const defaultSettings: AIModelSettings = {
@@ -148,6 +150,32 @@ export async function generateProblemSuggestions(problemText: string) {
   // Start streaming in the background
   (async () => {
     try {
+      // Get current user ID
+      const userId = await getCurrentUserId();
+
+      if (!userId) {
+        stream.error("User not authenticated");
+        return;
+      }
+
+      // Check and consume prompt credit
+      const creditResult = await consumePromptCredit({ userId });
+
+      // Type assertion for the credit result
+      const typedResult = creditResult as unknown as {
+        data: {
+          success: boolean;
+          error?: string;
+          needMoreCredits?: boolean;
+          remainingCredits?: number;
+        };
+      };
+
+      if (!typedResult.data?.success) {
+        stream.error(typedResult.data?.error || "Insufficient prompt credits");
+        return;
+      }
+
       const messages: Omit<Message, "id">[] = [
         { role: "system", content: PROBLEM_ENHANCEMENT_SYSTEM_PROMPT },
         { role: "user", content: problemText },
@@ -240,6 +268,32 @@ export async function generateAskSuggestions(askText: string) {
   // Start streaming in the background
   (async () => {
     try {
+      // Get current user ID
+      const userId = await getCurrentUserId();
+
+      if (!userId) {
+        stream.error("User not authenticated");
+        return;
+      }
+
+      // Check and consume prompt credit
+      const creditResult = await consumePromptCredit({ userId });
+
+      // Type assertion for the credit result
+      const typedResult = creditResult as unknown as {
+        data: {
+          success: boolean;
+          error?: string;
+          needMoreCredits?: boolean;
+          remainingCredits?: number;
+        };
+      };
+
+      if (!typedResult.data?.success) {
+        stream.error(typedResult.data?.error || "Insufficient prompt credits");
+        return;
+      }
+
       const messages: Omit<Message, "id">[] = [
         { role: "system", content: ASK_ENHANCEMENT_SYSTEM_PROMPT },
         { role: "user", content: askText },
@@ -370,6 +424,30 @@ export async function calculatePrecisionScore(
   promptText: string
 ): Promise<number> {
   try {
+    // Get current user ID
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    // Check and consume prompt credit
+    const creditResult = await consumePromptCredit({ userId });
+
+    // Type assertion for the credit result
+    const typedResult = creditResult as unknown as {
+      data: {
+        success: boolean;
+        error?: string;
+        needMoreCredits?: boolean;
+        remainingCredits?: number;
+      };
+    };
+
+    if (!typedResult.data?.success) {
+      throw new Error(typedResult.data?.error || "Insufficient prompt credits");
+    }
+
     const messages: Omit<Message, "id">[] = [
       { role: "system", content: PRECISION_SCORE_SYSTEM_PROMPT },
       { role: "user", content: promptText },
@@ -397,8 +475,8 @@ export async function calculatePrecisionScore(
     return isNaN(score) ? 35 : Math.max(0, Math.min(70, score));
   } catch (error) {
     console.error("Error calculating precision score:", error);
-    // Return a default score if there's an error (lowered from 50 to 35)
-    return 35;
+    // Return a default score if there's an error
+    return 35; // Default to an average score on error
   }
 }
 

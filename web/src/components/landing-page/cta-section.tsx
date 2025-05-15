@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowRightIcon } from "@radix-ui/react-icons";
 import AnimatedElement from "@/components/ui/animated-element";
 import { useState } from "react";
+import { smoothScrollToSection } from "@/utils/scroll-utils";
 
 export function CTASection() {
   const [isHovered, setIsHovered] = useState(false);
@@ -69,15 +70,7 @@ export function CTASection() {
               <Button
                 size="lg"
                 className="text-lg px-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary group relative overflow-hidden"
-                onClick={() => {
-                  const pricingSection = document.getElementById("pricing");
-                  if (pricingSection) {
-                    pricingSection.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
-                  }
-                }}
+                onClick={() => smoothScrollToSection("pricing")}
               >
                 <span className="relative z-10 flex items-center">
                   Start Building Today

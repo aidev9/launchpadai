@@ -291,9 +291,7 @@ export async function getAllProducts() {
   try {
     const userId = await getCurrentUserId();
     const productsRef = getUserProductsRef(userId);
-
     const snapshot = await productsRef.orderBy("updatedAt", "desc").get();
-
     const products = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),

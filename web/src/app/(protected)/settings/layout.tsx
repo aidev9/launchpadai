@@ -3,6 +3,7 @@ import { SidebarNav } from "./components/sidebar-nav";
 import {
   BellIcon,
   CreditCardIcon,
+  CoinsIcon,
   MonitorIcon,
   PaletteIcon,
   UserIcon,
@@ -26,6 +27,11 @@ const sidebarNavItems = [
     title: "Subscription",
     href: "/settings/subscription",
     icon: <CreditCardIcon className="h-4 w-4" />,
+  },
+  {
+    title: "Prompt Credits",
+    href: "/settings/prompt-credits",
+    icon: <CoinsIcon className="h-4 w-4" />,
   },
   // Empty placeholder for future settings
   {

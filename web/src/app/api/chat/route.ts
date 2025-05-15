@@ -1,15 +1,54 @@
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
+import { consumePromptCredit } from "@/lib/firebase/prompt-credits";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  try {
+    const { messages } = await req.json();
 
-  const result = streamText({
-    model: openai("gpt-4o-mini"),
-    system: `You are the LaunchpadAI Assistant, dedicated to helping entrepreneurs and business owners accelerate their startup journey using the LaunchpadAI platform.
+    // Get current user ID
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({
+          error: "User not authenticated",
+        }),
+        { status: 401 }
+      );
+    }
+
+    // Check and consume prompt credit
+    const creditResult = await consumePromptCredit({ userId });
+
+    // Type assertion for the credit result
+    const typedResult = creditResult as unknown as {
+      data: {
+        success: boolean;
+        error?: string;
+        needMoreCredits?: boolean;
+        remainingCredits?: number;
+      };
+    };
+
+    if (!typedResult.data?.success) {
+      // User doesn't have enough credits
+      return new Response(
+        JSON.stringify({
+          error: typedResult.data?.error || "Insufficient prompt credits",
+          needMoreCredits: typedResult.data?.needMoreCredits || false,
+        }),
+        { status: 402 } // 402 Payment Required
+      );
+    }
+
+    const result = streamText({
+      model: openai("gpt-4o-mini"),
+      system: `You are the LaunchpadAI Assistant, dedicated to helping entrepreneurs and business owners accelerate their startup journey using the LaunchpadAI platform.
 
 Your primary goal is to understand users' needs and guide them to the most relevant LaunchpadAI services.
 
@@ -53,8 +92,15 @@ Important guidelines:
 - If they ask about limitations, be honest but frame in terms of current capabilities
 
 Your ultimate aim is to help users understand how LaunchpadAI can save them time, money, and effort in launching their business, while maintaining a helpful rather than pushy approach.`,
-    messages,
-  });
+      messages,
+    });
 
-  return result.toDataStreamResponse();
+    return result.toDataStreamResponse();
+  } catch (error) {
+    console.error("Error processing chat:", error);
+    return new Response(
+      JSON.stringify({ error: "Error processing your request" }),
+      { status: 500 }
+    );
+  }
 }

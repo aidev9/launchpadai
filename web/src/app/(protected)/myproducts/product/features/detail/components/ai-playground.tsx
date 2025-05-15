@@ -10,17 +10,18 @@ import { Label } from "@/components/ui/label";
 import { Wand2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generatePrd, enhancePrd } from "@/lib/ai/feature-prd";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAtom as useJotaiAtom } from "jotai";
+import { promptCreditsAtom } from "@/stores/promptCreditStore";
+import { fetchPromptCredits } from "@/lib/firebase/actions/promptCreditActions";
 
 export function AiPlayground() {
   const [feature, setFeature] = useAtom(selectedFeatureAtom);
   const [currentPrd, setCurrentPrd] = useState("");
   const [enhancedPrd, setEnhancedPrd] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [promptCredits, setPromptCredits] = useJotaiAtom(promptCreditsAtom);
   const { toast } = useToast();
 
   // Generate initial PRD when component mounts
@@ -37,7 +38,16 @@ export function AiPlayground() {
         if (feature.prdContent) {
           setCurrentPrd(feature.prdContent);
         } else {
+          // Optimistically update credit count for initial generation
+          if (promptCredits) {
+            setPromptCredits({
+              ...promptCredits,
+              remainingCredits: Math.max(0, promptCredits.remainingCredits - 1),
+            });
+          }
+
           const result = await generatePrd(feature);
+
           if (result.success && result.prdContent) {
             setCurrentPrd(result.prdContent);
           } else {
@@ -46,6 +56,12 @@ export function AiPlayground() {
               description: result.error || "Failed to generate PRD",
               variant: "destructive",
             });
+          }
+
+          // Fetch updated credit count
+          const creditsResponse = await fetchPromptCredits();
+          if (creditsResponse.success && creditsResponse.credits) {
+            setPromptCredits(creditsResponse.credits);
           }
         }
       } catch (error) {
@@ -63,13 +79,22 @@ export function AiPlayground() {
     };
 
     generateInitialPrd();
-  }, [feature, toast]);
+  }, [feature, toast, promptCredits, setPromptCredits]);
 
   // Handle enhancing the PRD
   const handleEnhancePrd = async () => {
     if (!feature || !currentPrd) return;
 
     setIsEnhancing(true);
+
+    // Optimistically update credit count
+    if (promptCredits) {
+      setPromptCredits({
+        ...promptCredits,
+        remainingCredits: Math.max(0, promptCredits.remainingCredits - 1),
+      });
+    }
+
     try {
       // Create form data for the server action
       const formData = new FormData();
@@ -87,12 +112,24 @@ export function AiPlayground() {
           title: "Success",
           description: "PRD enhanced successfully",
         });
+      } else if (result.needMoreCredits) {
+        toast({
+          title: "Out of Credits",
+          description: "You need more prompt credits to enhance the PRD.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Error",
           description: result.error || "Failed to enhance PRD",
           variant: "destructive",
         });
+      }
+
+      // Fetch updated credit count
+      const creditsResponse = await fetchPromptCredits();
+      if (creditsResponse.success && creditsResponse.credits) {
+        setPromptCredits(creditsResponse.credits);
       }
     } catch (error) {
       toast({

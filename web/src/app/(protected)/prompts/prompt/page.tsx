@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Main } from "@/components/layout/main";
-import { ChevronLeft, Copy, FileText, Play } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getPhaseColor } from "@/components/prompts/phase-filter";
@@ -13,7 +13,7 @@ import { useAtom } from "jotai";
 import { selectedPromptAtom } from "@/lib/store/prompt-store";
 import { useState } from "react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import Playground from "./playground";
+import Playground from "@/components/ui/playground";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { usePrompts } from "@/hooks/usePrompts";
 import { Prompt } from "@/lib/firebase/schema";
@@ -101,7 +101,7 @@ export default function PromptDetail() {
 
   return (
     <Main>
-      <div className="space-y-6">
+      <div className="space-y-6" data-testid="template-detail">
         <Breadcrumbs
           items={[
             { label: "Home", href: "/dashboard" },
@@ -144,7 +144,7 @@ export default function PromptDetail() {
         </div>
 
         {/* Start Playground */}
-        <Playground prompt={prompt} />
+        <Playground prompt={prompt} title="Prompt Playground" />
         {/* End Playground */}
       </div>
     </Main>

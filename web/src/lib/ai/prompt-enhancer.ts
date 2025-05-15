@@ -4,6 +4,8 @@ import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { ChatOpenAI } from "@langchain/openai";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { PROMPT_ENHANCEMENT_SYSTEM_PROMPT } from "@/utils/constants";
+import { consumePromptCredit } from "@/lib/firebase/prompt-credits";
+import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 
 // OpenAI model configuration
 const MODEL_CONFIG = {
@@ -22,6 +24,30 @@ export async function enhancePromptWithLangChain(
   promptText: string
 ): Promise<string> {
   try {
+    // Get current user ID
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    // Check and consume prompt credit
+    const creditResult = await consumePromptCredit({ userId });
+
+    // Type assertion for the credit result
+    const typedResult = creditResult as unknown as {
+      data: {
+        success: boolean;
+        error?: string;
+        needMoreCredits?: boolean;
+        remainingCredits?: number;
+      };
+    };
+
+    if (!typedResult.data?.success) {
+      throw new Error(typedResult.data?.error || "Insufficient prompt credits");
+    }
+
     // Create the model using the standard config
     const model = new ChatOpenAI(MODEL_CONFIG.standard);
 

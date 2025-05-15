@@ -45,7 +45,7 @@ export interface Subscription {
   planType: string;
   billingCycle: "monthly" | "annual";
   price: number;
-  active: boolean;
+  status: "active" | "inactive";
   stripeCustomerId: string;
   stripeSubscriptionId: string;
   createdAt: number;
@@ -363,6 +363,12 @@ export const techStackAssetInputSchema = z.object({
     "Custom",
   ]),
   techStackId: z.string(),
+  createdAt: z.number().optional(),
+  updatedAt: z.number().optional(),
+  isGenerating: z.boolean().default(false).optional(),
+  recentlyCompleted: z.boolean().default(false).optional(),
+  completedAt: z.number().optional(),
+  needsGeneration: z.boolean().default(false).optional(),
 });
 
 export type TechStackAssetInput = z.infer<typeof techStackAssetInputSchema>;
@@ -487,3 +493,90 @@ export const featureInputSchema = z.object({
 
 export type FeatureInput = z.infer<typeof featureInputSchema>;
 // END: FEATURES
+
+// START: PROMPT CREDITS
+export interface PromptCredit {
+  id?: string;
+  userId: string;
+  dailyCredits: number; // Daily free credits (for Free plan)
+  monthlyCredits: number; // Monthly allocated credits (for paid plans)
+  remainingCredits: number; // Current balance
+  createdAt?: number;
+  updatedAt?: number;
+  lastRefillDate?: number; // Date of last refill
+  totalUsedCredits?: number; // Total credits used over time
+}
+
+export interface PromptCreditPack {
+  id: string;
+  name: string;
+  description: string;
+  credits: number;
+  price: number;
+  priceId: string;
+}
+
+export const promptCreditSchema = z.object({
+  userId: z.string(),
+  dailyCredits: z.number().default(0),
+  monthlyCredits: z.number().default(0),
+  remainingCredits: z.number().default(0),
+  lastRefillDate: z.number().optional(),
+  totalUsedCredits: z.number().default(0),
+});
+
+export type PromptCreditInput = z.infer<typeof promptCreditSchema>;
+
+// Default prompt packs available for purchase
+export const defaultPromptPacks: PromptCreditPack[] = [
+  {
+    id: "pack_300",
+    name: "300 Prompt Pack",
+    description: "300 additional prompts",
+    credits: 300,
+    price: 19,
+    priceId: process.env.STRIPE_PROMPT_PACK_300_ID || "price_prompt_pack_300",
+  },
+  {
+    id: "pack_600",
+    name: "600 Prompt Pack",
+    description: "600 additional prompts",
+    credits: 600,
+    price: 29,
+    priceId: process.env.STRIPE_PROMPT_PACK_600_ID || "price_prompt_pack_600",
+  },
+  {
+    id: "pack_900",
+    name: "900 Prompt Pack",
+    description: "900 additional prompts",
+    credits: 900,
+    price: 39,
+    priceId: process.env.STRIPE_PROMPT_PACK_900_ID || "price_prompt_pack_900",
+  },
+];
+
+// Function to get the prompt credit allocation based on plan
+export function getPromptCreditsByPlan(planType: string): {
+  daily: number;
+  monthly: number;
+} {
+  // Null and undefined check
+  if (!planType) {
+    // console.error("getPromptCreditsByPlan:::planType:::", planType);
+    return { daily: 10, monthly: 0 };
+  }
+
+  switch (planType.toLowerCase()) {
+    case "free":
+      return { daily: 10, monthly: 0 };
+    case "explorer":
+      return { daily: 0, monthly: 300 };
+    case "builder":
+      return { daily: 0, monthly: 600 };
+    case "enterprise":
+      return { daily: 0, monthly: 900 };
+    default:
+      return { daily: 10, monthly: 0 };
+  }
+}
+// END: PROMPT CREDITS

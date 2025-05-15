@@ -3,6 +3,7 @@
 import { adminDb } from "../admin";
 import { awardXpPoints } from "@/xp/server-actions";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { initializePromptCredits } from "@/lib/firebase/prompt-credits";
 
 /**
  * Server action to ensure a user record exists in Firestore
@@ -61,6 +62,16 @@ export async function ensureUserInFirestoreAction(
       console.log(`Awarded XP to user ${userId} for signing up`);
     } catch (xpError) {
       console.error("Error awarding XP points:", xpError);
+    }
+
+    // Initialize prompt credits for the user (default to "free" plan for social sign-ins)
+    try {
+      await initializePromptCredits(userId, "free");
+      console.log(
+        `Initialized prompt credits for user ${userId} with free plan`
+      );
+    } catch (creditsError) {
+      console.error("Error initializing prompt credits:", creditsError);
     }
 
     return {

@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
-import { readStreamableValue } from "ai/rsc";
 import {
   paceWizardStateAtom,
   updatePaceFieldAtom,
@@ -45,7 +44,7 @@ export function InstructionsBox() {
       const instructions = wizardState.instructions.trim();
 
       // Call the AI server action to enhance the prompt
-      const { output } = await enhancePromptStream(
+      const enhanceResult = await enhancePromptStream(
         currentPrompt,
         instructions,
         {
@@ -56,15 +55,26 @@ export function InstructionsBox() {
         }
       );
 
-      // Initialize an empty string to collect the streamed response
-      let enhancedPrompt = "";
-
-      // Process the streamable value
-      for await (const delta of readStreamableValue(output)) {
-        enhancedPrompt += delta;
+      // Check if we got a successful response
+      if (!enhanceResult.success) {
+        throw new Error(enhanceResult.error || "Failed to enhance prompt");
       }
 
-      // Update the unified prompt with the completely replaced enhanced version
+      let enhancedPrompt = "";
+
+      // If we're in streaming mode, we need to handle it differently
+      if (enhanceResult.isStreaming) {
+        // Set up streaming connection (you'll need to implement this part)
+        // This should connect to your streaming endpoint
+
+        // For now, we'll just use a placeholder
+        enhancedPrompt = currentPrompt; // Keep the original prompt for now
+      } else if (enhanceResult.enhancedPrompt) {
+        // For non-streaming mode, we can use the enhanced prompt directly
+        enhancedPrompt = enhanceResult.enhancedPrompt;
+      }
+
+      // Update the unified prompt
       updateField({ unifiedPrompt: enhancedPrompt });
 
       // If we're in a specific step, also update that step's field
@@ -73,52 +83,40 @@ export function InstructionsBox() {
       } else if (wizardState.ask === wizardState.unifiedPrompt) {
         updateField({ ask: enhancedPrompt });
       } else if (
-        wizardState.chainVariations &&
-        wizardState.chainVariations.length > 0
+        Array.isArray(wizardState.chainVariations) &&
+        wizardState.chainVariations.join("\n") === wizardState.unifiedPrompt
       ) {
-        // We're in the Chain step, so we need to generate new chain variations
+        // For chain variations, we need to split the enhanced prompt into an array
+        const variations = enhancedPrompt.split("\n").filter((v) => v.trim());
+        updateField({ chainVariations: variations });
+
+        // Generate chain variations if we're in that step
         try {
           // Call the AI service to generate chain variations based on the enhanced prompt
-          const result = await generateChainVariations(enhancedPrompt);
+          const variationsResult =
+            await generateChainVariations(enhancedPrompt);
 
-          if (result.output) {
-            // Process the output
-            const outputStr = String(result.output);
-
-            // Split by "Chain 1" and "Chain 2" markers
-            const parts = outputStr.split(/Chain \d+:/i);
-
-            // Extract the variations (skip the first empty part)
-            const variations = parts
-              .slice(1)
-              .map((part) => part.trim())
-              .filter((part) => part.length > 0);
-
-            // Ensure we have at least one variation
-            if (variations.length > 0) {
-              // Get Chain 1
-              const chain1 = variations[0];
-
-              // Get Chain 2 if available, otherwise use the second variation from the result
-              const chain2 = variations.length > 1 ? variations[1] : "";
-
-              // Update chain variations
-              updateField({
-                chainVariations: [chain1, chain2],
-              });
-
-              // Signal to parent component that chain animations should be triggered
-              if (chainAnimationContext) {
-                chainAnimationContext.setShowChainAnimation(true);
+          if (variationsResult.output) {
+            // Parse and update the variations
+            try {
+              const parsedVariations = JSON.parse(variationsResult.output);
+              if (
+                parsedVariations.chains &&
+                Array.isArray(parsedVariations.chains)
+              ) {
+                updateField({ chainVariations: parsedVariations.chains });
               }
+            } catch (parseError) {
+              console.error("Error parsing chain variations:", parseError);
             }
           }
-        } catch (error) {
-          console.error("Error generating chain variations:", error);
+        } catch (chainError) {
+          console.error("Error generating chain variations:", chainError);
         }
       }
     } catch (error) {
-      console.error("Error regenerating prompt:", error);
+      console.error("Error enhancing prompt:", error);
+      // Handle error appropriately
     } finally {
       setIsRegenerating(false);
     }

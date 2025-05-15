@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { smoothScrollToSection } from "@/utils/scroll-utils";
 
 export function NavbarSection() {
   const [scrolled, setScrolled] = useState(false);
@@ -47,13 +48,7 @@ export function NavbarSection() {
   // Smooth scroll to section
   const scrollToSection = (sectionId: string) => (e: React.MouseEvent) => {
     e.preventDefault();
-    const element = document.getElementById(sectionId);
-    if (element) {
-      window.scrollTo({
-        top: element.offsetTop - 80,
-        behavior: "smooth",
-      });
-    }
+    smoothScrollToSection(sectionId);
   };
 
   return (
@@ -68,7 +63,14 @@ export function NavbarSection() {
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center">
+        <Link
+          href="/"
+          className="flex items-center"
+          onClick={(e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
           <div className="flex items-center gap-2 justify-start">
             <svg
               className="h-6 w-6 text-primary"
@@ -129,16 +131,18 @@ export function NavbarSection() {
               Sign In
             </Button>
           </Link>
-          <Link href="/auth/signup">
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                size="default"
-                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary"
-              >
-                Sign Up
-              </Button>
-            </motion.div>
-          </Link>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              size="default"
+              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary"
+              onClick={(e) => {
+                e.preventDefault();
+                smoothScrollToSection("pricing");
+              }}
+            >
+              Sign Up
+            </Button>
+          </motion.div>
         </div>
       </div>
     </motion.header>

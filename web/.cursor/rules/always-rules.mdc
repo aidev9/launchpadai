@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+- Never use IDs to route users, instead always set the atom in the parent and load it from the state in the child page. Never make DB fetch in children pages. Example parent page: /admin/courses. Example child page: /admin/courses/course
+- Always use Tanstac Query whenever possible for mutations and queries
+- Never use APIs, instead use React Server Actions
+- Always create Tanstack tables with headers, filters and pagination
+- Use Tanstack Query for fethcing data and mutations
+- Use Jotai for atoms
+- When adding UI elements, always add the data-testid so the elements can be identified in a functional test
+- Avoid prop drilling
+- Use clear separation of concerns
+- Create maintainable code structure
+- Directly use Jotai atoms and React Server Actions, instead of passing props or URL params
+- When running tests, never start the dev server. Always assume it is running on port 3000

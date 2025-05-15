@@ -23,6 +23,9 @@ import {
   generateAskSuggestions,
   testPrompt,
 } from "../../actions";
+import { useToast } from "@/components/ui/use-toast";
+import { promptCreditsAtom } from "@/stores/promptCreditStore";
+import { fetchPromptCredits } from "@/lib/firebase/actions/promptCreditActions";
 
 export function AskStep() {
   const [wizardState, setWizardState] = useAtom(paceWizardStateAtom);
@@ -37,6 +40,8 @@ export function AskStep() {
   const [previousContent, setPreviousContent] = useState<string>("");
   const [canUndo, setCanUndo] = useState(false);
   const editorRef = useRef<AnimatedMDEditorRef>(null);
+  const [promptCredits, setPromptCredits] = useAtom(promptCreditsAtom);
+  const { toast } = useToast();
 
   // Reset animation flag after animation completes
   useEffect(() => {
@@ -114,6 +119,15 @@ export function AskStep() {
 
     setIsLoading(true);
     setIsGenerating(true);
+
+    // Optimistically update credit count
+    if (promptCredits) {
+      setPromptCredits({
+        ...promptCredits,
+        remainingCredits: Math.max(0, promptCredits.remainingCredits - 1),
+      });
+    }
+
     try {
       // Call the AI service to generate suggestions
       const currentPrompt = wizardState.ask.trim();
@@ -145,8 +159,19 @@ export function AskStep() {
           setSuggestions([]);
         }
       }
+
+      // Fetch updated credit count
+      const creditsResponse = await fetchPromptCredits();
+      if (creditsResponse.success && creditsResponse.credits) {
+        setPromptCredits(creditsResponse.credits);
+      }
     } catch (error) {
       console.error("Error generating suggestions:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate suggestions. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
       setIsGenerating(false);
@@ -203,6 +228,14 @@ export function AskStep() {
   const handleApplySuggestion = async (suggestion: AskSuggestion) => {
     setIsEnhancing(true);
 
+    // Optimistically update credit count
+    if (promptCredits) {
+      setPromptCredits({
+        ...promptCredits,
+        remainingCredits: Math.max(0, promptCredits.remainingCredits - 1),
+      });
+    }
+
     // Save the current content for undo
     const currentContent =
       wizardState.unifiedPrompt.trim() || wizardState.ask.trim();
@@ -256,8 +289,19 @@ export function AskStep() {
       } finally {
         setIsScoreLoading(false);
       }
+
+      // Fetch updated credit count
+      const creditsResponse = await fetchPromptCredits();
+      if (creditsResponse.success && creditsResponse.credits) {
+        setPromptCredits(creditsResponse.credits);
+      }
     } catch (error) {
       console.error("Error enhancing prompt:", error);
+      toast({
+        title: "Error",
+        description: "Failed to enhance prompt. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsEnhancing(false);
       setIsGenerating(false);

@@ -10,10 +10,10 @@ import {
   selectedTechStackAtom,
   selectedTechStackIdAtom,
 } from "@/lib/store/techstack-store";
-import { useAssetQueries } from "@/hooks/useAssetQueries";
+import { useTechStackAssets } from "./useTechStackAssets";
 
 /**
- * Enhanced tech stack detail hook using React Query for asset management
+ * Enhanced tech stack detail hook using React Server Actions for asset management
  */
 export function useTechStackDetailWithQuery() {
   const router = useRouter();
@@ -30,7 +30,7 @@ export function useTechStackDetailWithQuery() {
   const [activeTab, setActiveTab] = useState("general");
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Use the new React Query hook for assets
+  // Use the new React Server Actions hook for assets
   const {
     assets,
     isLoading: assetsLoading,
@@ -41,7 +41,7 @@ export function useTechStackDetailWithQuery() {
     getAssetStatus,
     refetch: refetchAssets,
     generatingAssets,
-  } = useAssetQueries(selectedTechStack?.id);
+  } = useTechStackAssets();
 
   // Create a custom state for selected asset that clears the recentlyCompleted flag
   const [selectedAssetState, setSelectedAssetState] =
@@ -76,27 +76,22 @@ export function useTechStackDetailWithQuery() {
   const selectedAsset = selectedAssetState;
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false);
 
-  // Fetch tech stack if not in state
+  // Fetch tech stack if not in state - only when selectedTechStackId changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const fetchTechStack = async () => {
-      if (!selectedTechStack && selectedTechStackId) {
+    // Only fetch if we have an ID but no tech stack
+    if (selectedTechStackId && !selectedTechStack) {
+      const fetchTechStack = async () => {
         setIsLoading(true);
         try {
           const result = await getTechStack(selectedTechStackId);
+
           if (result.success && result.techStack) {
             setSelectedTechStack(result.techStack);
           } else {
-            console.error(
-              `[useTechStackDetail] Failed to fetch tech stack:`,
-              result.error
-            );
             setError(result.error || "Failed to fetch tech stack");
           }
         } catch (error) {
-          console.error(
-            `[useTechStackDetail] Error fetching tech stack:`,
-            error
-          );
           setError(
             error instanceof Error
               ? error.message
@@ -105,11 +100,11 @@ export function useTechStackDetailWithQuery() {
         } finally {
           setIsLoading(false);
         }
-      }
-    };
+      };
 
-    fetchTechStack();
-  }, [selectedTechStack, selectedTechStackId, setSelectedTechStack]);
+      fetchTechStack();
+    }
+  }, [selectedTechStackId]); // Only depend on the ID, not the tech stack itself
 
   // Redirect if no tech stack is selected
   useEffect(() => {
@@ -119,13 +114,24 @@ export function useTechStackDetailWithQuery() {
   }, [selectedTechStack, selectedTechStackId, isLoading, router]);
 
   // Refetch assets when tab changes to assets
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (activeTab === "assets" && selectedTechStack?.id) {
-      refetchAssets();
-    }
-  }, [activeTab, selectedTechStack?.id, refetchAssets]);
+    // Use a ref to track if we've already fetched for this tab change
+    const shouldFetch = activeTab === "assets" && selectedTechStack?.id;
 
-  // Generate content for an asset
+    // Only fetch once when the tab changes to assets
+    if (shouldFetch) {
+      // Add a small delay to avoid immediate refetch
+      const timer = setTimeout(() => {
+        // Call refetchAssets with false to avoid showing loading spinner
+        refetchAssets(false);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]); // Only depend on tab changes, not the tech stack ID
+
+  // Generate content for an asset - only when user explicitly clicks Generate
   const handleGenerateContent = async (
     asset: TechStackAsset,
     instructions?: string
@@ -133,6 +139,8 @@ export function useTechStackDetailWithQuery() {
     if (!selectedTechStack || !asset.id) return;
 
     try {
+      // This is the only place where we should show loading spinner
+      // because it's triggered by an explicit user action
       await generateAsset({
         assetId: asset.id,
         assetType: asset.assetType,
@@ -141,11 +149,36 @@ export function useTechStackDetailWithQuery() {
       });
     } catch (error) {
       console.error(`[useTechStackDetail] Error generating content:`, error);
-      toast({
-        title: "Error",
-        description: "Failed to generate content. Please try again.",
-        variant: "destructive",
-      });
+
+      // Explicitly detect and handle credit errors with improved error checking
+      const errorString = JSON.stringify(error).toLowerCase();
+      const isInsufficientCredits =
+        errorString.includes("insufficient") ||
+        (errorString.includes("credit") && errorString.includes("more")) ||
+        (typeof error === "object" &&
+          error !== null &&
+          (error as any).needMoreCredits === true);
+
+      // Only show toast for non-credit errors, credit errors will show in the alert
+      if (!isInsufficientCredits) {
+        toast({
+          title: "Error",
+          description: "Failed to generate content. Please try again.",
+          variant: "destructive",
+        });
+      }
+
+      // Create a proper error object for insufficient credits
+      if (isInsufficientCredits) {
+        const creditError = {
+          needMoreCredits: true,
+          message: "Insufficient credits to generate content",
+        };
+        throw creditError;
+      } else {
+        // Rethrow the original error
+        throw error;
+      }
     }
   };
 
@@ -170,11 +203,12 @@ export function useTechStackDetailWithQuery() {
     isAssetDialogOpen,
     setIsAssetDialogOpen,
     isGeneratingContent: isGenerating,
-    setIsGeneratingContent: () => {}, // No-op as this is handled by React Query
+    setIsGeneratingContent: () => {}, // No-op as this is handled by React Server Actions
     isDownloading,
     setIsDownloading,
     generatingAssets,
     onGenerateContent: handleGenerateContent,
-    refetchAssets,
+    // Pass the showLoading parameter to fetchAssets
+    refetchAssets: (showLoading = false) => refetchAssets(showLoading),
   };
 }

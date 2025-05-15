@@ -8,6 +8,7 @@ import { awardXpPoints } from "@/xp/server-actions"; // Import the XP award func
 import { Resend } from "resend";
 import SignupNotification from "@/lib/emails/signup-notification";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { initializePromptCredits } from "@/lib/firebase/prompt-credits";
 
 // Initialize Resend with API key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -75,6 +76,7 @@ export const signupAction = actionClient
         // Create a Firestore document for the user
         try {
           console.log("[RSA] Creating user in Firestore", uid);
+          const userSubscription = subscription || "free";
           await adminDb
             .collection("users")
             .doc(uid)
@@ -90,7 +92,7 @@ export const signupAction = actionClient
                 photoURL,
                 // Set default user type and subscription if not provided
                 userType: userType || "user",
-                subscription: subscription || "free",
+                subscription: userSubscription,
                 xp: 0, // Initialize XP field
                 createdAt: getCurrentUnixTimestamp(),
                 updatedAt: getCurrentUnixTimestamp(),
@@ -101,6 +103,12 @@ export const signupAction = actionClient
           // Award XP for signing up
           await awardXpPoints("signup", uid);
           console.log(`Awarded XP to user ${uid} for signing up`);
+
+          // Initialize prompt credits based on subscription plan
+          await initializePromptCredits(uid, userSubscription);
+          console.log(
+            `:::Initialized prompt credits for user ${uid} with plan ${userSubscription}`
+          );
 
           // Send notification email to admin
           try {

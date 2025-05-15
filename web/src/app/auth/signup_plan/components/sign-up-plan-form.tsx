@@ -276,6 +276,7 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
                       autoComplete="name"
                       placeholder="John Doe"
                       {...field}
+                      data-testid="name-input"
                     />
                   </FormControl>
                   <FormMessage />
@@ -295,6 +296,7 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
                         autoComplete="email"
                         placeholder="name@example.com"
                         {...field}
+                        data-testid="email-input"
                         onBlur={async (e) => {
                           field.onBlur(); // Call the original onBlur from react-hook-form
                           console.log("e", e.target.value);
@@ -367,6 +369,7 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
                         autoComplete="new-password"
                         placeholder="********"
                         {...field}
+                        data-testid="password-input"
                       />
                     </FormControl>
                     <FormMessage />
@@ -438,6 +441,7 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
               type="submit"
               className="w-full"
               disabled={!form.formState.isValid || isLoading}
+              data-testid="signup-plan-button"
             >
               {isLoading ? "Processing..." : "Continue to Payment"}
             </Button>

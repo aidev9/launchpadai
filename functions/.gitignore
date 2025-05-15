@@ -1,0 +1,30 @@
+# Node.js dependencies
+node_modules/
+
+# TypeScript compiled output
+lib/
+
+# npm debug logs
+npm-debug.log*
+
+# Firebase config files
+.firebase/
+.runtimeconfig.json
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Log files
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Mac OS files
+.DS_Store 

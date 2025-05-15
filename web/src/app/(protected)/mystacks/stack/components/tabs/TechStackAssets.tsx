@@ -1,26 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { TechStack, TechStackAsset } from "@/lib/firebase/schema";
+import { TechStackAsset } from "@/lib/firebase/schema";
 import { AssetsList } from "../assets-list";
 import { AssetEditor } from "../asset-editor";
+import { useEffect } from "react";
 
 interface TechStackAssetsProps {
   assets: TechStackAsset[];
   selectedAsset: TechStackAsset | null;
   setSelectedAsset: React.Dispatch<React.SetStateAction<TechStackAsset | null>>;
   generatingAssets: Record<string, boolean>;
-  isGeneratingContent: boolean;
   isDownloading: boolean;
-  techStack: TechStack | null;
   handleCreateAsset: () => void;
-  handleEditAsset: (asset: TechStackAsset) => void;
-  handleDeleteAsset: (asset: TechStackAsset) => void;
-  handleGenerateContent: (
-    asset: TechStackAsset,
-    userInstructions?: string
-  ) => Promise<void>;
-  handleCopyAsset: (asset: TechStackAsset) => void;
-  handleDownloadAsset: (asset: TechStackAsset) => void;
   handleDownloadAssets: () => void;
 }
 
@@ -29,17 +20,29 @@ export function TechStackAssets({
   selectedAsset,
   setSelectedAsset,
   generatingAssets,
-  isGeneratingContent,
   isDownloading,
-  techStack,
   handleCreateAsset,
-  handleEditAsset,
-  handleDeleteAsset,
-  handleGenerateContent,
-  handleCopyAsset,
-  handleDownloadAsset,
   handleDownloadAssets,
 }: TechStackAssetsProps) {
+  // Add event listeners for edit and delete events from AssetEditor
+  useEffect(() => {
+    const handleEditAsset = (event: Event) => {
+      const asset = (event as CustomEvent).detail;
+      handleCreateAsset(); // This will open the edit dialog
+    };
+
+    const handleDeleteAsset = (event: Event) => {
+      // The parent component will handle deletion through its own state
+    };
+
+    document.addEventListener("editAsset", handleEditAsset);
+    document.addEventListener("deleteAsset", handleDeleteAsset);
+
+    return () => {
+      document.removeEventListener("editAsset", handleEditAsset);
+      document.removeEventListener("deleteAsset", handleDeleteAsset);
+    };
+  }, [handleCreateAsset]);
   return (
     <>
       <div className="flex justify-between items-center mb-4">
@@ -71,25 +74,11 @@ export function TechStackAssets({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-4">
-          <AssetsList
-            assets={assets}
-            selectedAsset={selectedAsset}
-            onSelectAsset={setSelectedAsset}
-            generatingAssets={generatingAssets}
-          />
+          <AssetsList />
         </div>
 
         <div className="lg:col-span-2">
-          <AssetEditor
-            selectedAsset={selectedAsset}
-            isGeneratingContent={isGeneratingContent}
-            techStack={techStack}
-            onGenerateContent={handleGenerateContent}
-            onCopyAsset={handleCopyAsset}
-            onDownloadAsset={handleDownloadAsset}
-            onEditAsset={handleEditAsset}
-            onDeleteAsset={handleDeleteAsset}
-          />
+          <AssetEditor />
         </div>
       </div>
     </>

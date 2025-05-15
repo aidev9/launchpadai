@@ -459,6 +459,7 @@ export function ProductDashboard() {
             <div
               onClick={navigateToReviewAssets}
               className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+              data-testid="review-assets-button"
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">

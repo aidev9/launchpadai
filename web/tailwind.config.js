@@ -48,10 +48,20 @@ export default {
             height: "0",
           },
         },
+        dash: {
+          "0%": { strokeDashoffset: "60" },
+          "100%": { strokeDashoffset: "0" },
+        },
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        dash: "dash 1.5s ease-in-out forwards",
+        fadeIn: "fadeIn 0.5s ease-in-out forwards",
       },
       colors: {
         background: "hsl(var(--background))",

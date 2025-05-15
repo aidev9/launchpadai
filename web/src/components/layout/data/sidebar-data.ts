@@ -31,11 +31,13 @@ import {
   IconPlaylistAdd,
   IconCreditCard,
   IconStack,
+  IconCoin,
 } from "@tabler/icons-react";
 import {
   AudioWaveform,
   Command,
   GalleryVerticalEnd,
+  LucideCoins,
   LucideCreditCard,
 } from "lucide-react";
 import { type SidebarData } from "../types";
@@ -221,6 +223,11 @@ export const sidebarData: SidebarData = {
               title: "Subscription",
               url: "/settings/subscription",
               icon: IconCreditCard,
+            },
+            {
+              title: "Prompt Credits",
+              url: "/settings/prompt-credits",
+              icon: LucideCoins,
             },
             // {
             //   title: "Appearance",

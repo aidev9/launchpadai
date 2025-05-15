@@ -12,6 +12,7 @@ import SignupNotification from "@/lib/emails/signup-notification";
 import Stripe from "stripe";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
 import { getSubscriptionPlans } from "@/app/(protected)/upgrade/actions";
+import { initializePromptCredits } from "@/lib/firebase/prompt-credits";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-04-30.basil",
@@ -170,6 +171,12 @@ export const createSubscriptionAction = actionClient
 
         // 6. Award XP for signing up
         await awardXpPoints("signup", uid);
+
+        // 7. Initialize prompt credits based on subscription plan
+        await initializePromptCredits(uid, planType.toLowerCase());
+        console.log(
+          `:::Initialized prompt credits for user ${uid} with plan ${planType.toLowerCase()}`
+        );
 
         return {
           success: true,
