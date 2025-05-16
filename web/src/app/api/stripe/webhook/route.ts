@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import Stripe from "stripe";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
-import {
-  initializePromptCredits,
-  recordPromptPackPurchase,
-} from "@/lib/firebase/prompt-credits";
+import { initializePromptCredits } from "@/lib/firebase/prompt-credits";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -196,59 +193,30 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
     const { customer } = subscription;
     if (typeof customer !== "string") return false;
 
-    // Find the user with this customer ID
-    const userSnapshot = await adminDb
-      .collection("users")
-      .where("subscription.stripeCustomerId", "==", customer)
+    // Find the subscription with this Stripe customer ID
+    const subSnapshot = await adminDb
+      .collection("subscriptions")
+      .where("stripeCustomerId", "==", customer)
+      .where("stripeSubscriptionId", "==", subscription.id)
       .limit(1)
       .get();
 
-    if (userSnapshot.empty) {
+    if (subSnapshot.empty) {
       console.error("No user found with Stripe customer ID:", customer);
       return false;
     }
 
-    const userId = userSnapshot.docs[0].id;
-    const userData = userSnapshot.docs[0].data();
-
+    const subDoc = subSnapshot.docs[0];
     // Get the subscription plan type from the subscription metadata or items
-    let planType =
-      subscription.metadata.planType || userData.subscription.planType;
-
-    // If plan type is not in metadata, try to get it from the first subscription item's price
-    if (!planType && subscription.items.data.length > 0) {
-      const priceId = subscription.items.data[0].price.id;
-
-      // Map the price ID to a plan type (this depends on your pricing structure)
-      if (priceId.includes("explorer")) {
-        planType = "explorer";
-      } else if (priceId.includes("builder")) {
-        planType = "builder";
-      } else if (
-        priceId.includes("accelerator") ||
-        priceId.includes("enterprise")
-      ) {
-        planType = "enterprise";
-      } else {
-        planType = "free";
-      }
-    }
-
-    if (!planType) {
-      console.error(
-        "Could not determine plan type for subscription:",
-        subscription.id
-      );
-      return false;
-    }
+    const planType = subscription.metadata.planType || "free"; // Default to "free" if not set
 
     // Update the user's subscription status in Firestore
-    await updateUserSubscriptionInFirebase(customer, subscription);
+    await updateUserSubscriptionInFirebase(subDoc, subscription);
 
     // Initialize or update prompt credits based on the subscription plan
-    await initializePromptCredits(userId, planType);
+    await initializePromptCredits(subDoc.id, planType);
     console.log(
-      `Webhook: Updated prompt credits for user ${userId} with plan ${planType}`
+      `Webhook: Updated prompt credits for user ${subDoc.id} with plan ${planType}`
     );
 
     return true;
@@ -260,34 +228,24 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
 
 // Update the user's subscription status in Firestore
 async function updateUserSubscriptionInFirebase(
-  customerId: string,
+  subscriptionDocument: any,
   subscription: Stripe.Subscription
 ) {
-  const status = subscription.status;
-  const usersSnapshot = await adminDb
-    .collection("users")
-    .where("subscription.stripeCustomerId", "==", customerId)
-    .get();
-
-  if (usersSnapshot.empty) {
-    console.warn(`No user found with Stripe customer ID: ${customerId}`);
-    return;
+  try {
+    await adminDb
+      .collection("subscriptions")
+      .doc(subscriptionDocument.id)
+      .set(
+        {
+          ...subscription,
+          updatedAt: getCurrentUnixTimestamp(),
+          subscriptionStatus: subscription.status,
+        },
+        { merge: true }
+      );
+  } catch (error) {
+    console.error("Error updating subscription in Firestore:", error);
+    return false;
   }
-
-  // Update each user with this customer ID (should typically be only one)
-  const updatePromises = usersSnapshot.docs.map(async (userDoc) => {
-    // Only update if this is the subscription we're tracking
-    // if (userDoc.data().subscription.stripeSubscriptionId === subscriptionId) {
-    return userDoc.ref.update({
-      subscription: {
-        ...userDoc.data().subscription,
-        status,
-      },
-      // Update additional fields as needed, e.g., subscription end date
-      updatedAt: getCurrentUnixTimestamp(),
-    });
-    // }
-  });
-
-  return await Promise.all(updatePromises.filter(Boolean));
+  return true;
 }

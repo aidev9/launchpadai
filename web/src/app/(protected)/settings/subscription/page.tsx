@@ -23,61 +23,92 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getSubscriptionAction, cancelSubscriptionAction } from "./actions";
-import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import {
+  getCurrentUnixTimestamp,
+  TOAST_DEFAULT_DURATION,
+} from "@/utils/constants";
 import ContentSection from "../components/content-section";
 import { useRouter } from "next/navigation";
+import {
+  subscriptionQueryAtom,
+  updateSubscriptionAtom,
+} from "@/stores/subscriptionStore";
+import { useAtom, useSetAtom } from "jotai";
+import { SubscriptionPlan } from "@/lib/firebase/schema";
+import { get } from "http";
 
 export default function SubscriptionSettings() {
   // TODO: subscription should be an atom
-  const [subscription, setSubscription] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // const [subscription, setSubscription] = useState<any>(null);
+  // const [isLoading, setIsLoading] = useState(true);
   const [isCanceling, setIsCanceling] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    async function fetchSubscription() {
-      try {
-        setIsLoading(true);
-        const result = await getSubscriptionAction();
-        if (result.success) {
-          setSubscription(result.subscription);
-        } else {
-          console.error("Error fetching subscription:", result.error);
-          toast({
-            title: "Error",
-            description: result.error || "Failed to fetch subscription details",
-            variant: "destructive",
-            duration: TOAST_DEFAULT_DURATION,
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching subscription:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
+  // Fetch credits using the query atom
+  const [{ data: subscriptionData, isLoading }] = useAtom(
+    subscriptionQueryAtom
+  );
+  const updateSubscription = useSetAtom(updateSubscriptionAtom);
 
-    fetchSubscription();
-  }, [isCanceling]);
+  // Cast subscription data to the expected interface to fix TypeScript errors
+  const subscription = subscriptionData as SubscriptionPlan & {
+    status?: string;
+  };
+
+  // useEffect(() => {
+  //   async function fetchSubscription() {
+  //     try {
+  //       setIsLoading(true);
+  //       const result = await getSubscriptionAction();
+  //       if (result.success) {
+  //         setSubscription(result.subscription);
+  //       } else {
+  //         console.error("Error fetching subscription:", result.error);
+  //         toast({
+  //           title: "Error",
+  //           description: result.error || "Failed to fetch subscription details",
+  //           variant: "destructive",
+  //           duration: TOAST_DEFAULT_DURATION,
+  //         });
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching subscription:", error);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   }
+
+  //   fetchSubscription();
+  // }, [isCanceling]);
 
   const handleCancelSubscription = async () => {
     try {
       setIsCanceling(true);
       const result = await cancelSubscriptionAction();
-
       if (result.success) {
         toast({
           title: "Subscription Canceled",
           description: result.message,
           duration: TOAST_DEFAULT_DURATION,
         });
-
+        // Update the subscription to FREE state in the store
+        updateSubscription({
+          ...subscription,
+          planType: "free",
+          billingCycle: "monthly",
+          price: 0,
+          status: "active",
+          stripeCustomerId: "",
+          stripeSubscriptionId: "",
+          createdAt: getCurrentUnixTimestamp(),
+          paymentIntentId: "",
+        });
         // Update local state to reflect the cancellation
-        setSubscription((prev: any) => ({
-          ...prev,
-          status: "canceled",
-        }));
+        // setSubscription((prev: any) => ({
+        //   ...prev,
+        //   status: "canceled",
+        // }));
       } else {
         toast({
           title: "Error",
@@ -149,7 +180,7 @@ export default function SubscriptionSettings() {
                       Plan
                     </p>
                     <p className="text-lg font-semibold">
-                      {capitalize(subscription.planType)}
+                      {capitalize(subscription?.planType || "Free")}
                     </p>
                   </div>
                   <div>
@@ -159,10 +190,10 @@ export default function SubscriptionSettings() {
                     <div className="flex items-center space-x-2">
                       <Badge
                         variant={getStatusBadgeVariant(
-                          subscription.active as boolean
+                          Boolean(subscription?.active)
                         )}
                       >
-                        {subscription.active ? "Active" : "Inactive"}
+                        {subscription?.active ? "Active" : "Inactive"}
                       </Badge>
                     </div>
                   </div>
@@ -171,7 +202,7 @@ export default function SubscriptionSettings() {
                       Billing Cycle
                     </p>
                     <p className="text-lg font-semibold">
-                      {capitalize(subscription.billingCycle)}
+                      {capitalize(subscription?.billingCycle || "monthly")}
                     </p>
                   </div>
                 </div>
@@ -183,15 +214,19 @@ export default function SubscriptionSettings() {
                 >
                   Upgrade Subscription
                 </Button>
-                {subscription.status !== "canceled" && (
+                {!("status" in subscription) ||
+                subscription.status !== "canceled" ? (
                   <Button
                     variant="destructive"
                     onClick={() => setShowCancelDialog(true)}
-                    disabled={isCanceling || subscription.planType === "free"}
+                    disabled={
+                      isCanceling ||
+                      subscription?.planType?.toLowerCase() === "free"
+                    }
                   >
                     Cancel Subscription
                   </Button>
-                )}
+                ) : null}
               </CardFooter>
             </Card>
 

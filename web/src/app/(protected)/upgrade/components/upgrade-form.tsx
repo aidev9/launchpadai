@@ -19,17 +19,18 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
-  Subscription,
   PlanOption,
   BillingCycle,
   PlanType,
   SubscriptionPlan,
 } from "@/lib/firebase/schema";
 import { userProfileQueryAtom } from "@/lib/store/user-store";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
+import { updateSubscriptionAtom } from "@/stores/subscriptionStore";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 interface UpgradeFormProps {
-  currentSubscription: Subscription | null;
+  currentSubscription: (SubscriptionPlan & { status?: string }) | null;
 }
 
 export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
@@ -46,6 +47,7 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
   const [{ data: userProfile, isLoading: isProfileLoading }] =
     useAtom(userProfileQueryAtom);
+  const updateSubscription = useSetAtom(updateSubscriptionAtom);
 
   // For the payment form component
   const formProcessing = isLoading;
@@ -184,7 +186,7 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
           : plans[selectedPlan].annual.price;
 
       // Link the subscription to the user
-      await createUserSubscription({
+      const sub = {
         userId: userProfile.uid,
         planType: planTitle,
         billingCycle: billingCycle,
@@ -192,6 +194,21 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
         paymentIntentId: paymentIntent.id,
         stripeCustomerId: stripeCustomerId,
         stripeSubscriptionId: subscriptionId || "",
+      };
+
+      // Create the subscription in Firebase
+      await createUserSubscription(sub);
+
+      // Update the subscription in the store - add the required fields for the Subscription type
+      updateSubscription({
+        ...sub,
+        planType: sub.planType.toLowerCase() as
+          | "free"
+          | "explorer"
+          | "builder"
+          | "enterprise",
+        status: "active",
+        createdAt: getCurrentUnixTimestamp(),
       });
 
       setIsSuccess(true);
@@ -233,6 +250,7 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
             billingCycle === "monthly"
               ? plans[selectedPlan].monthly.price
               : plans[selectedPlan].annual.price,
+          active: true, // Add the missing property required by SubscriptionPlan
         }
       : null;
 

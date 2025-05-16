@@ -10,26 +10,38 @@ import {
   PlanOption,
 } from "@/lib/firebase/schema";
 import { initializePromptCredits } from "@/lib/firebase/prompt-credits";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-04-30.basil",
+});
 
 // Get a user's current subscription
 export async function getUserSubscription(userId: string) {
   try {
     // Get the user document
-    const userDoc = await adminDb.collection("users").doc(userId).get();
+    const subDoc = await adminDb.collection("subscriptions").doc(userId).get();
 
-    if (!userDoc.exists) {
+    if (!subDoc.exists) {
       return null;
     }
 
-    const userData = userDoc.data();
-    if (!userData?.subscription) {
-      return null;
-    }
-
-    // Serialize the subscription data to convert any Firebase Timestamp objects to Unix timestamps (seconds)
-    return userData.subscription;
+    return subDoc.data();
   } catch (error) {
     console.error("Error fetching user subscription:", error);
+    return null;
+  }
+}
+
+// Get price from Stripe by price ID
+// TODO: Use this function to fetch prices from Stripe
+async function getPriceFromStripe(priceId: string) {
+  try {
+    const price = await stripe.prices.retrieve(priceId);
+    const unit_amount = price?.unit_amount || 0;
+    return unit_amount / 100; // Convert from cents to dollars
+  } catch (error) {
+    console.error("Error fetching price from Stripe:", error);
     return null;
   }
 }
@@ -49,32 +61,57 @@ export const createUserSubscription = userActionClient
         stripeSubscriptionId,
       } = parsedInput;
 
-      // Get the user document reference
-      const userRef = adminDb.collection("users").doc(userId);
+      // Get the user document
+      const userDoc = await adminDb.collection("users").doc(userId).get();
 
-      // Get the current user data
-      const userDoc = await userRef.get();
       if (!userDoc.exists) {
-        throw new Error("User does not exist");
+        return null;
       }
 
-      // Get current Unix timestamp
-      const now = getCurrentUnixTimestamp();
+      const userData = userDoc.data();
 
       // Update the user with subscription information using Unix timestamp
-      await userRef.update({
-        subscription: {
-          planType,
+      await adminDb.collection("subscriptions").doc(userId).set(
+        {
+          uid: userId,
+          name: userData?.name,
+          email: userData?.email,
+          company: userData?.company,
+          phone: userData?.phone,
+          planType: planType.toLocaleLowerCase(),
           billingCycle,
           price,
-          status: "active",
-          createdAt: now,
+          subscriptionStatus: "incomplete", // Will be updated by webhook
           stripeCustomerId,
           stripeSubscriptionId,
           paymentIntentId,
+          createdAt: getCurrentUnixTimestamp(),
+          updatedAt: getCurrentUnixTimestamp(),
         },
-        updatedAt: now,
-      });
+        { merge: true }
+      );
+
+      // 2. Update the Stripe customer with Firebase UID
+      try {
+        await stripe.customers.update(stripeCustomerId, {
+          metadata: {
+            firebaseUid: userId,
+          },
+        });
+      } catch (stripeError) {
+        console.error("Stripe customer error:", stripeError);
+      }
+
+      // 3. Update the subscription metadata with Firebase UID
+      try {
+        await stripe.subscriptions.update(stripeSubscriptionId, {
+          metadata: {
+            firebaseUid: userId,
+          },
+        });
+      } catch (subscriptionError) {
+        console.error("Subscription update error:", subscriptionError);
+      }
 
       // Also update the user's prompt credits based on the new plan
       await initializePromptCredits(userId, planType);
@@ -207,6 +244,7 @@ export interface UserSubscriptionParams {
 }
 
 // New server action to get subscription plans
+// TODO: Refactor this to use Stripe prices
 export async function getSubscriptionPlans() {
   try {
     return { plans };

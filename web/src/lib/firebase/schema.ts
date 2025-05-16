@@ -42,7 +42,6 @@ export interface UserProfile {
 // START: SUBSCRIPTION
 // Define subscription interface
 export interface Subscription {
-  planType: string;
   billingCycle: "monthly" | "annual";
   price: number;
   status: "active" | "inactive";
@@ -50,6 +49,7 @@ export interface Subscription {
   stripeSubscriptionId: string;
   createdAt: number;
   paymentIntentId: string;
+  planType: "free" | "explorer" | "builder" | "enterprise";
 }
 
 // Schema for user subscription data
@@ -64,7 +64,7 @@ export const userSubscriptionSchema = z.object({
 });
 
 // Plan types
-export type PlanType = "Free" | "Explorer" | "Builder" | "Accelerator";
+export type PlanType = "free" | "explorer" | "builder" | "accelerator";
 export type BillingCycle = "monthly" | "annual";
 
 // Define plan types and pricing interface
@@ -86,9 +86,10 @@ export interface PlanOption {
 
 // Interface for selected subscription plan
 export interface SubscriptionPlan {
-  planType: PlanType;
+  planType: string;
   billingCycle: BillingCycle;
   price: number;
+  active: boolean;
 }
 
 // Interface for pricing plan display data

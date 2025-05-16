@@ -22,7 +22,8 @@ export default function PromptCreditsSettingsPage() {
       <div>
         <h3 className="text-lg font-medium">Prompt Credits</h3>
         <p className="text-sm text-muted-foreground">
-          Manage your AI prompt credits to power LaunchpadAI's intelligent features.
+          Manage your AI prompt credits to power LaunchpadAI's intelligent
+          features.
         </p>
       </div>
 
@@ -50,9 +51,9 @@ export default function PromptCreditsSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p>
-              Prompt credits are used each time you interact with
-              LaunchpadAI's AI features. Each subscription plan comes with a
-              preset number of credits:
+              Prompt credits are used each time you interact with LaunchpadAI's
+              AI features. Each subscription plan comes with a preset number of
+              credits:
             </p>
             <ul className="list-disc pl-5 space-y-2">
               <li>
@@ -69,13 +70,15 @@ export default function PromptCreditsSettingsPage() {
               </li>
             </ul>
             <p>
-              When your credits run low, you can purchase additional credits
-              to continue using AI features without interruption.
+              When your credits run low, you can purchase additional credits to
+              continue using AI features without interruption.
             </p>
           </CardContent>
           <CardFooter>
             <Button asChild>
-              <Link href="/settings/prompt-credits/purchase">Purchase Credits</Link>
+              <Link href="/settings/prompt-credits/purchase">
+                Purchase Credits
+              </Link>
             </Button>
           </CardFooter>
         </Card>

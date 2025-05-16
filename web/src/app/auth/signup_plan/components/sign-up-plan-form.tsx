@@ -182,7 +182,7 @@ export function SignUpPlanForm({ plan }: SignUpPlanFormProps) {
 
       // Extract only the allowed plan types for the action
       const allowedPlanType =
-        plan.planType === "Free"
+        plan.planType.toLocaleLowerCase() === "free"
           ? "Explorer"
           : (plan.planType as "Explorer" | "Builder" | "Accelerator");
 

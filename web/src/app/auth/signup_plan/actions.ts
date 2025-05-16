@@ -1,7 +1,6 @@
 "use server";
 
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { getPlanPriceId } from "@/lib/stripe/server";
 import { actionClient } from "@/lib/action";
 import { awardXpPoints } from "@/xp/server-actions";
 import { z } from "zod";
@@ -13,6 +12,7 @@ import Stripe from "stripe";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
 import { getSubscriptionPlans } from "@/app/(protected)/upgrade/actions";
 import { initializePromptCredits } from "@/lib/firebase/prompt-credits";
+import { PlanType } from "@/lib/firebase/schema";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-04-30.basil",
@@ -109,23 +109,34 @@ export const createSubscriptionAction = actionClient
           };
         }
 
-        // 4. Update Firestore with user data and subscription info
+        // 4. Update Firestore collection subscriptions with user data and subscription info
+        await adminDb.collection("subscriptions").doc(uid).set({
+          uid,
+          name,
+          email,
+          company,
+          phone,
+          planType: planType.toLowerCase(),
+          price,
+          billingCycle,
+          stripeCustomerId,
+          stripeSubscriptionId,
+          paymentIntentId,
+          subscriptionStatus: "incomplete", // Will be updated by webhook
+          createdAt: getCurrentUnixTimestamp(),
+          updatedAt: getCurrentUnixTimestamp(),
+        });
+
+        // 4.5 - Update Firestore collection users with user data
         await adminDb.collection("users").doc(uid).set({
           name,
           email,
           company,
-          role,
           phone,
-          provider: "email",
-          userType: "user",
-          subscription: planType.toLowerCase(),
-          billingCycle,
-          stripeCustomerId,
-          stripeSubscriptionId,
-          subscriptionStatus: "incomplete", // Will be updated by webhook
-          xp: 0,
+          role,
           createdAt: getCurrentUnixTimestamp(),
           updatedAt: getCurrentUnixTimestamp(),
+          isEmailVerified: false,
         });
 
         // 5. Send confirmation email to user
@@ -136,7 +147,7 @@ export const createSubscriptionAction = actionClient
             subject: "Welcome to LaunchpadAI - Subscription Confirmation",
             react: SubscriptionConfirmation({
               name,
-              planType,
+              planType: planType.toLowerCase() as PlanType,
               price,
               billingCycle,
             }),
@@ -174,9 +185,6 @@ export const createSubscriptionAction = actionClient
 
         // 7. Initialize prompt credits based on subscription plan
         await initializePromptCredits(uid, planType.toLowerCase());
-        console.log(
-          `:::Initialized prompt credits for user ${uid} with plan ${planType.toLowerCase()}`
-        );
 
         return {
           success: true,

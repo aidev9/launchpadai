@@ -70,25 +70,25 @@ export async function cancelSubscriptionAction() {
     }
 
     // Get user document with subscription details
-    const userRef = adminDb.collection("users").doc(userId);
-    const userDoc = await userRef.get();
+    const subRef = adminDb.collection("subscriptions").doc(userId);
+    const subDoc = await subRef.get();
 
-    if (!userDoc.exists) {
+    if (!subDoc.exists) {
       return {
         success: false,
         error: "User account not found",
       };
     }
 
-    const userData = userDoc.data();
-    const subscriptionId = userData?.subscription?.stripeSubscriptionId;
+    const subData = subDoc.data();
+    const subscriptionId = subData?.stripeSubscriptionId;
 
-    if (!subscriptionId) {
-      return {
-        success: false,
-        error: "No active subscription found",
-      };
-    }
+    // if (!subscriptionId) {
+    //   return {
+    //     success: false,
+    //     error: "No active subscription found",
+    //   };
+    // }
 
     // Cancel the subscription at period end in Stripe
     await stripe.subscriptions.update(subscriptionId, {
@@ -96,18 +96,16 @@ export async function cancelSubscriptionAction() {
     });
 
     // Update subscription status in Firestore
-    await userRef.update({
-      subscription: {
-        ...userData.subscription,
-        stripeSubscriptionId: subscriptionId,
-        planType: "Free",
-        billingCycle: "daily",
-        price: 0,
-        stripeCustomerId: null,
-        stripePriceId: null,
-        status: "canceled",
-        updatedAt: getCurrentUnixTimestamp(),
-      },
+    await subRef.update({
+      stripeSubscriptionId: subscriptionId,
+      planType: "free",
+      billingCycle: "daily",
+      price: 0,
+      stripeCustomerId: null,
+      stripePriceId: null,
+      status: "canceled",
+      subscriptionStatus: "canceled",
+      updatedAt: getCurrentUnixTimestamp(),
     });
 
     // Reset the prompt credit count

@@ -38,7 +38,6 @@ export const promptCreditsQueryAtom = atomWithQuery<PromptCredit | null>(
     queryFn: async ({ queryKey }) => {
       try {
         const userId = await getCurrentUserId();
-        console.log("[STORE] Fetching prompt credits for userId: ", userId);
         const result = await fetchPromptCredits();
         if (result.success && result.credits) {
           // setPromptCredits(result.credits);

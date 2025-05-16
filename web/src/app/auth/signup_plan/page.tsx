@@ -25,7 +25,10 @@ export default function SignUpPlan() {
   // Validate the selected plan against available plans
   useEffect(() => {
     async function validatePlan() {
-      if (!selectedPlan || selectedPlan.planType === "Free") {
+      if (
+        !selectedPlan ||
+        selectedPlan.planType.toLocaleLowerCase() === "free"
+      ) {
         router.push("/");
         return;
       }

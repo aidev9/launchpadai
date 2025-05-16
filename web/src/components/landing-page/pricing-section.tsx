@@ -49,7 +49,7 @@ export function PricingSection() {
           description: plan.description,
           features: plan.features.map((feature) => ({ text: feature })),
           buttonText:
-            plan.title === "Free"
+            plan.title.toLocaleLowerCase() === "free"
               ? "Start Free"
               : plan.title === "Explorer"
                 ? "Get Started"
@@ -69,7 +69,7 @@ export function PricingSection() {
           description: plan.description,
           features: plan.features.map((feature) => ({ text: feature })),
           buttonText:
-            plan.title === "Free"
+            plan.title.toLocaleLowerCase() === "free"
               ? "Start Free"
               : plan.title === "Explorer"
                 ? "Get Started"
@@ -106,7 +106,7 @@ export function PricingSection() {
     const billingCycle: BillingCycle = isAnnual ? "annual" : "monthly";
 
     // For free plan, redirect to regular signup
-    if (planTitle === "Free") {
+    if (planTitle.toLocaleLowerCase() === "free") {
       router.push("/auth/signup");
       return;
     }
@@ -116,6 +116,7 @@ export function PricingSection() {
       planType: planTitle as PlanType,
       billingCycle,
       price,
+      active: true,
     });
 
     router.push("/auth/signup_plan");

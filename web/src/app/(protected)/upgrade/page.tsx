@@ -1,45 +1,19 @@
 "use client";
 import UpgradeForm from "./components/upgrade-form";
-import { Subscription } from "@/lib/firebase/schema";
-import { useEffect, useState } from "react";
-import { getSubscriptionAction } from "../settings/subscription/actions";
-import { toast } from "@/hooks/use-toast";
-import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { Button } from "@/components/ui/button";
+import { useAtom } from "jotai";
+import { subscriptionQueryAtom } from "@/stores/subscriptionStore";
+import { SubscriptionPlan } from "@/lib/firebase/schema";
 
 export default function UpgradePage() {
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [{ data: subscriptionData, isLoading }] = useAtom(
+    subscriptionQueryAtom
+  );
 
-  useEffect(() => {
-    async function fetchSubscription() {
-      try {
-        setIsLoading(true);
-        console.log("Fetching subscription data...");
-        const result = await getSubscriptionAction();
-        console.log("Subscription action result:", result);
-
-        if (result.success) {
-          console.log("Setting subscription state:", result.subscription);
-          setSubscription(result.subscription);
-        } else {
-          console.error("Error fetching subscription:", result.error);
-          toast({
-            title: "Error",
-            description: result.error || "Failed to fetch subscription details",
-            variant: "destructive",
-            duration: TOAST_DEFAULT_DURATION,
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching subscription:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchSubscription();
-  }, []);
+  // Cast subscription data to Subscription type to fix TypeScript errors
+  const subscription = subscriptionData as
+    | (SubscriptionPlan & { status?: string })
+    | null;
 
   return (
     <div className="container max-w-6xl mx-auto px-4 py-8">
@@ -56,8 +30,8 @@ export default function UpgradePage() {
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
             <h2 className="text-lg font-medium">Your Current Plan</h2>
-            <div className="text-2xl font-bold">
-              {subscription?.planType || "Free"}
+            <div className="text-2xl font-bold capitalize">
+              {subscription?.planType || "free"}
             </div>
             {subscription && (
               <p className="text-sm text-muted-foreground">

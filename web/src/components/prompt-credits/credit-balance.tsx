@@ -20,41 +20,45 @@ import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { getSubscriptionAction } from "@/app/(protected)/settings/subscription/actions";
 import { getPromptCreditsByPlan } from "@/lib/firebase/schema";
 import { promptCreditsQueryAtom } from "@/stores/promptCreditStore";
+import { subscriptionQueryAtom } from "@/stores/subscriptionStore";
 
 export function CreditBalance() {
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLowCredits] = useAtom(isLowCreditsAtom);
-  const [subscription, setSubscription] = useState<any>(null);
+  // const [subscription, setSubscription] = useState<any>(null);
   const [{ data, isLoading }] = useAtom(promptCreditsQueryAtom);
   const router = useRouter();
+  const [{ data: subscription, isLoading: isLoadingSub }] = useAtom(
+    subscriptionQueryAtom
+  );
 
-  useEffect(() => {
-    const loadSubscription = async () => {
-      try {
-        setLoading(true);
-        const result = await getSubscriptionAction();
-        if (result.success && result.subscription) {
-          setSubscription(result.subscription);
-        } else {
-          setError(result.error || "Failed to load subscription");
-        }
-      } catch (err) {
-        setError("An unexpected error occurred");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // useEffect(() => {
+  //   const loadSubscription = async () => {
+  //     try {
+  //       setLoading(true);
+  //       const result = await getSubscriptionAction();
+  //       if (result.success && result.subscription) {
+  //         setSubscription(result.subscription);
+  //       } else {
+  //         setError(result.error || "Failed to load subscription");
+  //       }
+  //     } catch (err) {
+  //       setError("An unexpected error occurred");
+  //       console.error(err);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    loadSubscription();
-  }, [setSubscription]);
+  //   loadSubscription();
+  // }, [setSubscription]);
 
   const handlePurchaseClick = () => {
     router.push("/settings/prompt-credits/purchase");
   };
 
-  if (loading) {
+  if (isLoading || isLoadingSub) {
     return (
       <Card>
         <CardHeader>
@@ -89,7 +93,11 @@ export function CreditBalance() {
   if (!isLoading && subscription && data) {
     // Calculate percentage for the progress bar
     const { monthly: totalCredits } = getPromptCreditsByPlan(
-      subscription.planType
+      subscription &&
+        typeof subscription === "object" &&
+        "planType" in subscription
+        ? (subscription.planType as string)
+        : "free"
     );
 
     const percentage =

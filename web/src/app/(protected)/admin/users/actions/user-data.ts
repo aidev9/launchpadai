@@ -141,9 +141,7 @@ export async function getUserAllData(userId: string) {
       products: productsResult.success ? productsResult.products : [],
       prompts: promptsResult.success ? promptsResult.prompts : [],
       techStacks: techStacksResult.success ? techStacksResult.techStacks : [],
-      subscription: subscriptionResult.success
-        ? subscriptionResult.subscription
-        : null,
+      subscription: subscriptionResult.success ? subscriptionResult : null,
     };
   } catch (error) {
     console.error(`Error fetching all data for user ${userId}:`, error);

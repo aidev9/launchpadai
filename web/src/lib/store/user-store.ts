@@ -1,10 +1,11 @@
 "use client";
 
-import { atom, createStore } from "jotai";
+import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { UserProfile } from "../firebase/schema";
 import { atomWithQuery } from "jotai-tanstack-query";
 import { fetchUserProfile } from "@/lib/firebase/actions/profile";
+import { launchpadAiStore } from "./general-store";
 
 // Create a persistent storage atom for user profile
 export const userProfileAtom = atomWithStorage<UserProfile | null>(
@@ -20,6 +21,7 @@ export const userProfileQueryAtom = atomWithQuery<UserProfile | null>(
       try {
         const result = await fetchUserProfile();
         if (result.success && result.profile) {
+          launchpadAiStore.set(userProfileAtom, result.profile);
           return result.profile;
         }
         return null; // Explicitly return null when conditions aren't met

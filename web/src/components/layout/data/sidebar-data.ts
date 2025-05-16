@@ -1,6 +1,5 @@
 import {
   IconBarrierBlock,
-  IconBrowserCheck,
   IconBug,
   IconChecklist,
   IconError404,
@@ -8,15 +7,12 @@ import {
   IconLock,
   IconLockAccess,
   IconMessages,
-  IconNotification,
   IconPackages,
-  IconPalette,
   IconServerOff,
   IconSettings,
   IconTool,
   IconUserCog,
   IconUserOff,
-  IconUsers,
   IconHelpCircle,
   IconChartPie,
   IconCube,
@@ -31,14 +27,12 @@ import {
   IconPlaylistAdd,
   IconCreditCard,
   IconStack,
-  IconCoin,
 } from "@tabler/icons-react";
 import {
   AudioWaveform,
   Command,
   GalleryVerticalEnd,
   LucideCoins,
-  LucideCreditCard,
 } from "lucide-react";
 import { type SidebarData } from "../types";
 
