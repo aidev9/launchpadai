@@ -5,17 +5,13 @@ import { Main } from "@/components/layout/main";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useXpMutation } from "@/xp/useXpMutation";
-import { useMutation } from "@tanstack/react-query";
 import {
   Plus,
   Search as SearchIcon,
   X,
   LayoutGrid,
   Table as TableIcon,
-  XCircle,
   Trash,
-  Copy,
-  Download,
   Sparkles,
 } from "lucide-react";
 import { usePrompts } from "@/hooks/usePrompts";
@@ -24,7 +20,6 @@ import { PromptCard } from "@/components/prompts/prompt-card";
 import { Prompt, PromptInput } from "@/lib/firebase/schema";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useEffect, useState, useRef } from "react";
-import { Badge } from "@/components/ui/badge";
 import { PromptTable } from "./components/prompt-table";
 import { PromptForm } from "./components/prompt-form";
 import {
@@ -46,10 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAtom, useSetAtom } from "jotai";
 import {
-  columnFiltersAtom,
-  columnVisibilityAtom,
   promptRowSelectionAtom,
-  sortingAtom,
   layoutViewAtom,
   updatePromptAtom,
   deletePromptAtom,

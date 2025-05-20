@@ -49,6 +49,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@types/js-cookie": "^3.0.6",
     "@types/nprogress": "^0.2.3",
+    "@types/pg": "^8.15.2",
     "@uiw/react-markdown-preview": "^5.1.4",
     "@uiw/react-md-editor": "^4.0.5",
     "ai": "^4.3.5",
@@ -57,6 +58,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "compromise": "^14.14.4",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "firebase": "11.6.0",
@@ -68,13 +70,15 @@
     "js-cookie": "^3.0.5",
     "jszip": "^3.10.1",
     "lucide-react": "^0.487.0",
+    "mammoth": "^1.9.0",
     "mastra": "^0.6.2",
     "next": "15.3.0",
     "next-safe-action": "^7.10.5",
     "next-themes": "^0.4.6",
     "nprogress": "^0.2.0",
     "openai": "^4.98.0",
-    "prettier": "^3.5.3",
+    "pg": "^8.16.0",
+    "prettier": "^3.4.2",
     "react": "^19.0.0",
     "react-day-picker": "^9.6.7",
     "react-dom": "^19.0.0",
@@ -82,6 +86,7 @@
     "react-firebase-hooks": "^5.1.1",
     "react-hook-form": "^7.55.0",
     "react-markdown": "^10.1.0",
+    "react-pdf": "^9.2.1",
     "react-player": "^2.16.0",
     "react-resizable-panels": "^3.0.1",
     "recharts": "^2.15.2",
@@ -91,7 +96,6 @@
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "^1.2.5",
-    "uuid": "^11.1.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -106,6 +110,7 @@
     "eslint-plugin-react-refresh": "^0.4.19",
     "jotai-devtools": "^0.11.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "uuid": "^11.1.0"
   }
 }

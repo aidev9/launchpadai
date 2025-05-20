@@ -17,51 +17,18 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useRouter, usePathname } from "next/navigation";
-import { Product } from "@/lib/firebase/schema";
 import { useProducts } from "@/hooks/useProducts";
 import { useCallback } from "react";
+import { productsAtom, selectedProductAtom } from "@/lib/store/product-store";
+import { useAtom } from "jotai";
 
 const ProductSwitcher = React.memo(function ProductSwitcher() {
   const { isMobile } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
-
-  const { products, selectedProduct, selectProduct, isLoading } = useProducts();
-
-  // Handle product selection with conditional navigation
-  const handleProductSelect = useCallback(
-    async (product: Product) => {
-      // Skip if we're already viewing this product
-      if (selectedProduct?.id === product.id) {
-        console.log("Product already selected, skipping:", product.id);
-        return;
-      }
-
-      console.log("Selecting product:", product.id, product.name);
-
-      try {
-        // Update the selected product in global state
-        await selectProduct(product.id);
-        console.log("Product selection updated in Jotai store", product.id);
-
-        // Only redirect to product page if on specific routes
-        const routesToRedirectFrom = ["/welcome", "/welcome", "/help"];
-        const shouldRedirect = routesToRedirectFrom.some(
-          (route) => pathname === route || pathname.startsWith(`${route}/`)
-        );
-
-        if (shouldRedirect) {
-          console.log("On special route, redirecting to product page");
-          router.push("/product");
-        } else {
-          console.log("Staying on current route with updated product");
-        }
-      } catch (error) {
-        console.error("Error selecting product:", error);
-      }
-    },
-    [selectedProduct, selectProduct, pathname, router]
-  );
+  const [selectedProduct, setSelectedProduct] = useAtom(selectedProductAtom);
+  const [products, setProducts] = useAtom(productsAtom);
+  const { isLoading } = useProducts();
 
   // Handle creating a new product
   const handleCreateProduct = useCallback(() => {
@@ -142,7 +109,10 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
             sideOffset={4}
             style={{ maxWidth: "min(80vw, 20rem)" }}
           >
-            <DropdownMenuItem className="gap-2 p-2" onClick={handleStartHere}>
+            <DropdownMenuItem
+              className="gap-2 p-2 cursor-pointer"
+              onClick={handleStartHere}
+            >
               <div className="flex size-6 items-center justify-center rounded-md border bg-accent shrink-0">
                 <Compass className="size-4" />
               </div>
@@ -155,8 +125,8 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
             {products.map((product) => (
               <DropdownMenuItem
                 key={product.id}
-                onClick={() => handleProductSelect(product)}
-                className="gap-2 p-2"
+                onClick={() => setSelectedProduct(product)}
+                className="gap-2 p-2 cursor-pointer"
               >
                 <div className="flex size-6 items-center justify-center rounded-sm border shrink-0">
                   <Box className="size-4 shrink-0" />
@@ -168,7 +138,7 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="gap-2 p-2"
+              className="gap-2 p-2 cursor-pointer"
               onClick={handleCreateProduct}
             >
               <div className="flex size-6 items-center justify-center rounded-md border bg-background shrink-0">

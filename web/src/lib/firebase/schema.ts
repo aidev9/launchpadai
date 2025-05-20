@@ -581,3 +581,87 @@ export function getPromptCreditsByPlan(planType: string): {
   }
 }
 // END: PROMPT CREDITS
+
+// START: COLLECTIONS
+// Collection status type
+export type CollectionStatus =
+  | "uploading"
+  | "uploaded"
+  | "indexing"
+  | "indexed"
+  | "reindexing";
+
+// Collection schema
+export interface Collection {
+  id: string;
+  productId: string;
+  userId: string;
+  title: string;
+  description: string;
+  phaseTags: string[]; // Array of phase tags
+  tags: string[]; // Array of general tags
+  status: CollectionStatus; // Status of the collection
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Collection input schema (for validation)
+export const collectionInputSchema = z.object({
+  productId: z.string().min(1, "Product ID is required"),
+  title: z.string().min(1, "Title is required").max(100, "Title is too long"),
+  description: z.string(),
+  phaseTags: z.array(z.string()),
+  tags: z.array(z.string()),
+  status: z
+    .enum(["uploading", "uploaded", "indexing", "indexed", "reindexing"])
+    .default("uploaded"),
+});
+
+export type CollectionInput = z.infer<typeof collectionInputSchema>;
+// END: COLLECTIONS
+
+// START: DOCUMENTS
+// Document status type
+export type DocumentStatus =
+  | "uploading"
+  | "uploaded"
+  | "indexing"
+  | "indexed"
+  | "reindexing";
+
+// Document schema
+export interface Document {
+  id: string;
+  collectionId: string;
+  productId: string;
+  userId: string;
+  title: string;
+  description: string;
+  url: string; // Signed URL to the document in Firebase Storage
+  filePath: string; // Path to the document in Firebase Storage
+  tags: string[]; // Array of tags
+  status: DocumentStatus; // Status of the document
+  chunkSize: number; // Size of chunks for document processing
+  overlap: number; // Overlap between chunks for document processing
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Document input schema (for validation)
+export const documentInputSchema = z.object({
+  collectionId: z.string().min(1, "Collection ID is required"),
+  productId: z.string().min(1, "Product ID is required"),
+  title: z.string().min(1, "Title is required").max(100, "Title is too long"),
+  description: z.string(),
+  url: z.string().optional(),
+  filePath: z.string().optional(),
+  tags: z.array(z.string()),
+  chunkSize: z.number().default(1000), // Default chunk size of 1000
+  overlap: z.number().default(200), // Default overlap of 200
+  status: z
+    .enum(["uploading", "uploaded", "indexing", "indexed", "reindexing"])
+    .default("uploading"),
+});
+
+export type DocumentInput = z.infer<typeof documentInputSchema>;
+// END: DOCUMENTS

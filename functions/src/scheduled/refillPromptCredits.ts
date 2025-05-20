@@ -1,6 +1,11 @@
-import * as functions from "firebase-functions/v2";
-import {ScheduledEvent} from "firebase-functions/v2/scheduler";
-import {firestore} from "../lib/firebase";
+// import * as functions from "firebase-functions/v2";
+// import { ScheduledEvent } from "firebase-functions/v2/scheduler";
+import { firestore } from "../common/firebase.js";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+// import { logger } from "firebase-functions";
+
+// Maximum concurrent account deletions.
+const MAX_CONCURRENT = 3;
 
 /**
  * Handles the logic for refilling prompt credits
@@ -49,6 +54,9 @@ export async function refillPromptCreditsHandler(): Promise<number | null> {
 
     // Commit the batch write
     await batch.commit();
+    console.log(
+      `Refill operation completed. Updated documents: ${updateCount}`
+    );
     return updateCount;
   } catch (error) {
     console.error("Error refilling prompt credits:", error);
@@ -56,18 +64,31 @@ export async function refillPromptCreditsHandler(): Promise<number | null> {
   }
 }
 
+// Wrapper function to match the expected signature
+// async function scheduledRefillHandler(_event: ScheduledEvent): Promise<void> {
+// await refillPromptCreditsHandler();
+// The return value of refillPromptCreditsHandler is ignored here
+// to match the expected void | Promise<void> return type.
+// }
+
 /**
  * This Cloud Function runs every night at 12:00 AM to check users' prompt
  * credit balances and refill them to their daily limit if they are below it.
  */
-export const refillPromptCredits = functions.scheduler.onSchedule(
-  {
-    schedule: "0 0 * * *", // Runs at midnight every day (CRON format)
-    timeZone: "America/New_York", // Adjust to your preferred timezone
-  },
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async (_event: ScheduledEvent) => {
-    const result = await refillPromptCreditsHandler();
-    console.log(`Refill operation completed with result: ${result}`);
+// export const refillPromptCredits = functions.scheduler.onSchedule(
+//   {
+//     schedule: "0 0 * * *", // Runs at midnight every day (CRON format)
+//     timeZone: "America/New_York", // Adjust to your preferred timezone
+//     // timeoutSeconds: 540,
+//     // minInstances: 0,
+//     region: "us-east1",
+//   },
+//   scheduledRefillHandler // Use the wrapper function
+// );
+
+export const refillPromptCredits = onSchedule(
+  "every day 00:00",
+  async (event) => {
+    await refillPromptCreditsHandler();
   }
 );

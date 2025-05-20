@@ -28,3 +28,6 @@ npm-debug.log*
 
 # Mac OS files
 .DS_Store 
+
+*.bak*
+*.log*

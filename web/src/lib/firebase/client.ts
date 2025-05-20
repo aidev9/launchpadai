@@ -1,20 +1,21 @@
 "use client";
 
-import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApps, FirebaseOptions } from "firebase/app";
 import { getAuth, indexedDBLocalPersistence, signOut } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useSetAtom } from "jotai";
 import { clearUserProfileAtom } from "@/lib/store/user-store";
 
-// Firebase client configuration
-const firebaseConfig = {
+const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase client for browser environments
@@ -24,7 +25,8 @@ function getFirebaseClientApp() {
     return apps[0];
   }
 
-  return initializeApp(firebaseConfig);
+  const newApp = initializeApp(firebaseConfig);
+  return newApp;
 }
 
 export const clientApp = getFirebaseClientApp();
@@ -36,15 +38,10 @@ clientAuth.setPersistence(
     ? indexedDBLocalPersistence
     : indexedDBLocalPersistence
 );
-// typeof window !== "undefined"
-//   ? initializeAuth(clientApp, {
-//       persistence: [indexedDBLocalPersistence, browserLocalPersistence],
-//     })
-//   : getAuth(clientApp);
 
 export const clientDb = getFirestore(
   clientApp,
-  process.env.FIRESTORE_DATABASE_NAME as string
+  process.env.NEXT_PUBLIC_FIRESTORE_DATABASE_NAME as string
 );
 
 // Enable offline persistence for Firestore

@@ -1,0 +1,546 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { Main } from "@/components/layout/main";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Plus,
+  Search as SearchIcon,
+  X,
+  LayoutGrid,
+  Table as TableIcon,
+  Trash,
+  Sparkles,
+} from "lucide-react";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { useState } from "react";
+import { useAtom } from "jotai";
+import {
+  collectionViewModeAtom,
+  collectionRowSelectionAtom,
+  collectionModalOpenAtom,
+  isEditingCollectionAtom,
+  selectedCollectionAtom,
+} from "@/lib/store/collection-store";
+import { ProductSelector } from "./components/product-selector";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Collection, CollectionStatus, Product } from "@/lib/firebase/schema";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import {
+  deleteCollectionAction,
+  deleteMultipleCollectionsAction,
+} from "./actions";
+import { CollectionForm } from "./components/collection-form";
+import { CollectionCard } from "./components/collection-card";
+import { CollectionTable } from "./components/collection-table";
+import { productsAtom, selectedProductAtom } from "@/lib/store/product-store";
+import { useCollectionData } from "react-firebase-hooks/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusFilter } from "./components/status-filter";
+import FirebaseCollections from "@/lib/firebase/client/FirebaseCollections";
+
+// Force dynamic rendering
+export const dynamic = "force-dynamic";
+
+export default function MyCollections() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [layoutView, setLayoutView] = useAtom(collectionViewModeAtom);
+  const [isCollectionModalOpen, setIsCollectionModalOpen] = useAtom(
+    collectionModalOpenAtom
+  );
+  const [isEditing, setIsEditing] = useAtom(isEditingCollectionAtom);
+  const [selectedCollection, setSelectedCollection] = useAtom(
+    selectedCollectionAtom
+  );
+
+  const [selectedProduct, setSelectedProduct] = useAtom(selectedProductAtom);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [collectionToDelete, setCollectionToDelete] =
+    useState<Collection | null>(null);
+  const [isMultipleDeleteDialogOpen, setIsMultipleDeleteDialogOpen] =
+    useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Row selection state
+  const [rowSelection, setRowSelection] = useAtom(collectionRowSelectionAtom);
+  const hasSelectedRows = Object.keys(rowSelection).length > 0;
+
+  // Filter states
+  const [phaseFilter, setPhaseFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<CollectionStatus[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [products, setProducts] = useAtom(productsAtom);
+
+  // Use useCollectionData hook to get the collections for the selected product
+  const [collections, collectionsLoading, collectionsError] = useCollectionData(
+    FirebaseCollections.getCollectionsByProduct(selectedProduct?.id || ""),
+    {
+      snapshotListenOptions: {
+        includeMetadataChanges: true,
+      },
+    }
+  );
+
+  // Safely cast data to proper type with null handling
+  const typedCollections: Collection[] = (collections as Collection[]) || [];
+
+  // Apply filters - collections is already an array of objects, not a snapshot
+  const filteredCollections = typedCollections.filter((collection) => {
+    // Apply search filter
+    const matchesSearch =
+      searchQuery === "" ||
+      collection.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (collection.description || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+
+    // Apply phase filter
+    const matchesPhase =
+      phaseFilter.length === 0 ||
+      collection.phaseTags.some((tag: string) => phaseFilter.includes(tag));
+
+    // Apply status filter
+    const matchesStatus =
+      statusFilter.length === 0 || statusFilter.includes(collection.status);
+
+    return matchesSearch && matchesPhase && matchesStatus;
+  });
+
+  // Handle product selection
+  const handleProductChange = (productId: string | null) => {
+    if (productId) {
+      const product = products.find((c) => c.id === productId)?.id || null;
+      setSelectedProduct(product ? ({ id: product } as Product) : null);
+    } else {
+      setSelectedProduct(null);
+    }
+  };
+
+  const handleCollectionClick = (collection: Collection) => {
+    setSelectedCollection(collection);
+    router.push("/mycollections/collection");
+  };
+
+  const handleCreateCollection = () => {
+    setIsEditing(false);
+    setSelectedCollection(null);
+    setIsCollectionModalOpen(true);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
+
+  const handleEditCollection = (collection: Collection) => {
+    if (!collection || !collection.id) {
+      toast({
+        title: "Error",
+        duration: TOAST_DEFAULT_DURATION,
+        description: "Cannot edit collection - missing collection data",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedCollection(collection);
+    setIsEditing(true);
+    setIsCollectionModalOpen(true);
+  };
+
+  const handleDeleteCollection = (collection: Collection) => {
+    if (!collection || !collection.id) {
+      toast({
+        title: "Error",
+        description: "Cannot delete collection - missing collection ID",
+        variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
+      });
+      return;
+    }
+
+    setCollectionToDelete(collection);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleTagClick = (tag: string) => {
+    // Add the tag to the phase filter if it's not already there
+    if (!phaseFilter.includes(tag)) {
+      setPhaseFilter([...phaseFilter, tag]);
+    }
+  };
+
+  const handleStatusClick = (status: CollectionStatus) => {
+    // Add the status to the status filter if it's not already there
+    if (!statusFilter.includes(status)) {
+      setStatusFilter([...statusFilter, status]);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!collectionToDelete || !collectionToDelete.id) return;
+
+    try {
+      setIsSubmitting(true);
+      const result = await deleteCollectionAction(collectionToDelete.id);
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Collection deleted successfully",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete collection",
+          variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setCollectionToDelete(null);
+      setIsSubmitting(false);
+    }
+  };
+
+  // Function to handle multiple delete
+  const handleDeleteSelected = () => {
+    // Open confirmation dialog
+    setIsMultipleDeleteDialogOpen(true);
+  };
+
+  // Function to execute multiple delete after confirmation
+  const executeMultipleDelete = async () => {
+    try {
+      setIsSubmitting(true);
+
+      // Get selected collections from the table data
+      const selectedCollectionIds = typedCollections
+        .filter((_, index) => rowSelection[index])
+        .map((collection) => collection.id)
+        .filter(Boolean);
+
+      if (selectedCollectionIds.length === 0) {
+        setIsMultipleDeleteDialogOpen(false);
+        return;
+      }
+
+      // Call server action to delete multiple collections
+      const result = await deleteMultipleCollectionsAction(
+        selectedCollectionIds
+      );
+
+      if (result.success) {
+        // Reset row selection
+        setRowSelection({});
+
+        // Show success message
+        toast({
+          title: "Collections deleted",
+          description: `Successfully deleted ${result.deletedCount} collection${
+            result.deletedCount === 1 ? "" : "s"
+          }`,
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete collections",
+          variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
+      });
+    } finally {
+      setIsMultipleDeleteDialogOpen(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  if (collectionsError)
+    return (
+      <>
+        <strong>Connection error!</strong>
+        <p>{collectionsError.message}</p>
+      </>
+    );
+
+  return (
+    <Main data-testid="mycollections-page">
+      <div className="space-y-6">
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/dashboard" },
+            { label: "My Collections", isCurrentPage: true },
+          ]}
+        />
+
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              My Collections
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Manage your knowledge collections
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {hasSelectedRows && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteSelected}
+                disabled={isSubmitting}
+                className="h-9"
+              >
+                <Trash className="h-4 w-4 mr-2" /> Delete Selected
+              </Button>
+            )}
+            <Button
+              onClick={handleCreateCollection}
+              data-testid="create-collection-button"
+              className="whitespace-nowrap"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              <span>New Collection</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Filter and Search row */}
+        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+          {/* Empty space on the left or future filter pills */}
+          <div className="w-full md:flex-1 overflow-x-auto">
+            <StatusFilter
+              selectedStatuses={statusFilter}
+              onChange={setStatusFilter}
+            />
+          </div>
+
+          {/* Search bar and view toggles */}
+          <div className="flex gap-2 w-full md:w-auto">
+            {/* Search bar */}
+            <div className="relative md:w-[18rem] flex-shrink-0">
+              <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Filter my collections..."
+                className="pl-10 pr-10 h-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                data-testid="search-collections-input"
+              />
+              {searchQuery && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Clear search</span>
+                </button>
+              )}
+            </div>
+
+            {/* View toggle buttons */}
+            <div className="flex border rounded-md">
+              <Button
+                variant={layoutView === "grid" ? "default" : "ghost"}
+                size="icon"
+                onClick={() => setLayoutView("grid")}
+                className="rounded-r-none h-9 w-9"
+                data-testid="card-view-button"
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span className="sr-only">Card view</span>
+              </Button>
+              <Button
+                variant={layoutView === "table" ? "default" : "ghost"}
+                size="icon"
+                onClick={() => setLayoutView("table")}
+                className="rounded-l-none h-9 w-9"
+                data-testid="table-view-button"
+              >
+                <TableIcon className="h-4 w-4" />
+                <span className="sr-only">Table view</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {collectionsError && (
+        <div className="bg-destructive/15 text-destructive p-4 rounded-md mt-4">
+          <p>Error loading collections</p>
+        </div>
+      )}
+
+      <div className="mt-6">
+        {collectionsLoading ? (
+          layoutView === "grid" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-lg border p-4">
+                  <Skeleton className="h-8 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/3 mb-4" />
+                  <Skeleton className="h-16 mb-2" />
+                  <div className="flex gap-2 mt-4">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-6 w-16" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="border rounded-md">
+              <div className="p-8 flex items-center justify-center">
+                <Skeleton className="h-6 w-full max-w-xl" />
+              </div>
+            </div>
+          )
+        ) : (
+          <>
+            {filteredCollections.length === 0 ? (
+              !selectedProduct ? (
+                <div className="p-12 text-center w-1/2 mx-auto">
+                  <h2 className="text-xl font-semibold mb-2">
+                    Please select a product to manage collections:
+                  </h2>
+                  <div className="mt-4 w-76 mx-auto">
+                    <ProductSelector
+                      value={null}
+                      onChange={handleProductChange}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="p-12 text-center">
+                  <h2 className="text-xl font-semibold mb-2">
+                    No collections found
+                  </h2>
+                  <p className="text-muted-foreground mb-6">
+                    {typedCollections.length === 0
+                      ? "You haven't created any collections yet"
+                      : "No collections match your search criteria"}
+                  </p>
+                  <Button onClick={handleCreateCollection}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create your first collection
+                  </Button>
+                </div>
+              )
+            ) : layoutView === "grid" ? (
+              <div
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                data-testid="collection-card-grid"
+              >
+                {filteredCollections.map((collection) => (
+                  <CollectionCard
+                    key={collection.id}
+                    collection={collection}
+                    onClick={() => handleCollectionClick(collection)}
+                    onEdit={() => handleEditCollection(collection)}
+                    onDelete={() => handleDeleteCollection(collection)}
+                    onTagClick={handleTagClick}
+                    onStatusClick={handleStatusClick}
+                  />
+                ))}
+              </div>
+            ) : (
+              <CollectionTable
+                data={filteredCollections}
+                onClick={handleCollectionClick}
+                onEdit={handleEditCollection}
+                onDelete={handleDeleteCollection}
+                onTagClick={handleTagClick}
+                onStatusClick={handleStatusClick}
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the collection &quot;
+              {collectionToDelete?.title}&quot; and all its documents. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isSubmitting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isSubmitting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={isMultipleDeleteDialogOpen}
+        onOpenChange={setIsMultipleDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete multiple collections?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {Object.keys(rowSelection).length}{" "}
+              selected collection
+              {Object.keys(rowSelection).length === 1 ? "" : "s"} and all their
+              documents. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeMultipleDelete}
+              disabled={isSubmitting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isSubmitting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <CollectionForm />
+    </Main>
+  );
+}

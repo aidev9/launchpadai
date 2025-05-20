@@ -1,6 +1,7 @@
 "use server";
 import { adminAuth } from "./admin";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 /**
  * Get current user ID from Firebase session cookie
@@ -29,6 +30,9 @@ export async function getCurrentUserId(): Promise<string> {
     return decodedClaims.uid;
   } catch (error) {
     console.error("Error verifying session cookie:", error);
-    throw new Error("Authentication failed. Please sign in again.");
+    // Navigate to the sign-in page
+    redirect("/auth/signin");
+
+    // throw new Error("Authentication failed. Please sign in again.");
   }
 }

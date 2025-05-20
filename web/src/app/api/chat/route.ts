@@ -1,14 +1,43 @@
+import { NextRequest, NextResponse } from "next/server";
+import { Message } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { consumePromptCredit } from "@/lib/firebase/prompt-credits";
+import {
+  searchDocumentChunks,
+  DocumentChunkSearchResult,
+} from "@/app/(protected)/mycollections/actions";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
-export async function POST(req: Request) {
+// Define the agent system prompt
+const systemPrompt = `You are a helpful AI assistant that helps users find information in their document collections.
+Your primary goal is to provide accurate information based on the search results from user's documents.
+
+Guidelines:
+1. Focus on answering questions using ONLY the provided search results
+2. If the search results don't contain information to answer the question, acknowledge this limitation
+3. Don't make up information that isn't in the search results
+4. When citing information, reference the document it came from
+5. Keep your responses clear, concise, and helpful
+6. Maintain a conversational, friendly tone`;
+
+export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    // Extract the message content and collection ID from the request
+    const { messages, collectionId } = await req.json();
+
+    // Ensure the API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      return new Response(
+        JSON.stringify({
+          error: "OpenAI API key is missing. Set it in your .env.local file.",
+        }),
+        { status: 500 }
+      );
+    }
 
     // Get current user ID
     const userId = await getCurrentUserId();
@@ -46,58 +75,78 @@ export async function POST(req: Request) {
       );
     }
 
+    // Get the latest user message
+    const lastMessage = messages[messages.length - 1];
+
+    if (lastMessage.role !== "user") {
+      return NextResponse.json(
+        { error: "Last message must be from user" },
+        { status: 400 }
+      );
+    }
+
+    // 1. Search for relevant documents based on the user's question
+    const searchResults = await searchDocumentChunks(
+      lastMessage.content,
+      collectionId,
+      1, // Page
+      5 // Results per page - limit to top 5 for relevance
+    );
+
+    // Format search results for context
+    let searchContext = "";
+    let searchResultsArray: DocumentChunkSearchResult[] = [];
+
+    if (
+      searchResults.success &&
+      searchResults.results &&
+      searchResults.results.length > 0
+    ) {
+      searchResultsArray = searchResults.results;
+
+      searchContext =
+        "Here are relevant passages from the user's documents:\n\n";
+      searchResults.results.forEach((result, index) => {
+        searchContext += `Document: "${result.document_title}"\n`;
+        searchContext += `Content: ${result.chunk_content}\n\n`;
+      });
+    } else {
+      searchContext =
+        "No relevant documents found in the collection for this query.";
+    }
+
+    // 2. Combine the search results with the user's message for context
+    const allMessages: Message[] = [
+      { id: "system", role: "system", content: systemPrompt },
+      ...messages.slice(0, -1), // Previous conversation history
+      {
+        id: "context",
+        role: "system",
+        content: `The user asked: "${lastMessage.content}"\n\n${searchContext}\n\nRespond to the user's question based on this information.`,
+      },
+      lastMessage, // The actual user question
+    ];
+
+    // 3. Stream the AI response
     const result = streamText({
-      model: openai("gpt-4o-mini"),
-      system: `You are the LaunchpadAI Assistant, dedicated to helping entrepreneurs and business owners accelerate their startup journey using the LaunchpadAI platform.
-
-Your primary goal is to understand users' needs and guide them to the most relevant LaunchpadAI services.
-
-IMPORTANT: Your job is NOT to directly solve users' problems, but rather to inform them about and encourage them to explore and sign up for LaunchpadAI services. Always provide detailed examples of how the platform can solve their specific challenges.
-
-Begin by introducing yourself and asking about their current business stage or specific challenge they're facing.
-
-Based on their response, guide them to one of LaunchpadAI's services:
-1. Startup Name Generation - For those struggling to find the perfect brand name
-2. Logo Generation - For users who need visual brand identity
-3. Vibe Coding Assets - For creating consistent brand assets and design elements
-4. Prompt Libraries - For leveraging AI effectively in their business processes
-5. General Platform Information - For those wanting to understand LaunchpadAI's overall value proposition
-
-When discussing these services, focus on how they address common pain points:
-- Time savings (hundreds of hours)
-- Cost reduction (thousands of dollars)
-- Professional quality without specialized expertise
-- Consistency across brand touchpoints
-- Accelerated time-to-market
-
-Examples of redirecting users to LaunchpadAI services:
-- If a user asks for help naming their business: Don't suggest names directly. Instead, explain how LaunchpadAI's Name Generation tool works, mention that it has helped thousands of founders find distinctive names that reflect their brand values, and provide an example like "A fitness app founder used our Name Assistant and discovered 'VitalSpark' after answering targeted questions about their unique approach to wellness."
-- If a user asks for logo design help: Don't create or design a logo. Describe how the Logo Generation service works, its customization capabilities, and mention a success story like "A recent tech startup used our Logo Generator and created a professional logo in minutes rather than spending weeks with a design agency."
-- If a user needs branding assets: Explain the Vibe Coding Assets service and how it ensures consistency across all brand touchpoints.
-
-Ask thoughtful questions to understand their needs better:
-- Current stage of their business or idea
-- Specific challenges they're facing in their launch process
-- Timeline and budget constraints
-- Previous experience with branding, design, or AI tools
-- Their vision for their business and what success looks like
-
-Important guidelines:
-- Remember all previous messages and build upon the conversation history
-- Be conversational and helpful, not salesy
-- Connect LaunchpadAI's benefits directly to their expressed needs
-- When appropriate, gently encourage platform signup by highlighting relevant benefits
-- Provide concise but valuable information about the platform
-- If they have specific questions about pricing, explain the value proposition rather than focusing solely on cost
-- If they ask about limitations, be honest but frame in terms of current capabilities
-
-Your ultimate aim is to help users understand how LaunchpadAI can save them time, money, and effort in launching their business, while maintaining a helpful rather than pushy approach.`,
-      messages,
+      model: openai("gpt-4o-mini"), // Use appropriate model
+      messages: allMessages,
+      temperature: 0.7,
     });
 
-    return result.toDataStreamResponse();
+    // 4. Return the streaming response
+    // The search results can't be properly included in the stream, so we'll modify the chat component
+    // to handle this differently
+    const responseStream = result.toDataStream();
+    const finalResponse = new Response(responseStream, {
+      headers: {
+        "Content-Type": "text/plain",
+      },
+    });
+
+    return finalResponse;
   } catch (error) {
-    console.error("Error processing chat:", error);
+    console.error("Error processing request:", error);
     return new Response(
       JSON.stringify({ error: "Error processing your request" }),
       { status: 500 }

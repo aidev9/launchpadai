@@ -58,6 +58,7 @@ const nextConfig: NextConfig = {
     ],
   },
   transpilePackages: ["jotai-devtools"],
+  serverExternalPackages: ["prettier", "prettier/standalone"],
   experimental: {
     serverActions: {
       bodySizeLimit: "16mb",
