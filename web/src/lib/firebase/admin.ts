@@ -36,9 +36,16 @@ function getFirebaseAdminApp() {
 
 export const adminApp = getFirebaseAdminApp();
 
-export const adminDb = getFirestore(
-  adminApp,
-  process.env.FIRESTORE_DATABASE_NAME as string
+// Ensure the database name is properly set
+const dbName = process.env.FIRESTORE_DATABASE_NAME;
+if (!dbName) {
+  console.error("FIRESTORE_DATABASE_NAME is not set! Using default database.");
+}
+
+export const adminDb = getFirestore(adminApp, dbName || "default");
+
+console.log(
+  `[Firebase Admin] Initialized Firestore with database: ${dbName || "default"}`
 );
 
 export const adminAuth = getAuth(adminApp);

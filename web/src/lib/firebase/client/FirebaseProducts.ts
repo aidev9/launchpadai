@@ -48,6 +48,13 @@ class FirebaseProducts {
 
       this.auth = clientAuth;
       this.db = clientDb;
+
+      // Add debugging to log the database name
+      console.log(
+        "[FirebaseProducts] Using database:",
+        process.env.NEXT_PUBLIC_FIRESTORE_DATABASE_NAME || "default"
+      );
+
       this.storage = getStorage(clientApp);
       this.collectionName = "products";
     } catch (error) {
@@ -71,10 +78,17 @@ class FirebaseProducts {
       userId = "default";
     }
 
-    return collection(
-      this.db,
-      `${this.collectionName}/${userId}/${this.collectionName}`
-    ).withConverter(productConverter);
+    // Add more detailed path debugging
+    const path = `${this.collectionName}/${userId}/${this.collectionName}`;
+    console.log(
+      `[FirebaseProducts] Creating collection reference with path: ${path}`
+    );
+    console.log(
+      `[FirebaseProducts] Using database:`,
+      process.env.NEXT_PUBLIC_FIRESTORE_DATABASE_NAME || "default"
+    );
+
+    return collection(this.db, path).withConverter(productConverter);
   }
 
   getProducts(): Query<DocumentData, DocumentData> | null {

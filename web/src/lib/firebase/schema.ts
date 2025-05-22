@@ -656,3 +656,7 @@ export const documentInputSchema = z.object({
 
 export type DocumentInput = z.infer<typeof documentInputSchema>;
 // END: DOCUMENTS
+
+// START: MCP ENDPOINTS
+export * from "./schema/mcp-endpoints";
+// END: MCP ENDPOINTS

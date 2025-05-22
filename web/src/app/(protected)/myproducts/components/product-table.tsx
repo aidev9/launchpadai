@@ -84,7 +84,6 @@ export function ProductTable({
     },
     enableRowSelection: true,
     onRowSelectionChange: (updatedSelection) => {
-      console.log("Row selection changing to:", updatedSelection);
       setRowSelection(updatedSelection);
     },
     getRowId: (row) => row.id,
@@ -108,22 +107,6 @@ export function ProductTable({
   useState(() => {
     setTableInstance(table);
   });
-
-  // Add debug logging for rowSelection
-  console.log(
-    "ProductTable render - rowSelection:",
-    rowSelection,
-    "keys:",
-    Object.keys(rowSelection)
-  );
-  console.log(
-    "ProductTable table.getState().rowSelection:",
-    table.getState().rowSelection
-  );
-  console.log(
-    "Selected row count:",
-    table.getFilteredSelectedRowModel().rows.length
-  );
 
   // Handle row click
   const handleRowClick = (

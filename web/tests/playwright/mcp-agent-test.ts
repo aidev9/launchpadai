@@ -1,0 +1,226 @@
+// @ts-nocheck
+/* eslint-disable */
+
+import { config } from "dotenv";
+import { ChatOpenAI } from "@langchain/openai";
+import { StateGraph } from "@langchain/langgraph";
+import { RunnableSequence } from "@langchain/core/runnables";
+import { StructuredTool } from "@langchain/core/tools";
+import {
+  ChatPromptTemplate,
+  MessagesPlaceholder,
+} from "@langchain/core/prompts";
+import { AgentExecutor } from "langchain/agents";
+import { convertToOpenAIFunction } from "@langchain/core/utils/function_calling";
+
+// Load environment variables from .env.local
+config({ path: ".env.local" });
+
+// Define the state interface
+interface AgentState {
+  messages: any[];
+  steps: any[];
+}
+
+// Check for required environment variables
+const requiredEnvVars = [
+  "MCP_ENDPOINT_URL",
+  "MCP_AUTH_TYPE",
+  "MCP_AUTH_VALUE",
+  "OPENAI_API_KEY",
+];
+
+// Check for required environment variables
+const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+if (missingEnvVars.length > 0) {
+  console.error(
+    `Error: The following environment variables are not set in .env.local file:`
+  );
+  missingEnvVars.forEach((envVar) => console.error(`- ${envVar}`));
+  console.error("Please set these variables before running the script.");
+  // Don't use process.exit to avoid dependency issues
+  throw new Error("Missing required environment variables");
+}
+
+// Create a tool to search documents using the MCP endpoint
+class SearchDocumentsTool extends StructuredTool {
+  name = "search_documents";
+  description = "Search for information in documents using vector similarity";
+  schema = {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        description: "The search query",
+      },
+      limit: {
+        type: "number",
+        description: "Maximum number of results to return (default: 5)",
+      },
+    },
+    required: ["query"],
+  };
+
+  async _call({ query, limit = 5 }: { query: string; limit?: number }) {
+    try {
+      // Prepare headers based on auth type
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (process.env.MCP_AUTH_TYPE === "api_key") {
+        headers["x-api-key"] = process.env.MCP_AUTH_VALUE || "";
+      } else if (process.env.MCP_AUTH_TYPE === "bearer_token") {
+        headers["Authorization"] = `Bearer ${process.env.MCP_AUTH_VALUE || ""}`;
+      }
+
+      // Make the request to the MCP endpoint
+      const response = await fetch(process.env.MCP_ENDPOINT_URL!, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          query,
+          limit,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          `Error searching documents: ${errorData.error || response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      // Format the results for better readability
+      if (data.success && data.results && data.results.length > 0) {
+        const formattedResults = data.results.map((result: any) => ({
+          document_title: result.document_title,
+          content: result.chunk_content,
+          similarity: result.similarity,
+        }));
+
+        return JSON.stringify(formattedResults, null, 2);
+      } else {
+        return "No results found for the given query.";
+      }
+    } catch (error) {
+      return `Error: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`;
+    }
+  }
+}
+
+async function main() {
+  // Create the language model
+  const model = new ChatOpenAI({
+    modelName: "gpt-4o-mini",
+    temperature: 0,
+  });
+
+  // Create the search documents tool
+  const searchDocumentsTool = new SearchDocumentsTool();
+  const tools = [searchDocumentsTool];
+
+  // Create the prompt template
+  const prompt = ChatPromptTemplate.fromMessages([
+    [
+      "system",
+      `You are a helpful assistant that answers questions based on document search results.
+    
+When asked a question, use the search_documents tool to find relevant information in the documents.
+Analyze the search results and provide a comprehensive answer based on the information found.
+If the search doesn't return relevant results, acknowledge that you don't have enough information to answer.
+Always cite the document titles where you found the information.`,
+    ],
+    new MessagesPlaceholder("messages"),
+    new MessagesPlaceholder("agent_scratchpad"),
+  ]);
+
+  // Create the agent
+  const toolsAsOpenAIFunctions = tools.map((tool) =>
+    convertToOpenAIFunction(tool)
+  );
+
+  // Define the agent executor
+  const agent = RunnableSequence.from([
+    {
+      messages: (state: AgentState) => state.messages,
+      agent_scratchpad: (state: AgentState) => state.steps,
+    },
+    prompt,
+    model.bind({ functions: toolsAsOpenAIFunctions }),
+    AgentExecutor.fromLLMAndTools({
+      llm: model,
+      tools,
+    }),
+  ]);
+
+  // Define the state graph
+  const workflow = new StateGraph<AgentState>({
+    channels: {
+      messages: {
+        value: (x: any, y: any) => y,
+        default: () => [],
+      },
+      steps: {
+        value: (x: any, y: any) => [...(x || []), y],
+        default: () => [],
+      },
+    },
+  });
+
+  // Add the agent node
+  workflow.addNode("agent", agent);
+
+  // Set the entry point
+  workflow.setEntryPoint("agent");
+
+  // Compile the workflow
+  const app = workflow.compile();
+
+  // Run the agent with a sample question
+  console.log("Starting MCP agent test...");
+  console.log(`Using MCP endpoint: ${process.env.MCP_ENDPOINT_URL}`);
+  console.log("Note: This is a simplified version without interactive input.");
+  console.log("You can modify the script to test with specific queries.");
+
+  // Example query to test with
+  const exampleQuery =
+    "What information do you have about document management?";
+
+  // Function to run a single query
+  const runQuery = async (query: string) => {
+    console.log(`\nProcessing query: "${query}"`);
+
+    try {
+      const result = await app.invoke({
+        messages: [{ role: "user", content: query }],
+        steps: [],
+      });
+
+      // Extract and display the assistant's response
+      const assistantMessages = result.messages.filter(
+        (msg: any) => msg.role === "assistant"
+      );
+      if (assistantMessages.length > 0) {
+        console.log("\nAssistant:");
+        console.log(assistantMessages[assistantMessages.length - 1].content);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  // Run the example query
+  await runQuery(exampleQuery);
+}
+
+// Run the main function
+main().catch((error) => {
+  console.error("Error:", error);
+  // Don't use process.exit to avoid dependency issues
+  console.error("Exiting with error");
+});

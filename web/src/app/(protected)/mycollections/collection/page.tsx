@@ -16,6 +16,7 @@ import { Plus, ArrowLeft, Loader2 } from "lucide-react";
 import { DocumentTable } from "./components/document-table";
 import { DocumentForm } from "./components/document-form";
 import { Document, DocumentStatus } from "@/lib/firebase/schema";
+import { McpTab } from "./mcp-tab";
 import { useToast } from "@/hooks/use-toast";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import {
@@ -362,6 +363,7 @@ export default function CollectionDetail() {
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="search">Search</TabsTrigger>
             <TabsTrigger value="chat">Chat</TabsTrigger>
+            <TabsTrigger value="mcp">MCP</TabsTrigger>
           </TabsList>
           <TabsContent value="general" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -557,6 +559,9 @@ export default function CollectionDetail() {
               />
             )}
           </TabsContent>
+
+          {/* MCP Tab */}
+          <McpTab collectionId={selectedCollection.id} />
         </Tabs>
 
         {/* Document creation modal */}

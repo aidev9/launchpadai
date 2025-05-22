@@ -39,9 +39,18 @@ clientAuth.setPersistence(
     : indexedDBLocalPersistence
 );
 
-export const clientDb = getFirestore(
-  clientApp,
-  process.env.NEXT_PUBLIC_FIRESTORE_DATABASE_NAME as string
+// Ensure the database name is properly set
+const dbName = process.env.NEXT_PUBLIC_FIRESTORE_DATABASE_NAME;
+if (!dbName) {
+  console.error(
+    "NEXT_PUBLIC_FIRESTORE_DATABASE_NAME is not set! Using default database."
+  );
+}
+
+export const clientDb = getFirestore(clientApp, dbName || "default");
+
+console.log(
+  `[Firebase Client] Initialized Firestore with database: ${dbName || "default"}`
 );
 
 // Enable offline persistence for Firestore

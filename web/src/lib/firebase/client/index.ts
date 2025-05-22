@@ -10,6 +10,13 @@ export { firebaseProducts } from "./FirebaseProducts";
 export { firebaseQA } from "./FirebaseQA";
 export { firebaseStacks } from "./FirebaseStacks";
 export { firebasePrompts } from "./FirebasePrompts";
+export {
+  createMcpEndpointConfig,
+  getMcpEndpointConfig,
+  getMcpEndpointConfigsByCollection,
+  updateMcpEndpointConfig,
+  deleteMcpEndpointConfig,
+} from "./FirebaseMcpEndpoints";
 
 // Re-export types if needed
 export type { FirebaseOptions } from "firebase/app";
