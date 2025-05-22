@@ -9,18 +9,19 @@ import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Get the techStacksRef for a specific user
 function getUserTechStacksRef(userId: string) {
-  return adminDb.collection("products").doc(userId).collection("products");
+  return adminDb.collection("mystacks").doc(userId).collection("mystacks");
 }
 
 /**
  * Create a new tech stack
+ * TODO: Fix this
  */
-export async function createTechStack(data: TechStackInput) {
+export async function createTechStack(data: TechStack) {
   try {
     // Validate input data
     const validatedData = techStackInputSchema.parse(data);
     const userId = await getCurrentUserId();
-    const productsRef = getUserTechStacksRef(userId);
+    const techStacksRef = getUserTechStacksRef(userId);
 
     // Add timestamps
     const timestamp = getCurrentUnixTimestamp();
@@ -32,22 +33,20 @@ export async function createTechStack(data: TechStackInput) {
     };
 
     // Add to Firestore
-    const docRef = await productsRef
-      .doc("stacks")
-      .collection("stacks")
-      .add(techStackData);
+    const docRef = await techStacksRef.add(techStackData);
     const techStackId = docRef.id;
 
     // Start generating default assets in the background without awaiting
     // This allows us to return immediately and let the assets generate asynchronously
-    generateDefaultAssets(techStackId, validatedData.name).catch(
-      (assetError) => {
-        console.error(
-          `Failed to generate default assets for tech stack ${techStackId}:`,
-          assetError
-        );
-      }
-    );
+    // TODO: We will refactor this to use a queue system in the future
+    // generateDefaultAssets(techStackId, validatedData.name).catch(
+    //   (assetError) => {
+    //     console.error(
+    //       `Failed to generate default assets for tech stack ${techStackId}:`,
+    //       assetError
+    //     );
+    //   }
+    // );
 
     // Revalidate relevant paths
     revalidatePath("/mystacks/create");
@@ -56,7 +55,7 @@ export async function createTechStack(data: TechStackInput) {
     return {
       success: true,
       id: techStackId,
-      data: techStackData,
+      data: { ...techStackData, id: techStackId },
     };
   } catch (error) {
     console.error("Failed to create tech stack:", error);
@@ -73,13 +72,9 @@ export async function createTechStack(data: TechStackInput) {
 export async function getAllTechStacks() {
   try {
     const userId = await getCurrentUserId();
-    const productsRef = getUserTechStacksRef(userId);
+    const techStacksRef = getUserTechStacksRef(userId);
 
-    const snapshot = await productsRef
-      .doc("stacks")
-      .collection("stacks")
-      .orderBy("updatedAt", "desc")
-      .get();
+    const snapshot = await techStacksRef.orderBy("updatedAt", "desc").get();
 
     const techStacks = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -105,13 +100,9 @@ export async function getAllTechStacks() {
 export async function getTechStack(id: string) {
   try {
     const userId = await getCurrentUserId();
-    const productsRef = getUserTechStacksRef(userId);
+    const techStacksRef = getUserTechStacksRef(userId);
 
-    const techStackDoc = await productsRef
-      .doc("stacks")
-      .collection("stacks")
-      .doc(id)
-      .get();
+    const techStackDoc = await techStacksRef.doc(id).get();
 
     if (!techStackDoc.exists) {
       return {
@@ -138,27 +129,12 @@ export async function getTechStack(id: string) {
 
 /**
  * Update an existing tech stack
+ * TODO: Fix this
  */
-export async function updateTechStack(
-  id: string,
-  data: Partial<TechStackInput>
-) {
+export async function updateTechStack(data: TechStack) {
   try {
     const userId = await getCurrentUserId();
-    const productsRef = getUserTechStacksRef(userId);
-
-    // Check if tech stack exists
-    const techStackDoc = await productsRef
-      .doc("stacks")
-      .collection("stacks")
-      .doc(id)
-      .get();
-    if (!techStackDoc.exists) {
-      return {
-        success: false,
-        error: "Tech stack not found",
-      };
-    }
+    const techStacksRef = getUserTechStacksRef(userId);
 
     // Update with new data and updatedAt timestamp
     const updateData = {
@@ -166,11 +142,7 @@ export async function updateTechStack(
       updatedAt: getCurrentUnixTimestamp(),
     };
 
-    await productsRef
-      .doc("stacks")
-      .collection("stacks")
-      .doc(id)
-      .update(updateData);
+    await techStacksRef.doc(data.id).update(updateData);
 
     // Revalidate relevant paths
     revalidatePath("/mystacks/create");
@@ -178,11 +150,11 @@ export async function updateTechStack(
 
     return {
       success: true,
-      id,
+      id: data.id,
       data: updateData,
     };
   } catch (error) {
-    console.error(`Failed to update tech stack ${id}:`, error);
+    console.error(`Failed to update tech stack ${data.id}:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -196,14 +168,10 @@ export async function updateTechStack(
 export async function deleteTechStack(id: string) {
   try {
     const userId = await getCurrentUserId();
-    const productsRef = getUserTechStacksRef(userId);
+    const techStacksRef = getUserTechStacksRef(userId);
 
     // Check if tech stack exists
-    const techStackDoc = await productsRef
-      .doc("stacks")
-      .collection("stacks")
-      .doc(id)
-      .get();
+    const techStackDoc = await techStacksRef.doc(id).get();
     if (!techStackDoc.exists) {
       return {
         success: false,
@@ -212,7 +180,7 @@ export async function deleteTechStack(id: string) {
     }
 
     // Delete the tech stack
-    await productsRef.doc("stacks").collection("stacks").doc(id).delete();
+    await techStacksRef.doc(id).delete();
 
     // Revalidate relevant paths
     revalidatePath("/mystacks/create");
@@ -237,8 +205,7 @@ export async function deleteTechStack(id: string) {
 export async function deleteMultipleTechStacks(ids: string[]) {
   try {
     const userId = await getCurrentUserId();
-    const productsRef = getUserTechStacksRef(userId);
-    const stacksRef = productsRef.doc("stacks").collection("stacks");
+    const techStacksRef = getUserTechStacksRef(userId);
 
     // Create a batch write
     const batch = adminDb.batch();
@@ -246,9 +213,9 @@ export async function deleteMultipleTechStacks(ids: string[]) {
 
     // Add each tech stack to the batch
     for (const id of ids) {
-      const techStackDoc = await stacksRef.doc(id).get();
+      const techStackDoc = await techStacksRef.doc(id).get();
       if (techStackDoc.exists) {
-        batch.delete(stacksRef.doc(id));
+        batch.delete(techStacksRef.doc(id));
         deletedCount++;
       }
     }

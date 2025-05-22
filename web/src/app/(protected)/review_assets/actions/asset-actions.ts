@@ -8,19 +8,11 @@ import { awardXpPoints } from "@/xp/server-actions";
 import { z } from "zod";
 
 // Schema for saving assets
-const saveAssetSchema = z.object({
+export const SaveAssetSchema = z.object({
   productId: z.string(),
   asset: z.object({
     id: z.string(),
-    phase: z.enum([
-      "Discover",
-      "Validate",
-      "Design",
-      "Build",
-      "Secure",
-      "Launch",
-      "Grow",
-    ]),
+    phases: z.array(z.string()).optional(),
     title: z.string(),
     description: z.string().optional(),
     systemPrompt: z.string(),
@@ -31,14 +23,15 @@ const saveAssetSchema = z.object({
 });
 
 // Define server action for saving assets
-export async function saveAssetAction(data: z.infer<typeof saveAssetSchema>) {
+export async function saveAssetAction(data: z.infer<typeof SaveAssetSchema>) {
   try {
     const { productId, asset } = data;
 
     // Make sure we have tags array
     const assetWithTags = {
       ...asset,
-      tags: asset.tags || [asset.phase],
+      tags: asset.tags || [],
+      phases: asset.phases || [],
       description: asset.description || asset.title,
     };
 
@@ -59,14 +52,14 @@ export async function saveAssetAction(data: z.infer<typeof saveAssetSchema>) {
 }
 
 // Schema for deleting assets
-const deleteAssetSchema = z.object({
+const _deleteAssetSchema = z.object({
   productId: z.string(),
   assetId: z.string(),
 });
 
 // Define server action for deleting assets
 export async function deleteAssetAction(
-  data: z.infer<typeof deleteAssetSchema>
+  data: z.infer<typeof _deleteAssetSchema>
 ) {
   try {
     const { productId, assetId } = data;
@@ -93,13 +86,13 @@ export async function deleteAssetAction(
 /**
  * Server action to download a single asset's content and award XP
  */
-const downloadSingleAssetSchema = z.object({
+const _downloadSingleAssetSchema = z.object({
   productId: z.string(),
   assetId: z.string(),
 });
 
 export async function downloadSingleAssetAction(
-  data: z.infer<typeof downloadSingleAssetSchema>
+  data: z.infer<typeof _downloadSingleAssetSchema>
 ) {
   try {
     const { productId, assetId } = data;

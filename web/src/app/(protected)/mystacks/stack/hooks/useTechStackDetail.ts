@@ -6,10 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAtom } from "jotai";
 import { TechStack, TechStackAsset } from "@/lib/firebase/schema";
 import { getTechStack } from "@/lib/firebase/techstacks";
-import {
-  selectedTechStackAtom,
-  selectedTechStackIdAtom,
-} from "@/lib/store/techstack-store";
+import { selectedTechStackAtom } from "@/lib/store/techstack-store";
 import { useTechStackAssets } from "./useTechStackAssets";
 
 /**
@@ -20,9 +17,6 @@ export function useTechStackDetailWithQuery() {
   const { toast } = useToast();
   const [selectedTechStack, setSelectedTechStack] = useAtom(
     selectedTechStackAtom
-  );
-  const [selectedTechStackId, setSelectedTechStackId] = useAtom(
-    selectedTechStackIdAtom
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,40 +72,40 @@ export function useTechStackDetailWithQuery() {
 
   // Fetch tech stack if not in state - only when selectedTechStackId changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    // Only fetch if we have an ID but no tech stack
-    if (selectedTechStackId && !selectedTechStack) {
-      const fetchTechStack = async () => {
-        setIsLoading(true);
-        try {
-          const result = await getTechStack(selectedTechStackId);
+  // useEffect(() => {
+  //   // Only fetch if we have an ID but no tech stack
+  //   if (selectedTechStackId && !selectedTechStack) {
+  //     const fetchTechStack = async () => {
+  //       setIsLoading(true);
+  //       try {
+  //         const result = await getTechStack(selectedTechStackId);
 
-          if (result.success && result.techStack) {
-            setSelectedTechStack(result.techStack);
-          } else {
-            setError(result.error || "Failed to fetch tech stack");
-          }
-        } catch (error) {
-          setError(
-            error instanceof Error
-              ? error.message
-              : "An unexpected error occurred"
-          );
-        } finally {
-          setIsLoading(false);
-        }
-      };
+  //         if (result.success && result.techStack) {
+  //           setSelectedTechStack(result.techStack);
+  //         } else {
+  //           setError(result.error || "Failed to fetch tech stack");
+  //         }
+  //       } catch (error) {
+  //         setError(
+  //           error instanceof Error
+  //             ? error.message
+  //             : "An unexpected error occurred"
+  //         );
+  //       } finally {
+  //         setIsLoading(false);
+  //       }
+  //     };
 
-      fetchTechStack();
-    }
-  }, [selectedTechStackId]); // Only depend on the ID, not the tech stack itself
+  //     fetchTechStack();
+  //   }
+  // }, [selectedTechStackId]); // Only depend on the ID, not the tech stack itself
 
-  // Redirect if no tech stack is selected
-  useEffect(() => {
-    if (!selectedTechStack && !selectedTechStackId && !isLoading) {
-      router.push("/mystacks");
-    }
-  }, [selectedTechStack, selectedTechStackId, isLoading, router]);
+  // // Redirect if no tech stack is selected
+  // useEffect(() => {
+  //   if (!selectedTechStack && !selectedTechStackId && !isLoading) {
+  //     router.push("/mystacks");
+  //   }
+  // }, [selectedTechStack, selectedTechStackId, isLoading, router]);
 
   // Refetch assets when tab changes to assets
   // eslint-disable-next-line react-hooks/exhaustive-deps

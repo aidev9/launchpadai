@@ -28,6 +28,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { atom, useSetAtom } from "jotai";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import { Phases } from "@/lib/firebase/schema";
 
 // Create an atom to store the newly created asset ID
 export const newlyCreatedAssetIdAtom = atom<string | null>(null);
@@ -53,14 +54,7 @@ export function AddAssetButton() {
         productId: selectedProductId,
         asset: {
           id: assetId,
-          phase: phase as
-            | "Discover"
-            | "Validate"
-            | "Design"
-            | "Build"
-            | "Secure"
-            | "Launch"
-            | "Grow",
+          phases: [phase as Phases],
           title: title,
           description: description || title,
           systemPrompt: "Custom asset created by user", // Default prompt

@@ -1,11 +1,23 @@
 import { z } from "zod";
 
+// Define common enums
+export enum Phases {
+  ALL = "All",
+  DISCOVER = "Discover",
+  VALIDATE = "Validate",
+  DESIGN = "Design",
+  BUILD = "Build",
+  SECURE = "Secure",
+  LAUNCH = "Launch",
+  GROW = "Grow",
+}
+
 // START: PRODUCT
 export type Product = {
   id: string;
   name: string;
   description?: string;
-  stage: string;
+  phases: Phases[];
   problem?: string;
   team?: string;
   website?: string;
@@ -113,33 +125,34 @@ export const calculateAnnualPrice = (monthlyPrice: number): number => {
 // END: SUBSCRIPTION
 
 // START: QUESTIONS
-// TODO: Clean up the question schema
-
-const questionSchema = z.object({
+export const questionSchema = z.object({
   id: z.string(),
   question: z.string(),
   answer: z.string().nullable().optional(),
-  phases: z.array(z.string()).default([]),
+  phases: z.array(z.nativeEnum(Phases)).default([]),
   tags: z.array(z.string()).default([]),
+  productId: z.string().optional(),
+  userId: z.string(),
   updatedAt: z.number().optional(),
   createdAt: z.number().optional(),
   order: z.number().optional(),
 });
 
-// export type Question = z.infer<typeof questionSchema>;
+export type Question = z.infer<typeof questionSchema>;
 
 export const questionListSchema = z.array(questionSchema);
 
-export interface Question {
-  id: string;
-  question: string;
-  answer: string | null;
-  tags?: string[];
-  phases?: string[];
-  order?: number;
-  createdAt?: number;
-  updatedAt?: number;
-}
+// Schema for question input (for creating/updating)
+export const questionInputSchema = z.object({
+  question: z.string().min(1, "Question is required"),
+  answer: z.string().nullable().optional(),
+  phases: z.array(z.nativeEnum(Phases)).default([]),
+  tags: z.array(z.string()).default([]),
+  productId: z.string().optional(),
+});
+
+export type QuestionInput = z.infer<typeof questionInputSchema>;
+
 // Schema for questions within a product
 export const productQuestionSchema = z.object({
   id: z.string(),
@@ -294,21 +307,22 @@ export interface Model<Type = string> {
 
 // START: TECH STACKS
 export interface TechStack {
-  id?: string;
-  userId?: string;
+  id: string;
+  userId: string;
+  productId: string;
   appType: string;
   frontEndStack: string;
-  backendStack: string;
-  database: string;
+  backEndStack: string;
+  databaseStack: string;
   aiAgentStack: string[];
   integrations: string[];
   deploymentStack: string;
   name: string;
   description: string;
   tags: string[];
-  phase: string[];
+  phases: Phases[];
   prompt?: string;
-  documentationLinks?: string[];
+  documentationLinks: string[];
   createdAt?: number;
   updatedAt?: number;
 }
@@ -317,10 +331,12 @@ export interface TechStack {
  * Zod schema for tech stack validation
  */
 export const techStackInputSchema = z.object({
+  userId: z.string().optional(),
+  productId: z.string().min(1, "Product ID is required"),
   appType: z.string().default(""),
   frontEndStack: z.string().default(""),
-  backendStack: z.string().default(""),
-  database: z.string().default(""),
+  backEndStack: z.string().default(""),
+  databaseStack: z.string().default(""),
   // Make these fields optional
   aiAgentStack: z.array(z.string()).default([]),
   integrations: z.array(z.string()).default([]),
@@ -328,7 +344,7 @@ export const techStackInputSchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
   description: z.string().min(1, "Description is required"),
   tags: z.array(z.string()).default([]),
-  phase: z.array(z.string()).default([]),
+  phases: z.array(z.string()).default([]),
   prompt: z.string().optional(),
   documentationLinks: z.array(z.string()).default([]),
 });
@@ -375,28 +391,9 @@ export const techStackAssetInputSchema = z.object({
 export type TechStackAssetInput = z.infer<typeof techStackAssetInputSchema>;
 // END: TECH STACKS
 
-// export interface FirestoreAsset {
-//   id: string;
-//   phase: string;
-//   document: string;
-//   content?: string;
-//   title?: string;
-//   systemPrompt?: string;
-//   order?: number;
-//   createdAt?: number;
-//   updatedAt?: number;
-// }
-
 export interface Asset {
   id: string;
-  phase:
-    | "Discover"
-    | "Validate"
-    | "Design"
-    | "Build"
-    | "Secure"
-    | "Launch"
-    | "Grow";
+  phases: Phases[];
   document: string;
   systemPrompt: string;
   order: number;
@@ -408,18 +405,10 @@ export interface FirestoreAsset {
   title: string;
   description: string;
   systemPrompt: string;
-  phase: Asset["phase"];
+  phases: Phases[];
   tags: string[];
   order: number;
   content?: string;
-  createdAt?: number;
-  updatedAt?: number;
-}
-
-export interface ProductNote {
-  id: string;
-  note_body: string;
-  tags?: string[];
   createdAt?: number;
   updatedAt?: number;
 }
@@ -435,7 +424,9 @@ export interface AIModelSettings {
 export interface Note {
   id: string;
   note_body: string;
+  phases: Phases[];
   tags: string[];
+  productId: string;
   createdAt: number;
   updatedAt: number;
 }

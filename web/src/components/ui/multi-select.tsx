@@ -99,7 +99,7 @@ export function MultiSelect({
   };
 
   const selectables = options.filter(
-    (option) => !selected.includes(option.value)
+    (option) => !selected?.includes(option.value)
   );
 
   // Reset active index when dropdown opens/closes
@@ -124,7 +124,7 @@ export function MultiSelect({
         }`}
       >
         <div className="flex flex-wrap gap-1 items-center">
-          {selected.map((selectedValue) => {
+          {selected?.map((selectedValue) => {
             const option = options.find((o) => o.value === selectedValue);
             return (
               <Badge key={selectedValue} variant="secondary">
@@ -159,7 +159,7 @@ export function MultiSelect({
                   setOpen(false);
                 }
               }}
-              placeholder={selected.length === 0 ? placeholder : ""}
+              placeholder={selected?.length === 0 ? placeholder : ""}
               className="ml-2 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
               disabled={disabled}
             />

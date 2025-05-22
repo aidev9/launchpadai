@@ -18,9 +18,9 @@ interface BackendOption {
 export function BackendStep() {
   const [wizardState, setWizardState] = useAtom(techStackWizardStateAtom);
   const [showOther, setShowOther] = useState(
-    wizardState.backendStack &&
+    wizardState.backEndStack &&
       !["Node/NextJS", "Python", "Dotnet", "Ruby on Rails"].includes(
-        wizardState.backendStack
+        wizardState.backEndStack
       )
   );
 
@@ -54,21 +54,21 @@ export function BackendStep() {
   const handleBackendChange = (value: string) => {
     if (value === "Other") {
       setShowOther(true);
-      setWizardState({ ...wizardState, backendStack: "" });
+      setWizardState({ ...wizardState, backEndStack: "" });
     } else {
       setShowOther(false);
-      setWizardState({ ...wizardState, backendStack: value });
+      setWizardState({ ...wizardState, backEndStack: value });
     }
   };
 
   const handleOtherChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setWizardState({ ...wizardState, backendStack: e.target.value });
+    setWizardState({ ...wizardState, backEndStack: e.target.value });
   };
 
   return (
     <div className="space-y-6">
       <RadioGroup
-        value={showOther ? "Other" : wizardState.backendStack || undefined}
+        value={showOther ? "Other" : wizardState.backEndStack || undefined}
         onValueChange={handleBackendChange}
         className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
@@ -80,7 +80,7 @@ export function BackendStep() {
             label={option.label}
             subtitle={option.subtitle}
             footer={option.footer}
-            checked={!showOther && wizardState.backendStack === option.value}
+            checked={!showOther && wizardState.backEndStack === option.value}
             onValueChange={handleBackendChange}
           />
         ))}
@@ -101,7 +101,7 @@ export function BackendStep() {
           <Textarea
             id="other-backend"
             placeholder="Enter your backend technology"
-            value={wizardState.backendStack}
+            value={wizardState.backEndStack}
             onChange={handleOtherChange}
             className="mt-1"
           />

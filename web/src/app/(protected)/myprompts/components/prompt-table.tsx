@@ -58,6 +58,7 @@ export function PromptTable({
     onEdit,
     onDelete,
     onTagClick,
+    onClick,
   });
 
   const table = useReactTable({

@@ -16,7 +16,7 @@ export async function getUserPromptsRef(userId: string) {
   return await adminDb
     .collection("myprompts")
     .doc(userId)
-    .collection("prompts");
+    .collection("myprompts");
 }
 
 // Helper function to get the current user ID

@@ -5,6 +5,7 @@ import {
   allQuestionsAtom,
   selectedPhasesAtom,
 } from "@/lib/store/questions-store";
+import { Phases } from "@/lib/firebase/schema";
 
 // Define all possible phases statically
 const phases = [
@@ -33,7 +34,9 @@ export function PhaseToolbar() {
       } else {
         const phaseQuestions = allQuestions.filter((q) => {
           return (
-            q.phases && Array.isArray(q.phases) && q.phases.includes(phase)
+            q.phases &&
+            Array.isArray(q.phases) &&
+            q.phases.includes(phase as unknown as Phases)
           );
         });
         const answeredCount = phaseQuestions.filter(

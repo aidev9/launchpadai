@@ -34,12 +34,14 @@ export async function getUserProducts(userId: string) {
 
 /**
  * Get user's prompts
+ * TODO: This must be refactored
  */
 export async function getUserPrompts(userId: string) {
   try {
     const promptsSnapshot = await adminDb
-      .collection("prompts")
-      .where("userId", "==", userId)
+      .collection("myprompts")
+      .doc(userId)
+      .collection("myprompts")
       .get();
 
     if (promptsSnapshot.empty) {

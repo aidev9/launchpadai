@@ -14,13 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { useAtom } from "jotai";
 import { useXpMutation } from "@/xp/useXpMutation";
 import { useMutation } from "@tanstack/react-query";
 import {
   currentWizardStepAtom,
   techStackWizardStateAtom,
-  selectedTechStackIdAtom,
   isEditModeAtom,
   selectedTechStackAtom,
 } from "@/lib/store/techstack-store";
@@ -48,16 +48,17 @@ import { ReviewStep } from "./components/steps/review-step";
 
 // Import our step indicator component
 import { StepIndicator } from "./components/step-indicator";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { selectedProductAtom } from "@/lib/store/product-store";
+import { firebaseStacks } from "@/lib/firebase/client/FirebaseStacks";
 
 export default function TechStackWizard() {
   const [currentStep, setCurrentStep] = useAtom(currentWizardStepAtom);
   const [wizardState, setWizardState] = useAtom(techStackWizardStateAtom);
-  const [selectedTechStackId, setSelectedTechStackId] = useAtom(
-    selectedTechStackIdAtom
-  );
   const [selectedTechStack, setSelectedTechStack] = useAtom(
     selectedTechStackAtom
   );
+  const [selectedProduct, setSelectedProduct] = useAtom(selectedProductAtom);
   const [isEditMode, setIsEditMode] = useAtom(isEditModeAtom);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,67 +67,6 @@ export default function TechStackWizard() {
 
   // Use the common XP mutation hook
   const xpMutation = useXpMutation();
-
-  // Only fetch tech stack data if we have a selected tech stack ID
-  useEffect(() => {
-    if (selectedTechStackId) {
-      setIsLoading(true);
-
-      // Fetch the tech stack data without modifying isEditMode
-      getTechStack(selectedTechStackId)
-        .then((result) => {
-          if (result.success && result.techStack) {
-            // Populate the wizard state with the tech stack data
-            setWizardState({
-              appType: result.techStack.appType || "",
-              frontEndStack: result.techStack.frontEndStack || "",
-              backendStack: result.techStack.backendStack || "",
-              database: result.techStack.database || "",
-              aiAgentStack: result.techStack.aiAgentStack || [],
-              integrations: result.techStack.integrations || [],
-              deploymentStack: result.techStack.deploymentStack || "",
-              name: result.techStack.name || "",
-              description: result.techStack.description || "",
-              tags: result.techStack.tags || [],
-              phase: result.techStack.phase || [],
-              prompt: result.techStack.prompt || "",
-              documentationLinks: result.techStack.documentationLinks || [],
-            });
-          } else {
-            toast({
-              title: "Error",
-              description: result.error || "Failed to load tech stack",
-              variant: "destructive",
-            });
-            router.push("/mystacks");
-          }
-        })
-        .catch((error) => {
-          toast({
-            title: "Error",
-            description:
-              error instanceof Error
-                ? error.message
-                : "An unexpected error occurred",
-            variant: "destructive",
-          });
-          router.push("/mystacks");
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    }
-
-    // No cleanup function that resets isEditMode
-  }, [
-    selectedTechStackId,
-    setIsEditMode,
-    setSelectedTechStackId,
-    setWizardState,
-    toast,
-    router,
-  ]);
-
   const totalSteps = 11;
 
   // Navigate to next step
@@ -139,6 +79,7 @@ export default function TechStackWizard() {
         title: "Validation Error",
         description: "Please complete all required fields before proceeding.",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
     }
   };
@@ -179,6 +120,7 @@ export default function TechStackWizard() {
           description:
             "Please provide both app name and description before proceeding.",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
         return false;
       }
@@ -204,8 +146,8 @@ export default function TechStackWizard() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     let success = false;
-    let newStackIdForNavigation: string | undefined = undefined;
-    const editStackIdForNavigation = selectedTechStackId || undefined;
+    const newStackIdForNavigation: string | undefined = undefined;
+    const editStackIdForNavigation = selectedTechStack?.id || undefined;
 
     try {
       // Validate required fields before submission
@@ -215,89 +157,73 @@ export default function TechStackWizard() {
           description:
             "Please provide both app name and description before submitting.",
           variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Make sure productId is set
+      const productId = selectedProduct?.id || wizardState.productId || "";
+      if (!productId) {
+        toast({
+          title: "Error",
+          description: "Product ID is required. Please select a product first.",
+          variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
         });
         setIsSubmitting(false);
         return;
       }
 
       const techStackData: TechStackInput = {
-        appType: wizardState.appType,
-        frontEndStack: wizardState.frontEndStack,
-        backendStack: wizardState.backendStack,
-        database: wizardState.database,
-        aiAgentStack:
-          wizardState.aiAgentStack.length > 0 ? wizardState.aiAgentStack : [],
-        integrations:
-          wizardState.integrations.length > 0 ? wizardState.integrations : [],
-        deploymentStack: wizardState.deploymentStack || "None specified",
-        name: wizardState.name,
-        description: wizardState.description,
-        tags: wizardState.tags,
-        phase: wizardState.phase,
-        prompt: wizardState.prompt || undefined,
-        documentationLinks: wizardState.documentationLinks || [],
+        ...wizardState,
+        productId: productId,
+        userId: selectedTechStack?.userId || "",
       };
 
+      // If we are in edit mode, update the tech stack
       if (isEditMode) {
-        // Make sure selectedTechStackId is not null
-        if (!selectedTechStackId) {
-          toast({
-            title: "Error",
-            description: "Tech stack ID is missing",
-            variant: "destructive",
-          });
-          setIsSubmitting(false);
-          return;
-        }
-
-        const result = await updateTechStack(
-          selectedTechStackId,
-          techStackData
+        const result: TechStack | null = await firebaseStacks.updateTechStack(
+          techStackData as TechStack
         );
-        if (result.success) {
+        if (result) {
+          setSelectedTechStack(result);
+          success = true;
           toast({
             title: "Success",
             description: "Tech stack updated successfully.",
+            duration: TOAST_DEFAULT_DURATION,
           });
-          // No XP award for editing tech stack
-
-          // Update the selectedTechStack atom with the updated data
-          // This ensures the stack page displays the latest information
-          const updatedTechStack: TechStack = {
-            ...selectedTechStack!,
-            ...techStackData,
-            id: selectedTechStackId,
-            updatedAt: Date.now(), // Make sure updatedAt is set to now (as a timestamp)
-          };
-          setSelectedTechStack(updatedTechStack);
-
-          success = true;
         } else {
           toast({
             title: "Error",
-            description: result.error || "Failed to update tech stack",
+            description: "Failed to update tech stack",
             variant: "destructive",
+            duration: TOAST_DEFAULT_DURATION,
           });
         }
       } else {
-        const result = await createTechStack(techStackData);
-        if (result.success && result.id) {
+        // If we are not in edit mode, create a new tech stack
+        const result: TechStack | null = await firebaseStacks.createTechStack(
+          techStackData as TechStack
+        );
+
+        if (result) {
+          setSelectedTechStack(result);
+          xpMutation.mutate("create_stack");
+          success = true;
           toast({
             title: "Success",
             description: "Tech stack created successfully.",
+            duration: TOAST_DEFAULT_DURATION,
           });
-          // Award XP in background without waiting
-          xpMutation.mutate("create_stack");
-
-          setSelectedTechStackId(result.id); // Set the ID of the newly created stack
-          setSelectedTechStack(null); // Clear the selected stack object to force refetch
-          newStackIdForNavigation = result.id;
-          success = true;
         } else {
           toast({
             title: "Error",
-            description: result.error || "Failed to create tech stack",
+            description: "Failed to create tech stack",
             variant: "destructive",
+            duration: TOAST_DEFAULT_DURATION,
           });
         }
       }
@@ -309,15 +235,12 @@ export default function TechStackWizard() {
             ? error.message
             : "An unexpected error occurred",
         variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
       });
     } finally {
       setIsSubmitting(false);
       if (success) {
-        if (newStackIdForNavigation) {
-          router.push(`/mystacks/stack`);
-        } else if (editStackIdForNavigation) {
-          router.push(`/mystacks/stack`);
-        }
+        router.push(`/mystacks/stack`);
       }
     }
   };
@@ -461,11 +384,7 @@ export default function TechStackWizard() {
                     Next <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
+                  <Button onClick={handleSubmit} disabled={isSubmitting}>
                     {/* Use isEditMode to determine button text */}
                     {isEditMode ? "Update Tech Stack" : "Create Tech Stack"}
                   </Button>

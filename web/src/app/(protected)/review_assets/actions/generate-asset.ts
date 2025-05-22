@@ -3,11 +3,13 @@
 import { getProduct } from "@/lib/firebase/products";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { saveAsset, getAsset } from "@/lib/firebase/assets";
-import { type Product } from "@/lib/firebase/schema";
+import { Phases, type Product } from "@/lib/firebase/schema";
 import { getAllQuestionAnswers } from "@/lib/firebase/question-answers";
 import { getProjectNotes } from "@/lib/firebase/notes";
 import { awardXpPoints } from "@/xp/server-actions"; // Import XP award function
 import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { SaveAssetSchema } from "./asset-actions";
+import { z } from "zod";
 
 // Dynamic import AI utils to avoid bundling them in the client
 const generateAIContent = async (params: {
@@ -28,7 +30,7 @@ const generateAIContent = async (params: {
   asset: {
     title: string;
     description: string;
-    phase: string;
+    phases: Phases[];
     systemPrompt: string;
   };
 }) => {
@@ -104,7 +106,7 @@ async function handleAssetGeneration(data: {
       asset: {
         title: asset.title,
         description: asset.description ?? "",
-        phase: asset.phase ?? "",
+        phases: asset.phases ?? "",
         systemPrompt: asset.systemPrompt ?? "",
       },
     });
@@ -121,11 +123,19 @@ async function handleAssetGeneration(data: {
     }
 
     // Save the generated content to Firestore
-    const saveResponse = await saveAsset(productId, {
-      id: assetId,
-      content: generatedContent,
-      updatedAt: getCurrentUnixTimestamp(),
-    });
+    const assetData: z.infer<typeof SaveAssetSchema>["asset"] & { id: string } =
+      {
+        id: assetId,
+        title: asset.title,
+        description: asset.description,
+        content: generatedContent,
+        phases: asset.phases,
+        systemPrompt: asset.systemPrompt,
+        order: asset.order, // Ensure 'order' is present
+        tags: asset.tags, // Optional: include tags if available
+      };
+
+    const saveResponse = await saveAsset(productId, assetData);
 
     if (!saveResponse.success) {
       return {

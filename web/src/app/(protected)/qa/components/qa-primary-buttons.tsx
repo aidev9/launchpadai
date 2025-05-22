@@ -24,6 +24,9 @@ export function QAPrimaryButtons(/* Removed onRefresh prop */) {
   const selectedCount = Object.keys(rowSelection).length;
 
   const handleDeleteSelected = () => {
+    // Log the selected question IDs (now actual document IDs thanks to getRowId)
+    const selectedIds = Object.keys(rowSelection);
+
     // Clear any selected question to ensure we're in "multiple delete" mode
     setSelectedQuestion(null);
     // Open the delete modal
@@ -33,22 +36,13 @@ export function QAPrimaryButtons(/* Removed onRefresh prop */) {
   return (
     <div className="flex gap-2">
       {selectedCount > 0 && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 gap-1"
-          onClick={handleDeleteSelected}
-        >
+        <Button variant="destructive" onClick={handleDeleteSelected}>
           <Trash className="h-4 w-4" />
-          Delete Selected ({selectedCount})
+          Delete Selected
         </Button>
       )}
 
-      <Button
-        size="sm"
-        className="h-9 gap-1"
-        onClick={() => setAddModalOpen(true)}
-      >
+      <Button onClick={() => setAddModalOpen(true)}>
         <Plus className="h-4 w-4" />
         Add Question
       </Button>

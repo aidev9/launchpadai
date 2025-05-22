@@ -1,12 +1,5 @@
 "use client";
 
-import { Header } from "@/components/layout/header";
-import { Main } from "@/components/layout/main";
-import { ProfileDropdown } from "@/components/profile-dropdown";
-import { Search } from "@/components/search";
-import { ThemeSwitch } from "@/components/theme-switch";
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -23,17 +16,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { allTemplates, Template } from "../data/templates";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,20 +28,26 @@ import { useForm } from "react-hook-form";
 import {
   ProductInput,
   createProduct,
-  getProduct,
   updateProduct,
 } from "@/lib/firebase/products";
 import {
+  editedProductAtom,
   selectedProductAtom,
-  selectedProductIdAtom,
+  productsAtom,
+  addProductAtom,
+  updateProductAtom,
 } from "@/lib/store/product-store";
 import { Product } from "@/lib/firebase/schema";
 import { useAtom } from "jotai";
 import { CountrySelect } from "@/components/ui/country-select";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useXpMutation } from "@/xp/useXpMutation";
-import { Skeleton } from "@/components/ui/skeleton";
 import SkeletonForm from "@/components/layout/skeletonForm";
+import { useEffect, useState } from "react";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { PHASES } from "@/app/(protected)/myproducts/components/phase-filter";
+import { useRouter } from "next/navigation";
+import { toast } from "@/components/ui/use-toast";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -63,15 +56,7 @@ export const dynamic = "force-dynamic";
 const stepOneSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
-  stage: z.enum([
-    "Discover",
-    "Validate",
-    "Design",
-    "Build",
-    "Secure",
-    "Launch",
-    "Grow",
-  ]),
+  phases: z.array(z.string()).optional(),
 });
 
 // Step 2 Schema: Problem Statement
@@ -97,29 +82,28 @@ const productFormSchema = z.object({
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
 
-export default function ProductWizard() {
+// Define the props for the wizard component
+
+export default function Wizard() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
     null
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Use Jotai to sync with global state
+  const [editedProduct] = useAtom(editedProductAtom);
   const [, setSelectedProduct] = useAtom(selectedProductAtom);
-  const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
+  const [products, setProducts] = useAtom(productsAtom);
+  const addProduct = useAtom(addProductAtom)[1];
+  const updateProductInAtom = useAtom(updateProductAtom)[1];
 
   // Use the common XP mutation hook
   const xpMutation = useXpMutation();
-
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const templateId = searchParams.get("template");
-  const templateType = searchParams.get("type");
-  const editProductId = searchParams.get("edit");
 
   // Initialize form with default values
   const form = useForm<ProductFormValues>({
@@ -127,100 +111,54 @@ export default function ProductWizard() {
     defaultValues: {
       name: "",
       description: "",
-      stage: "Discover",
+      phases: [],
       problem: "",
       team: "",
       website: "",
       country: "US",
-      template_id: templateId || "",
-      template_type:
-        (templateType as "app" | "agent" | "integration" | "blank") || "blank",
+      template_id: "",
+      template_type: "blank",
     },
   });
 
-  // Check if we're in edit mode and load the product data
+  // Update form values when editedProduct changes
   useEffect(() => {
-    const fetchProductToEdit = async () => {
-      if (editProductId) {
-        setIsLoading(true);
-        setIsEditMode(true);
+    if (editedProduct) {
+      // Reset form with edited product values
+      form.reset({
+        name: editedProduct.name || "",
+        description: editedProduct.description || "",
+        problem: editedProduct.problem || "",
+        team: editedProduct.team || "",
+        website: editedProduct.website || "",
+        country: editedProduct.country || "US",
+        template_id: editedProduct.template_id || "",
+        template_type:
+          (editedProduct.template_type as
+            | "app"
+            | "agent"
+            | "integration"
+            | "blank") || "blank",
+        phases: editedProduct.phases || [],
+      });
 
-        try {
-          const result = await getProduct(editProductId);
-          if (result.success && result.product) {
-            const productData = result.product as Product;
-            setProductToEdit(productData);
-
-            // Populate form with existing data
-            form.reset({
-              name: productData.name || "",
-              description: productData.description || "",
-              stage: productData.stage as
-                | "Discover"
-                | "Validate"
-                | "Design"
-                | "Build"
-                | "Secure"
-                | "Launch"
-                | "Grow",
-              problem: productData.problem || "",
-              team: productData.team || "",
-              website: productData.website || "",
-              country: productData.country || "US",
-              template_id: productData.template_id || "",
-              template_type:
-                (productData.template_type as
-                  | "app"
-                  | "agent"
-                  | "integration"
-                  | "blank") || "blank",
-            });
-
-            // If it has a template, try to set the selected template
-            if (
-              productData.template_id &&
-              productData.template_id !== "blank"
-            ) {
-              const template = allTemplates.find(
-                (t) => t.id === productData.template_id
-              );
-              if (template) {
-                setSelectedTemplate(template);
-              }
-            }
-          } else {
-            // Product not found - redirect to welcome page
-            router.push("/welcome");
-          }
-        } catch (error) {
-          console.error("Failed to fetch product for editing:", error);
-          router.push("/welcome");
-        } finally {
-          setIsLoading(false);
+      // If it has a template, set it
+      if (editedProduct.template_id && editedProduct.template_id !== "blank") {
+        const template = allTemplates.find(
+          (t) => t.id === editedProduct.template_id
+        );
+        if (template) {
+          setSelectedTemplate(template);
         }
       }
-    };
-
-    fetchProductToEdit();
-  }, [editProductId, form, router]);
-
-  // Fetch template details if provided (for new products)
-  useEffect(() => {
-    if (!isEditMode && templateId && templateId !== "blank" && templateType) {
-      const template = allTemplates.find((t) => t.id === templateId);
-      if (template) {
-        setSelectedTemplate(template);
-        // Pre-fill some fields based on template
-        form.setValue("name", template.name);
-        form.setValue("description", `${template.description}`);
-      }
     }
-  }, [templateId, templateType, form, isEditMode]);
+  }, [editedProduct, form]);
 
   // Handle form submission
   const onSubmit = async (data: ProductFormValues) => {
     setIsSubmitting(true);
     setFormError(null);
+    setSuccessMessage(null);
 
     try {
       const productData: ProductInput = {
@@ -229,65 +167,69 @@ export default function ProductWizard() {
 
       let result;
 
-      if (isEditMode && productToEdit) {
-        // Update existing product
-        result = await updateProduct(productToEdit.id, productData);
+      if (editedProduct) {
+        result = await updateProduct(editedProduct.id, productData);
       } else {
-        // Create new product
         result = await createProduct(productData);
       }
 
       if (result.success) {
-        // Update global state with the new product
         if (result.data) {
           const updatedProduct = {
             id: result.id,
             ...result.data,
           } as Product;
 
-          console.log("[Product Creation] Updated product:", updatedProduct);
-
-          // Set product ID in localStorage first for better persistence
-          localStorage.setItem("selectedProductId", result.id);
-
-          // Then update the atoms
-          setSelectedProductId(result.id);
-          setSelectedProduct(updatedProduct);
-
           // Award XP for creating a new product
-          if (!isEditMode) {
-            const createProductActionId = "create_product"; // Define action ID
-            console.log(
-              `Product created. Awarding XP for action: ${createProductActionId}`
-            );
-
-            // Use the background mutation instead of awaiting
+          if (!editedProduct) {
+            const createProductActionId = "create_product";
             xpMutation.mutate(createProductActionId);
+
+            // Set the product in the selectedProductAtom
+            setSelectedProduct(updatedProduct);
+
+            // Also add the product to the productsAtom
+            addProduct(updatedProduct);
+
+            // Fallback to default navigation
+            router.push("/myproducts/product");
+
+            toast({
+              title: "Success",
+              description: "Product created successfully!",
+              duration: TOAST_DEFAULT_DURATION,
+            });
+          } else {
+            // For edits, update the product in both atoms
+            setSelectedProduct(updatedProduct);
+            updateProductInAtom(updatedProduct);
+
+            // Show a success message
+            toast({
+              title: "Success",
+              description: "Product updated successfully!",
+              duration: TOAST_DEFAULT_DURATION,
+            });
+
+            // Use the onComplete callback if provided
+            router.push("/myproducts/product");
+
+            setIsSubmitting(false);
           }
-
-          // Add a small delay before navigation to ensure state is updated
-          // This is especially important for mobile browsers
-          await new Promise((resolve) => setTimeout(resolve, 300));
-
-          // Use replace instead of push to avoid navigation history issues on mobile
-          router.replace(`/product`);
         }
       } else {
-        console.error(
-          isEditMode
-            ? "Failed to update product:"
-            : "Failed to create product:",
-          result.error
-        );
         setFormError(
           result.error || "Failed to save product. Please try again."
         );
+        toast({
+          title: "Error saving product",
+          description:
+            result.error || "Failed to save product. Please try again.",
+          duration: TOAST_DEFAULT_DURATION,
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error(
-        isEditMode ? "Error updating product:" : "Error creating product:",
-        error
-      );
       setFormError(
         error instanceof Error ? error.message : "An unexpected error occurred."
       );
@@ -299,7 +241,7 @@ export default function ProductWizard() {
   // Navigate to next step
   const goToNextStep = async () => {
     if (currentStep === 1) {
-      const result = await form.trigger(["name", "description", "stage"]);
+      const result = await form.trigger(["name", "description"]);
       if (!result) return;
     } else if (currentStep === 2) {
       const result = await form.trigger(["problem"]);
@@ -339,48 +281,9 @@ export default function ProductWizard() {
   }
 
   return (
-    <Main>
-      <div className="mb-8">
-        <div className="mb-4">
-          <Breadcrumbs
-            items={[
-              { label: "Products", href: "/dashboard" },
-              ...(isEditMode && productToEdit
-                ? [
-                    { label: productToEdit.name, href: "/product" },
-                    {
-                      label: "Edit Product",
-                      href: "",
-                      isCurrentPage: true,
-                    },
-                  ]
-                : [
-                    {
-                      label: "Create Product",
-                      href: "",
-                      isCurrentPage: true,
-                    },
-                  ]),
-            ]}
-          />
-        </div>
-
-        <h1 className="text-3xl font-bold tracking-tight mb-2">
-          {isEditMode
-            ? `Edit ${productToEdit?.name || "Product"}`
-            : templateId === "blank"
-              ? "Create a New Product"
-              : `Set Up Your ${selectedTemplate?.name || "Product"}`}
-        </h1>
-        <p className="text-muted-foreground">
-          {isEditMode
-            ? "Update your product details"
-            : "Tell us about your product or startup to get started."}
-        </p>
-      </div>
-
+    <div className="w-3/4">
       {/* Progress Indicator */}
-      <div className="flex items-center justify-between mb-8 max-w-[70%]">
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center w-full">
           <div
             className={`flex items-center justify-center h-10 w-10 rounded-full ${currentStep >= 1 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
@@ -401,236 +304,254 @@ export default function ProductWizard() {
           <div
             className={`flex items-center justify-center h-10 w-10 rounded-full ${currentStep >= 3 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
           >
-            3
+            {currentStep > 3 ? <Check className="h-5 w-5" /> : "3"}
           </div>
         </div>
       </div>
 
-      <Card className="mb-8 max-w-[70%]">
-        <CardHeader>
-          <CardTitle>
-            {currentStep === 1 && "Basic Information"}
-            {currentStep === 2 && "Problem Statement"}
-            {currentStep === 3 && "Additional Details"}
-          </CardTitle>
-          <CardDescription>
-            {currentStep === 1 &&
-              "Tell us the basic details about your product."}
-            {currentStep === 2 &&
-              "Describe the specific problem you're working on."}
-            {currentStep === 3 &&
-              "Provide additional information to customize your experience."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form className="space-y-6">
-              {/* Step 1: Basic Information */}
-              {currentStep === 1 && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Product/Startup Name</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter a name"
-                            {...field}
-                            data-testid="product-name-input"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Short Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Briefly describe your product or startup"
-                            {...field}
-                            data-testid="product-description-input"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="stage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Stage</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="product-stage-select">
-                              <SelectValue placeholder="Select the current stage" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Discover">Discover</SelectItem>
-                            <SelectItem value="Validate">Validate</SelectItem>
-                            <SelectItem value="Design">Design</SelectItem>
-                            <SelectItem value="Build">Build</SelectItem>
-                            <SelectItem value="Secure">Secure</SelectItem>
-                            <SelectItem value="Launch">Launch</SelectItem>
-                            <SelectItem value="Grow">Grow</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-
-              {/* Step 2: Problem Statement */}
-              {currentStep === 2 && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="problem"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>What problem are you working on?</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Describe the specific problem you're trying to solve"
-                            className="min-h-32"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="mt-4">
-                    <p className="text-sm font-medium mb-2">Suggestions:</p>
-                    <div className="grid grid-cols-1 gap-3">
-                      {problemSuggestions.map((suggestion, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          type="button"
-                          className="justify-start h-auto min-h-[3.5rem] py-3 px-4 text-left text-sm break-words whitespace-normal font-normal"
-                          onClick={() => form.setValue("problem", suggestion)}
-                        >
-                          {suggestion}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Step 3: Additional Details */}
-              {currentStep === 3 && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="team"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Team Members</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Who is working on this project with you?"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="website"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Website (if any)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="https://example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country of Operation</FormLabel>
-                        <CountrySelect
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          value={field.value}
+      {/* Form Content */}
+      <Form {...form}>
+        <form
+          onSubmit={(e) => {
+            form.handleSubmit(onSubmit)(e);
+          }}
+          className="space-y-8"
+        >
+          {/* Step 1: Basic Information */}
+          {currentStep === 1 && (
+            <Card>
+              <CardContent className="space-y-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Product Name <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter your product name"
+                          {...field}
+                          data-testid="product-name-input"
                         />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              {formError && (
-                <div className="text-destructive text-sm mt-2">{formError}</div>
-              )}
-            </form>
-          </Form>
-        </CardContent>
-        <CardFooter className="flex justify-center border-t pt-4">
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Briefly describe your product"
+                          {...field}
+                          data-testid="product-description-input"
+                          rows={5}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phases"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Phase(s)</FormLabel>
+                      <FormControl>
+                        <MultiSelect
+                          options={Object.values(PHASES)
+                            .filter((phase) => phase !== "All")
+                            .map((phase) => ({ label: phase, value: phase }))}
+                          selected={field.value || []}
+                          onChange={field.onChange}
+                          placeholder="Select product phases..."
+                          data-testid="product-phases-select"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Select one or more phases for your product
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+              <CardFooter className="flex justify-end">
+                <Button
+                  type="button"
+                  onClick={goToNextStep}
+                  data-testid="next-step-button"
+                >
+                  Next
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
+
+          {/* Step 2: Problem Statement */}
+          {currentStep === 2 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Problem Statement</CardTitle>
+                <CardDescription>
+                  What problem are you trying to solve?
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormField
+                  control={form.control}
+                  name="problem"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Problem Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe the problem you're solving"
+                          {...field}
+                          data-testid="product-problem-input"
+                          rows={5}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={goToPreviousStep}
+                  data-testid="previous-step-button"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  onClick={goToNextStep}
+                  data-testid="next-step-button"
+                >
+                  Next
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
+
+          {/* Step 3: Additional Details */}
+          {currentStep === 3 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Additional Details</CardTitle>
+                <CardDescription>
+                  Tell us more about your team and project.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="team"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Team Members</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Who's working on this project?"
+                          {...field}
+                          data-testid="product-team-input"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="website"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Website</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Your product's website (if any)"
+                          {...field}
+                          data-testid="product-website-input"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country</FormLabel>
+                      <FormControl>
+                        <CountrySelect
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={goToPreviousStep}
+                  data-testid="previous-step-button"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+
+                <Button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleFinalSubmit}
+                  data-testid="submit-button"
+                >
+                  {isSubmitting
+                    ? "Saving..."
+                    : editedProduct
+                      ? "Update Product"
+                      : "Create Product"}
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
+
           {formError && (
-            <div className="text-destructive text-sm absolute left-4">
+            <div className="bg-destructive/15 text-destructive p-4 rounded-md mt-4">
               {formError}
             </div>
           )}
-          <div className="flex space-x-2">
-            {currentStep > 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={goToPreviousStep}
-                disabled={isSubmitting}
-              >
-                Previous
-              </Button>
-            )}
-            {currentStep < 3 ? (
-              <Button type="button" onClick={goToNextStep}>
-                Next
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={handleFinalSubmit}
-                disabled={isSubmitting}
-                data-testid="submit-product-button"
-              >
-                {isSubmitting ? "Saving..." : isEditMode ? "Update" : "Create"}
-                <Check className="ml-2 h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </CardFooter>
-      </Card>
-    </Main>
+
+          {successMessage && (
+            <div className="bg-green-100 text-green-800 p-4 rounded-md mt-4">
+              {successMessage}
+            </div>
+          )}
+        </form>
+      </Form>
+    </div>
   );
 }

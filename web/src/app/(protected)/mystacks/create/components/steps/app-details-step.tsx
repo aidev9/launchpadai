@@ -1,27 +1,52 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { techStackWizardStateAtom } from "@/lib/store/techstack-store";
+import {
+  selectedTechStackAtom,
+  techStackWizardStateAtom,
+} from "@/lib/store/techstack-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useEffect } from "react";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { TagInput } from "@/components/ui/tag-input";
+import { Phases } from "@/lib/firebase/schema";
 
 export function AppDetailsStep() {
   const [wizardState, setWizardState] = useAtom(techStackWizardStateAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
+  const [selectedTechStack, setSelectedTechStack] = useAtom(
+    selectedTechStackAtom
+  );
 
-  // Phase options for MultiSelect
-  const phaseOptions: MultiSelectOption[] = [
-    { label: "Discover", value: "Discover" },
-    { label: "Validate", value: "Validate" },
-    { label: "Design", value: "Design" },
-    { label: "Build", value: "Build" },
-    { label: "Secure", value: "Secure" },
-    { label: "Launch", value: "Launch" },
-    { label: "Grow", value: "Grow" },
-  ];
+  // Use useEffect to update the state when the component mounts or when selectedProduct changes
+  useEffect(() => {
+    // Get product ID from selected product or use a default value
+    const productId = selectedProduct?.id || "default";
+
+    console.log("Setting productId in AppDetailsStep:", {
+      selectedProduct: selectedProduct,
+      selectedTechStack: selectedTechStack,
+      productId,
+    });
+
+    // Always update the productId in the wizard state
+    setWizardState((prevState) => ({
+      ...prevState,
+      productId,
+      id: selectedTechStack?.id || "",
+    }));
+  }, [selectedProduct, setWizardState, selectedTechStack]);
+
+  const getPhaseOptions = () => {
+    const options = Object.values(Phases).map((option) => ({
+      label: option,
+      value: option,
+    }));
+    return options;
+  };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setWizardState({ ...wizardState, name: e.target.value });
@@ -37,7 +62,7 @@ export function AppDetailsStep() {
   const handlePhaseChange = (selected: string[]) => {
     setWizardState({
       ...wizardState,
-      phase: selected,
+      phases: selected.map((phase) => phase as Phases),
     });
   };
 
@@ -78,6 +103,16 @@ export function AppDetailsStep() {
         />
       </div>
 
+      {/* Product (read-only display) */}
+      <div className="space-y-2">
+        <Label>Product</Label>
+        <Input
+          value={selectedProduct?.name || "Default Product"}
+          readOnly
+          disabled
+        />
+      </div>
+
       {/* Tags using TagInput component */}
       <div className="space-y-2">
         <Label htmlFor="app-tags">Tags</Label>
@@ -94,8 +129,8 @@ export function AppDetailsStep() {
           Phase <span className="text-red-500">*</span>
         </Label>
         <MultiSelect
-          options={phaseOptions}
-          selected={wizardState.phase}
+          options={getPhaseOptions()}
+          selected={wizardState.phases}
           onChange={handlePhaseChange}
           placeholder="Select phases..."
         />

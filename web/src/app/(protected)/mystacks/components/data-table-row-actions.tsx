@@ -63,18 +63,24 @@ export function DataTableRowActions({
         className="w-[160px]"
         onClick={stopPropagation} // Prevent row click when interacting with menu items container
       >
-        <DropdownMenuItem onClick={(e) => handleAction(e, onView)}>
+        <DropdownMenuItem
+          onClick={(e) => handleAction(e, onView)}
+          className="cursor-pointer"
+        >
           <Eye className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
           View
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={(e) => handleAction(e, onEdit)}>
+        <DropdownMenuItem
+          onClick={(e) => handleAction(e, onEdit)}
+          className="cursor-pointer"
+        >
           <Pencil className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
           Edit
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={(e) => handleAction(e, onDelete, true)}
-          className="text-red-600 hover:!text-red-600 hover:!bg-red-50 focus:!text-red-600 focus:!bg-red-50"
+          className="text-red-600 hover:!text-red-600 hover:!bg-red-50 cursor-pointer"
         >
           <Trash2 className="mr-2 h-3.5 w-3.5" />
           Delete

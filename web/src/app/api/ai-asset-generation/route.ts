@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
       {
         title: asset.title,
         description: asset.description ?? "",
-        phase: asset.phase ?? "",
+        phases: asset.phases ?? "",
         systemPrompt,
       }
     );

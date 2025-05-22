@@ -16,19 +16,22 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useProducts } from "@/hooks/useProducts";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { productsAtom, selectedProductAtom } from "@/lib/store/product-store";
 import { useAtom } from "jotai";
 
 const ProductSwitcher = React.memo(function ProductSwitcher() {
   const { isMobile } = useSidebar();
   const router = useRouter();
-  const pathname = usePathname();
   const [selectedProduct, setSelectedProduct] = useAtom(selectedProductAtom);
   const [products, setProducts] = useAtom(productsAtom);
   const { isLoading } = useProducts();
+
+  const phase = selectedProduct?.phases
+    ? selectedProduct?.phases[0]
+    : "Discovery";
 
   // Handle creating a new product
   const handleCreateProduct = useCallback(() => {
@@ -39,6 +42,15 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
   const handleStartHere = useCallback(() => {
     router.push("/welcome");
   }, [router]);
+
+  useEffect(() => {
+    if (selectedProduct) {
+      const foundProduct = products.find((p) => p.id === selectedProduct.id);
+      if (foundProduct) {
+        setSelectedProduct(foundProduct);
+      }
+    }
+  }, [selectedProduct, products]);
 
   if (isLoading && products.length === 0) {
     return (
@@ -95,9 +107,7 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
                 <span className="truncate font-semibold">
                   {selectedProduct?.name || "Select Product"}
                 </span>
-                <span className="truncate text-xs">
-                  {selectedProduct?.stage || ""}
-                </span>
+                <span className="truncate text-xs">{phase}</span>
               </div>
               <ChevronsUpDown className="ml-auto shrink-0" />
             </SidebarMenuButton>

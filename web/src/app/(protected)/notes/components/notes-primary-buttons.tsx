@@ -1,33 +1,26 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash } from "lucide-react";
 import { memo } from "react";
 import React from "react";
 import { useAtom } from "jotai";
 import { addNoteModalOpenAtom } from "./notes-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 
 interface NotesPrimaryButtonsProps {
-  onRefresh?: () => void;
-  onDelete: () => void;
   selectedRows: string[];
-  selectedProductId: string | null | undefined;
+  onDelete: () => void;
+  selectedProductId: string | null;
+  onCreateNote: () => void;
 }
 
 function NotesPrimaryButtonsComponent({
-  onDelete,
   selectedRows,
-  selectedProductId,
+  onDelete,
+  onCreateNote,
 }: NotesPrimaryButtonsProps) {
   const [_, setAddNoteModalOpen] = useAtom(addNoteModalOpenAtom);
-
-  // Calculate whether the button should be disabled
-  const isDeleteDisabled = !selectedRows || selectedRows.length === 0;
-  const isAddNoteDisabled = !selectedProductId;
-
-  // Debug log to verify prop values
-  React.useEffect(() => {
-    console.log("Delete Button Props:", { selectedRows, isDeleteDisabled });
-  }, [selectedRows, isDeleteDisabled]);
+  const [selectedProduct] = useAtom(selectedProductAtom);
 
   const handleDelete = () => {
     console.log("Delete button clicked, selectedRows:", selectedRows);
@@ -38,30 +31,30 @@ function NotesPrimaryButtonsComponent({
     setAddNoteModalOpen(true);
   };
 
+  const hasSelectedRows = selectedRows.length > 0;
+
   return (
     <div className="flex gap-2">
-      {/* Only render delete button when there are rows selected */}
-      {selectedRows.length > 0 && (
+      {hasSelectedRows && (
         <Button
+          variant="destructive"
           onClick={handleDelete}
-          className="h-9 gap-2 bg-red-500 hover:bg-red-600 text-white"
+          data-testid="delete-notes-button"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash className="h-4 w-4" />
           Delete Selected
         </Button>
       )}
-
       <Button
-        onClick={handleAddNote}
-        size="sm"
-        className="h-9 gap-1"
-        disabled={isAddNoteDisabled}
+        onClick={onCreateNote}
+        disabled={!selectedProduct}
+        data-testid="add-note-button"
       >
-        <Plus className="h-4 w-4" /> Add Note
+        <Plus className="h-4 w-4" />
+        Add Note
       </Button>
     </div>
   );
 }
 
-// Export the component as NotesPrimaryButtons
 export const NotesPrimaryButtons = memo(NotesPrimaryButtonsComponent);

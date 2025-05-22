@@ -10,23 +10,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Pencil, Trash } from "lucide-react";
+import { Eye, Pencil, Trash } from "lucide-react";
 import { Prompt } from "@/lib/firebase/schema";
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
   onEdit?: (prompt: Prompt) => void;
   onDelete?: (prompt: Prompt) => void;
+  onClick?: (prompt: Prompt) => void;
 }
 
 export function DataTableRowActions<TData>({
   row,
   onEdit,
   onDelete,
+  onClick,
 }: DataTableRowActionsProps<TData>) {
   const prompt = row.original as Prompt;
 
   // These handler functions need to completely stop event propagation
+  const handleView = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onClick && prompt) {
+      onClick(prompt);
+    }
+  };
+
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -63,10 +73,19 @@ export function DataTableRowActions<TData>({
         className="w-[160px]"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
+        <DropdownMenuItem
+          onClick={handleView}
+          onSelect={(e) => e.preventDefault()}
+          className="cursor-pointer"
+        >
+          <Eye className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+          View
+        </DropdownMenuItem>
         {onEdit && (
           <DropdownMenuItem
             onClick={handleEdit}
             onSelect={(e) => e.preventDefault()}
+            className="cursor-pointer"
           >
             <Pencil className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
             Edit
@@ -74,11 +93,11 @@ export function DataTableRowActions<TData>({
         )}
         {onDelete && (
           <>
-            {onEdit && <DropdownMenuSeparator />}
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleDelete}
               onSelect={(e) => e.preventDefault()}
-              className="text-destructive focus:text-destructive"
+              className="text-destructive focus:text-destructive cursor-pointer"
             >
               <Trash className="mr-2 h-3.5 w-3.5 text-destructive" />
               Delete

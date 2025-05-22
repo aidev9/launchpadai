@@ -30,7 +30,9 @@ import { useCollectionData } from "react-firebase-hooks/firestore";
 import { clientAuth } from "@/lib/firebase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { updateDocumentStatus } from "@/lib/firebase/documents";
-import FirebaseDocuments from "@/lib/firebase/client/FirebaseDocuments";
+import FirebaseDocuments, {
+  firebaseDocuments,
+} from "@/lib/firebase/client/FirebaseDocuments";
 import { ChatPanel } from "./components/chat-panel";
 
 // Force dynamic rendering
@@ -68,7 +70,9 @@ export default function CollectionDetail() {
 
   // Fetch documents using react-firebase-hooks
   const [documents, documentsLoading, documentsError] = useCollectionData(
-    FirebaseDocuments.getDocumentsByCollections(selectedCollection?.id || ""),
+    selectedCollection
+      ? firebaseDocuments.getDocumentsByCollections(selectedCollection.id)
+      : null,
     {
       snapshotListenOptions: {
         includeMetadataChanges: true,

@@ -25,7 +25,7 @@ export function TechStackGeneral({ selectedTechStack }: TechStackGeneralProps) {
           <div>
             <h3 className="text-lg font-semibold">Phase</h3>
             <div className="flex flex-wrap gap-2 mt-2">
-              {selectedTechStack.phase.map((phase) => (
+              {selectedTechStack.phases.map((phase) => (
                 <Badge key={phase} variant="outline">
                   {phase}
                 </Badge>
@@ -53,9 +53,9 @@ export function TechStackGeneral({ selectedTechStack }: TechStackGeneralProps) {
               <div className="text-sm text-muted-foreground">Frontend</div>
               <div className="text-sm">{selectedTechStack.frontEndStack}</div>
               <div className="text-sm text-muted-foreground">Backend</div>
-              <div className="text-sm">{selectedTechStack.backendStack}</div>
+              <div className="text-sm">{selectedTechStack.backEndStack}</div>
               <div className="text-sm text-muted-foreground">Database</div>
-              <div className="text-sm">{selectedTechStack.database}</div>
+              <div className="text-sm">{selectedTechStack.databaseStack}</div>
               <div className="text-sm text-muted-foreground">Deployment</div>
               <div className="text-sm">{selectedTechStack.deploymentStack}</div>
             </div>

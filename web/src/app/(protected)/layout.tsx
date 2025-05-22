@@ -7,7 +7,6 @@ import { clientAuth } from "@/lib/firebase/client";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { useAtom, useSetAtom } from "jotai";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { setUserProfileAtom } from "@/lib/store/user-store";
 import { Header } from "@/components/layout/header";
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -15,8 +14,6 @@ import { ProfileDropdown } from "@/components/profile-dropdown";
 import { motion } from "framer-motion";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
-import { useAtom as useJotaiAtom } from "jotai";
-import { promptCreditsAtom } from "@/stores/promptCreditStore";
 
 const topNav = [
   {
@@ -105,10 +102,8 @@ export default function RootLayout({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [, setSelectedProductId] = useAtom(selectedProductIdAtom);
   const setUserProfile = useSetAtom(setUserProfileAtom);
   const [redirectedToAdmin, setRedirectedToAdmin] = useState(false);
-  const [promptCredits, setPromptCredits] = useJotaiAtom(promptCreditsAtom);
 
   useEffect(() => {
     // Initialize auth state
@@ -121,7 +116,6 @@ export default function RootLayout({
             "Content-Type": "application/json",
           },
         });
-        setSelectedProductId(null);
         setUserProfile(null);
         setIsLoading(false); // No user, not loading
         setAuthError(null); // Clear any previous auth errors
@@ -131,7 +125,7 @@ export default function RootLayout({
     });
 
     return () => unsubscribe();
-  }, [router, setSelectedProductId, setUserProfile, redirectedToAdmin]);
+  }, [router, setUserProfile, redirectedToAdmin]);
 
   if (isLoading) {
     return (

@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { TechStack, TechStackAsset } from "@/lib/firebase/schema";
+import { Phases, TechStack, TechStackAsset } from "@/lib/firebase/schema";
 import { Table, ColumnFiltersState, SortingState } from "@tanstack/react-table";
 
 // Layout view type
@@ -12,7 +12,7 @@ export const techStacksLoadingAtom = atom<boolean>(false);
 export const techStacksErrorAtom = atom<string | null>(null);
 
 // Filter atoms
-export const techStackPhaseFilterAtom = atom<string[]>([]);
+export const techStackPhaseFilterAtom = atom<Phases[]>([]);
 export const techStackSearchQueryAtom = atom<string>("");
 
 // Derived atoms for filtered tech stacks
@@ -26,7 +26,7 @@ export const filteredTechStacksAtom = atom((get) => {
   // Apply phase filter
   if (phaseFilter.length > 0) {
     filtered = filtered.filter((stack) =>
-      stack.phase.some((p) => phaseFilter.includes(p))
+      stack.phases.some((p) => phaseFilter.includes(p))
     );
   }
 
@@ -46,7 +46,6 @@ export const filteredTechStacksAtom = atom((get) => {
 
 // Atom for current selected tech stack
 export const selectedTechStackAtom = atom<TechStack | null>(null);
-export const selectedTechStackIdAtom = atom<string | null>(null);
 export const isEditModeAtom = atom<boolean>(false);
 
 // Atom for persisting column visibility for the tech stack table
@@ -58,19 +57,22 @@ export const stackTableRowSelectionAtom = atom<Record<string, boolean>>({});
 
 // Form state atoms for wizard
 export const techStackWizardStateAtom = atom<TechStack>({
+  id: "",
   appType: "",
   frontEndStack: "",
-  backendStack: "",
-  database: "",
+  backEndStack: "",
+  databaseStack: "",
   aiAgentStack: [],
   integrations: [],
   deploymentStack: "",
   name: "",
   description: "",
   tags: [],
-  phase: [],
+  phases: [],
   prompt: "",
   documentationLinks: [],
+  productId: "",
+  userId: "",
 });
 
 // Current step atom

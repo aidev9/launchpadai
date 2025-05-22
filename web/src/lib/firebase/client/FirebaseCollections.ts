@@ -7,15 +7,35 @@ import {
   query,
   Query,
   where,
+  FirestoreDataConverter,
+  QueryDocumentSnapshot,
+  SnapshotOptions,
+  CollectionReference,
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { clientApp, clientAuth, clientDb } from "@/lib/firebase/client";
+import { Collection } from "../schema";
+
+const collectionConverter: FirestoreDataConverter<Collection> = {
+  toFirestore: (collection) => collection,
+  fromFirestore(
+    snapshot: QueryDocumentSnapshot,
+    options: SnapshotOptions
+  ): Collection {
+    const data = snapshot.data(options) as Collection;
+    return {
+      ...data,
+      id: snapshot.id,
+    };
+  },
+};
 
 class FirebaseCollections {
   auth: ReturnType<typeof getAuth>;
   db: ReturnType<typeof getFirestore>;
   storage: ReturnType<typeof getStorage>;
   collectionName: string;
+
   constructor() {
     try {
       if (!clientAuth || !clientDb || !clientApp) {
@@ -35,28 +55,34 @@ class FirebaseCollections {
     }
   }
 
-  getCollections(): Query<DocumentData, DocumentData> | null {
-    // Check if authentication is initialized and user is signed in
+  getRefCollection(): CollectionReference<Collection> {
     if (!this.auth || !this.auth.currentUser) {
-      return null;
+      console.log(
+        "[FirebaseCollections][getRefCollection] User not authenticated"
+      );
     }
 
-    const userId = this.auth.currentUser.uid;
+    let userId = this.auth.currentUser?.uid;
+    if (!userId) {
+      userId = "default";
+    }
 
+    return collection(
+      this.db,
+      `${this.collectionName}/${userId}/${this.collectionName}`
+    ).withConverter(collectionConverter);
+  }
+
+  getCollections(): Query<DocumentData, DocumentData> | null {
     try {
-      const collectionsRef = collection(
-        this.db,
-        `${this.collectionName}/${userId}/${this.collectionName}`
-      );
-
-      // Query to get collections for this user, ordered by updatedAt
       const collectionsQuery = query(
-        collectionsRef,
+        this.getRefCollection(),
         orderBy("updatedAt", "desc")
       );
 
       return collectionsQuery;
     } catch (error) {
+      console.error("[FirebaseCollections][getCollections] Error:", error);
       return null;
     }
   }
@@ -64,30 +90,28 @@ class FirebaseCollections {
   getCollectionsByProduct(
     productId: string
   ): Query<DocumentData, DocumentData> | null {
-    // Check if authentication is initialized and user is signed in
-    if (!this.auth || !this.auth.currentUser) {
+    if (!productId) {
       return null;
     }
 
-    const userId = this.auth.currentUser.uid;
-
     try {
-      const collectionsRef = collection(
-        this.db,
-        `${this.collectionName}/${userId}/${this.collectionName}`
-      );
-
       const collectionsQuery = query(
-        collectionsRef,
+        this.getRefCollection(),
         where("productId", "==", productId),
         orderBy("updatedAt", "desc")
       );
 
       return collectionsQuery;
     } catch (error) {
+      console.error(
+        "[FirebaseCollections][getCollectionsByProduct] Error:",
+        error
+      );
       return null;
     }
   }
 }
 
-export default new FirebaseCollections();
+// Export as a singleton
+export const firebaseCollections = new FirebaseCollections();
+export default FirebaseCollections;

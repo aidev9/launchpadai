@@ -30,10 +30,9 @@ import {
   questionModalOpenAtom,
   allQuestionsAtom,
 } from "@/lib/store/questions-store";
-import { Question } from "@/lib/firebase/schema";
+import { Question, Phases } from "@/lib/firebase/schema";
 import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { toast } from "@/components/ui/use-toast";
-import { addProductQuestionAction } from "@/lib/firebase/actions/questions";
 import { useXpMutation } from "@/xp/useXpMutation";
 import { type ToastActionElement } from "@/components/ui/toast";
 import {
@@ -41,6 +40,7 @@ import {
   phaseOptions,
   TOAST_DEFAULT_DURATION,
 } from "@/utils/constants";
+import { firebaseQA } from "@/lib/firebase/client/FirebaseQA";
 
 // Define the type for toast options
 type ShowToastOptions = {
@@ -197,10 +197,12 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
         question: data.text,
         answer: data.answer || null,
         tags: tags,
-        phases: data.phases,
+        phases: data.phases.map((phase) => phase as unknown as Phases),
         order: (allQuestions?.length ?? 0) + 1, // Assign next order
         createdAt: getCurrentUnixTimestamp(),
         updatedAt: getCurrentUnixTimestamp(),
+        userId: "", // This will be set by the server
+        productId: selectedProductId || undefined,
       };
 
       // Add to state immediately for a snappy UI
@@ -209,16 +211,20 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
       // Close the modal
       setModalOpen(false);
 
-      // Update the server
-      const result = await addProductQuestionAction(selectedProductId, {
+      // Create the question using FirebaseQA
+      const questionData = {
         question: data.text,
         answer: data.answer || null,
         tags: tags,
-        phases: data.phases,
-        phase: data.phases[0], // Use the first phase as the primary one
-      });
+        phases: data.phases.map((phase) => phase as unknown as Phases),
+        order: getCurrentUnixTimestamp(), // Use timestamp for ordering
+        userId: "", // This will be set by the FirebaseQA client
+        productId: selectedProductId,
+      };
 
-      if (result.success) {
+      const result = await firebaseQA.createQuestion(questionData);
+
+      if (result) {
         // Award XP in the background
         xpMutation.mutate("ask_question");
 
@@ -230,27 +236,22 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
           duration: TOAST_DEFAULT_DURATION,
         });
 
-        // Update the local state with the actual ID from the server if provided
-        if (result.id) {
-          setAllQuestions((prev) =>
-            prev.map((q) => {
-              if (q.id === newQuestionId) {
-                return {
-                  ...q,
-                  id: result.id!,
-                };
-              }
-              return q;
-            })
-          );
-        }
+        // Update the local state with the actual ID from the server
+        setAllQuestions((prev) =>
+          prev.map((q) => {
+            if (q.id === newQuestionId) {
+              return result; // Replace with the result from firebaseQA
+            }
+            return q;
+          })
+        );
       } else {
         // Remove the optimistic update if there was an error
         setAllQuestions((prev) => prev.filter((q) => q.id !== newQuestionId));
 
         onShowToast({
           title: "Error adding question",
-          description: result.error || "Failed to add question",
+          description: "Failed to add question",
           variant: "destructive",
           duration: TOAST_DEFAULT_DURATION,
         });

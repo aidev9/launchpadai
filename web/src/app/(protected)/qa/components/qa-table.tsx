@@ -31,10 +31,10 @@ import {
   columnFiltersAtom,
   sortingAtom,
   tableInstanceAtom,
-  questionFilterAtom,
   statusFilterAtom,
   tagsFilterAtom,
-  phaseFilterAtom,
+  questionsPhaseFilterAtom,
+  searchQueryAtom as questionsSearchQueryAtom,
 } from "./qa-store";
 
 type QAData = {
@@ -62,10 +62,10 @@ export function QATable<TValue>({ columns, data }: QATableProps<TValue>) {
   const [, setTableInstance] = useAtom(tableInstanceAtom);
 
   // Get filter atoms
-  const [questionFilter] = useAtom(questionFilterAtom);
+  const [questionFilter] = useAtom(questionsSearchQueryAtom);
   const [statusFilter] = useAtom(statusFilterAtom);
   const [tagsFilter] = useAtom(tagsFilterAtom);
-  const [phaseFilter] = useAtom(phaseFilterAtom);
+  const [phaseFilter] = useAtom(questionsPhaseFilterAtom);
 
   // Keep track of previous data length to detect when data changes
   const prevDataLength = React.useRef(data.length);
@@ -75,7 +75,6 @@ export function QATable<TValue>({ columns, data }: QATableProps<TValue>) {
   React.useEffect(() => {
     // If data length has changed, it means questions were added or deleted
     if (data.length !== prevDataLength.current) {
-      console.log("Data changed, clearing row selection");
       setRowSelection({});
       prevDataLength.current = data.length;
     }
@@ -125,14 +124,6 @@ export function QATable<TValue>({ columns, data }: QATableProps<TValue>) {
     columnFilters,
   ]);
 
-  // Log row selection changes for debugging
-  React.useEffect(() => {
-    const selectedIds = Object.keys(rowSelection);
-    if (selectedIds.length > 0) {
-      console.log("Selected question rows:", selectedIds);
-    }
-  }, [rowSelection]);
-
   const table = useReactTable({
     data,
     columns,
@@ -143,6 +134,8 @@ export function QATable<TValue>({ columns, data }: QATableProps<TValue>) {
       columnFilters,
     },
     enableRowSelection: true,
+    // Use document IDs as unique row keys for proper selection
+    getRowId: (row) => row.id,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,

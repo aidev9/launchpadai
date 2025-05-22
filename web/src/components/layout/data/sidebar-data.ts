@@ -69,7 +69,7 @@ export const sidebarData: SidebarData = {
           items: [
             {
               title: "My Products",
-              url: "/dashboard",
+              url: "/myproducts",
               icon: IconCube,
             },
             {

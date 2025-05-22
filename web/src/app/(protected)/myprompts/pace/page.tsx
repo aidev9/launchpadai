@@ -39,9 +39,7 @@ import { AskStep } from "./components/steps/ask-step";
 import { ChainStep } from "./components/steps/chain-step";
 import { EvaluateStep } from "./components/steps/evaluate-step";
 import { SaveStep } from "./components/steps/save-step";
-
-// Import prompt actions
-import { createPromptAction } from "../../myprompts/actions";
+import { createPromptAction } from "../actions";
 
 export default function PaceWizard() {
   const [currentStep, setCurrentStep] = useAtom(currentPaceStepAtom);

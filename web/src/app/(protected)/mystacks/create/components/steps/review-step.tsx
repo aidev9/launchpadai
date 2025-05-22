@@ -5,6 +5,7 @@ import {
   techStackWizardStateAtom,
   isEditModeAtom,
 } from "@/lib/store/techstack-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -15,10 +16,19 @@ interface ReviewStepProps {
 export function ReviewStep({ onSubmit }: ReviewStepProps) {
   const [wizardState] = useAtom(techStackWizardStateAtom);
   const [isEditMode] = useAtom(isEditModeAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
 
   return (
     <div className="space-y-6 ml-0">
       <div className="space-y-4 border-t border-t-slate-200 pt-4">
+        {/* Product */}
+        <div>
+          <h3 className="font-medium text-sm text-muted-foreground">Product</h3>
+          <p className="text-sm">
+            {selectedProduct?.name || "Default Product"}
+          </p>
+        </div>
+
         {/* App Type */}
         <div>
           <h3 className="font-medium text-sm text-muted-foreground">
@@ -40,7 +50,7 @@ export function ReviewStep({ onSubmit }: ReviewStepProps) {
           <h3 className="font-medium text-sm text-muted-foreground">
             Backend Stack
           </h3>
-          <p className="text-sm">{wizardState.backendStack}</p>
+          <p className="text-sm">{wizardState.backEndStack}</p>
         </div>
 
         {/* Database */}
@@ -48,7 +58,7 @@ export function ReviewStep({ onSubmit }: ReviewStepProps) {
           <h3 className="font-medium text-sm text-muted-foreground">
             Database
           </h3>
-          <p className="text-sm">{wizardState.database}</p>
+          <p className="text-sm">{wizardState.databaseStack}</p>
         </div>
 
         {/* AI Agent Stack */}
@@ -131,9 +141,9 @@ export function ReviewStep({ onSubmit }: ReviewStepProps) {
 
         {/* Phase */}
         <div>
-          <h3 className="font-medium text-sm text-muted-foreground">Phase</h3>
+          <h3 className="font-medium text-sm text-muted-foreground">Phases</h3>
           <div className="flex flex-wrap gap-2 mt-1">
-            {wizardState.phase.map((phase) => (
+            {wizardState.phases.map((phase) => (
               <Badge key={phase} variant="default">
                 {phase}
               </Badge>

@@ -14,7 +14,7 @@ function getPromptsRef() {
 
 // Get user-specific prompts collection reference
 function getUserPromptsRef(userId: string) {
-  return adminDb.collection("myprompts").doc(userId).collection("prompts");
+  return adminDb.collection("myprompts").doc(userId).collection("myprompts");
 }
 
 /**

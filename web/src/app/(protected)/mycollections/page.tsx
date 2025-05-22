@@ -2,17 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  Search as SearchIcon,
-  X,
-  LayoutGrid,
-  Table as TableIcon,
-  Trash,
-  Sparkles,
-} from "lucide-react";
+import { Plus, Trash } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useState } from "react";
 import { useAtom } from "jotai";
@@ -22,6 +13,8 @@ import {
   collectionModalOpenAtom,
   isEditingCollectionAtom,
   selectedCollectionAtom,
+  collectionPhaseFilterAtom,
+  collectionSearchQueryAtom,
 } from "@/lib/store/collection-store";
 import { ProductSelector } from "./components/product-selector";
 import { useToast } from "@/hooks/use-toast";
@@ -48,7 +41,8 @@ import { productsAtom, selectedProductAtom } from "@/lib/store/product-store";
 import { useCollectionData } from "react-firebase-hooks/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusFilter } from "./components/status-filter";
-import FirebaseCollections from "@/lib/firebase/client/FirebaseCollections";
+import { firebaseCollections } from "@/lib/firebase/client/FirebaseCollections";
+import { FilterBar } from "@/components/ui/components/filter-bar";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -77,15 +71,17 @@ export default function MyCollections() {
   const [rowSelection, setRowSelection] = useAtom(collectionRowSelectionAtom);
   const hasSelectedRows = Object.keys(rowSelection).length > 0;
 
-  // Filter states
-  const [phaseFilter, setPhaseFilter] = useState<string[]>([]);
+  // Filter states - use atoms for FilterBar compatibility
+  const [phaseFilter, setPhaseFilter] = useAtom(collectionPhaseFilterAtom);
+  const [searchQuery, setSearchQuery] = useAtom(collectionSearchQueryAtom);
   const [statusFilter, setStatusFilter] = useState<CollectionStatus[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useAtom(productsAtom);
 
   // Use useCollectionData hook to get the collections for the selected product
   const [collections, collectionsLoading, collectionsError] = useCollectionData(
-    FirebaseCollections.getCollectionsByProduct(selectedProduct?.id || ""),
+    selectedProduct
+      ? firebaseCollections.getCollectionsByProduct(selectedProduct.id)
+      : null,
     {
       snapshotListenOptions: {
         includeMetadataChanges: true,
@@ -139,10 +135,6 @@ export default function MyCollections() {
     setIsCollectionModalOpen(true);
   };
 
-  const clearSearch = () => {
-    setSearchQuery("");
-  };
-
   const handleEditCollection = (collection: Collection) => {
     if (!collection || !collection.id) {
       toast({
@@ -175,14 +167,12 @@ export default function MyCollections() {
   };
 
   const handleTagClick = (tag: string) => {
-    // Add the tag to the phase filter if it's not already there
     if (!phaseFilter.includes(tag)) {
       setPhaseFilter([...phaseFilter, tag]);
     }
   };
 
   const handleStatusClick = (status: CollectionStatus) => {
-    // Add the status to the status filter if it's not already there
     if (!statusFilter.includes(status)) {
       setStatusFilter([...statusFilter, status]);
     }
@@ -295,104 +285,59 @@ export default function MyCollections() {
 
   return (
     <Main data-testid="mycollections-page">
-      <div className="space-y-6">
-        <Breadcrumbs
-          items={[
-            { label: "Home", href: "/dashboard" },
-            { label: "My Collections", isCurrentPage: true },
-          ]}
-        />
-
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              My Collections
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Manage your knowledge collections
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {hasSelectedRows && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDeleteSelected}
-                disabled={isSubmitting}
-                className="h-9"
-              >
-                <Trash className="h-4 w-4 mr-2" /> Delete Selected
-              </Button>
-            )}
-            <Button
-              onClick={handleCreateCollection}
-              data-testid="create-collection-button"
-              className="whitespace-nowrap"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              <span>New Collection</span>
-            </Button>
-          </div>
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: "Home", href: "/dashboard" },
+          { label: "My Collections", isCurrentPage: true },
+        ]}
+      />
+      <div className="mb-6 flex flex-row md:flex-row gap-6 justify-between items-center">
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold tracking-tight">My Collections</h2>
+          <p className="text-muted-foreground">
+            Manage your knowledgebase here.
+          </p>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          {hasSelectedRows && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelected}
+              disabled={isSubmitting}
+              className="h-9"
+            >
+              <Trash className="h-4 w-4" /> Delete Selected
+            </Button>
+          )}
+          <Button
+            onClick={handleCreateCollection}
+            data-testid="create-collection-button"
+            className="whitespace-nowrap"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Collection</span>
+          </Button>
+        </div>
+      </div>
+
+      <div>
         {/* Filter and Search row */}
-        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-          {/* Empty space on the left or future filter pills */}
-          <div className="w-full md:flex-1 overflow-x-auto">
-            <StatusFilter
-              selectedStatuses={statusFilter}
-              onChange={setStatusFilter}
-            />
-          </div>
+        <div className="space-y-4">
+          {/* StatusFilter */}
+          {/* <StatusFilter
+            selectedStatuses={statusFilter}
+            onChange={setStatusFilter}
+          /> */}
 
-          {/* Search bar and view toggles */}
-          <div className="flex gap-2 w-full md:w-auto">
-            {/* Search bar */}
-            <div className="relative md:w-[18rem] flex-shrink-0">
-              <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Filter my collections..."
-                className="pl-10 pr-10 h-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                data-testid="search-collections-input"
-              />
-              {searchQuery && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Clear search</span>
-                </button>
-              )}
-            </div>
-
-            {/* View toggle buttons */}
-            <div className="flex border rounded-md">
-              <Button
-                variant={layoutView === "grid" ? "default" : "ghost"}
-                size="icon"
-                onClick={() => setLayoutView("grid")}
-                className="rounded-r-none h-9 w-9"
-                data-testid="card-view-button"
-              >
-                <LayoutGrid className="h-4 w-4" />
-                <span className="sr-only">Card view</span>
-              </Button>
-              <Button
-                variant={layoutView === "table" ? "default" : "ghost"}
-                size="icon"
-                onClick={() => setLayoutView("table")}
-                className="rounded-l-none h-9 w-9"
-                data-testid="table-view-button"
-              >
-                <TableIcon className="h-4 w-4" />
-                <span className="sr-only">Table view</span>
-              </Button>
-            </div>
-          </div>
+          {/* FilterBar for phase filtering and search */}
+          <FilterBar
+            mode="collections"
+            placeholderText="Filter collections..."
+            data-testid="collection-filter-bar"
+          />
         </div>
       </div>
 
@@ -452,7 +397,7 @@ export default function MyCollections() {
                   </p>
                   <Button onClick={handleCreateCollection}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Create your first collection
+                    Add Collection
                   </Button>
                 </div>
               )
@@ -505,7 +450,7 @@ export default function MyCollections() {
             <AlertDialogAction
               onClick={handleConfirmDelete}
               disabled={isSubmitting}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isSubmitting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
@@ -532,7 +477,7 @@ export default function MyCollections() {
             <AlertDialogAction
               onClick={executeMultipleDelete}
               disabled={isSubmitting}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isSubmitting ? "Deleting..." : "Delete"}
             </AlertDialogAction>

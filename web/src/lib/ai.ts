@@ -4,7 +4,7 @@ import { RunnableSequence } from "@langchain/core/runnables";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StateGraph } from "@langchain/langgraph";
-import { type Product } from "@/lib/firebase/schema";
+import { Phases, type Product } from "@/lib/firebase/schema";
 import { type QuestionAnswer } from "@/lib/firebase/question-answers";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { Annotation, START, END } from "@langchain/langgraph";
@@ -29,7 +29,7 @@ export interface AssetGenerationData {
   asset?: {
     title: string;
     description: string;
-    phase: string;
+    phases: Phases[];
     systemPrompt: string;
   };
 }
@@ -57,7 +57,7 @@ export async function formatProductDetails(product: Product): Promise<string> {
           Team: ${product.team || "Not provided"}
           Website: ${product.website || "Not provided"}
           Country: ${product.country || "Not provided"}
-          Stage: ${product.stage || "Not provided"}
+          Stage: ${product.phases[0] || "Not provided"}
         `;
 }
 
@@ -73,7 +73,7 @@ function formatAssetInfo(
   return `Asset Information:
 Title: ${asset.title || document}
 Description: ${asset.description || "Not provided"}
-Phase: ${asset.phase || "Not provided"}
+Phase: ${asset.phases || "Not provided"}
 ${asset.systemPrompt ? `Additional Instructions: ${asset.systemPrompt}` : ""}`;
 }
 
@@ -152,7 +152,7 @@ const AssetGenerationStateAnnotation = Annotation.Root({
     | {
         title: string;
         description: string;
-        phase: string;
+        phases: Phases[];
         systemPrompt: string;
       }
     | undefined

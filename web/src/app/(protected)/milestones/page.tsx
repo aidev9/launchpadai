@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Milestone } from "./components/milestone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,13 +69,11 @@ function useProductTimeline(productId: string | null) {
 }
 
 export default function MilestonesPage() {
-  const searchParams = useSearchParams();
-  const productId = searchParams.get("productId");
   const [isLocked, setIsLocked] = useState(true);
   const [userProfile] = useAtom(getCurrentUserProfileAtom);
 
   // Use custom hook instead of React Query
-  const { timeline } = useProductTimeline(productId);
+  const { timeline } = useProductTimeline("productId");
 
   useEffect(() => {
     if (timeline) {

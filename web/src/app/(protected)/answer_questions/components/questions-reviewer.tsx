@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useAtom } from "jotai";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,11 +10,6 @@ import { Edit, Save, FileText, Check, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
-import {
-  getOrderedProductQuestions,
-  deleteQuestionAction,
-  answerProductQuestionAction,
-} from "@/lib/firebase/actions/questions";
 import {
   allQuestionsAtom,
   questionModalOpenAtom,
@@ -32,17 +27,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { userProfileAtom, updateUserProfileAtom } from "@/lib/store/user-store";
 import { toast as showToast } from "@/hooks/use-toast";
 import React from "react";
 import {
   getCurrentUnixTimestamp,
   TOAST_DEFAULT_DURATION,
 } from "@/utils/constants";
-import { get } from "http";
-import { useMutation } from "@tanstack/react-query";
-import { useXp } from "@/xp/useXp";
 import { useXpMutation } from "@/xp/useXpMutation";
+import { firebaseQA } from "@/lib/firebase/client/FirebaseQA";
+import { getDocs } from "firebase/firestore";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -137,7 +130,7 @@ QuestionsList.displayName = "QuestionsList";
 
 // Define the component function first, then export a memoized version
 function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
   const [selectedPhases] = useAtom(selectedPhasesAtom);
   const [questionModalOpen, setModalOpen] = useAtom(questionModalOpenAtom);
 
@@ -225,7 +218,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
   // Update displayed questions when filtered results change
   useEffect(() => {
     setDisplayedQuestions(filteredQuestions);
-  }, [filteredQuestions]);
+  }, [filteredQuestions, setDisplayedQuestions]);
 
   // Also update the filtering logic to use a ref for selectedQuestionId to break circular dependencies
   const previousSelectedQuestionIdRef = useRef(selectedQuestionId);
@@ -250,32 +243,43 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
     previousSelectedQuestionIdRef.current = selectedQuestionId;
   }, [filteredQuestions, selectedQuestionId, setSelectedQuestionId, setAnswer]);
 
-  // Memoize the loadQuestions function
+  // Memoize the loadQuestions function - Use FirebaseQA client instead of server action
   const loadQuestions = useCallback(async () => {
-    if (!selectedProductId) return;
+    if (!selectedProduct) return;
 
     setIsLoading(true);
     try {
-      const response = await getOrderedProductQuestions(selectedProductId);
+      // Use FirebaseQA client to get questions by product ID
+      const questionsQuery = firebaseQA.getQuestionsByProduct(
+        selectedProduct.id
+      );
 
-      if (response.success && response.questions) {
-        const questions = response.questions as Question[];
-        console.log("Loaded questions:", questions.length);
+      if (!questionsQuery) {
+        console.error("Failed to create questions query");
+        return;
+      }
 
-        // Check if questions have actually changed to avoid unnecessary state updates
+      const snapshot = await getDocs(questionsQuery);
+      const questions = snapshot.docs.map((doc) => doc.data() as Question);
+
+      if (questions) {
         const hasQuestionsChanged =
           questions.length !== allQuestions.length ||
           JSON.stringify(questions.map((q) => q.id).sort()) !==
             JSON.stringify(allQuestions.map((q) => q.id).sort());
 
         if (hasQuestionsChanged) {
-          setAllQuestions(questions);
+          // Sort questions by their order property
+          const sortedQuestions = [...questions].sort(
+            (a, b) => (a.order || 0) - (b.order || 0)
+          );
+
+          setAllQuestions(sortedQuestions);
 
           // Only select the first question if no question is currently selected
-          // This prevents the infinite loop of re-rendering
-          if (questions.length > 0 && !selectedQuestionId) {
-            setSelectedQuestionId(questions[0].id);
-            setAnswer(questions[0].answer || "");
+          if (sortedQuestions.length > 0 && !selectedQuestionId) {
+            setSelectedQuestionId(sortedQuestions[0].id);
+            setAnswer(sortedQuestions[0].answer || "");
           }
         }
       }
@@ -290,7 +294,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
       setIsLoading(false);
     }
   }, [
-    selectedProductId,
+    selectedProduct,
     setAllQuestions,
     selectedQuestionId,
     setSelectedQuestionId,
@@ -319,9 +323,9 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
   // Use the common XP mutation hook
   const xpMutation = useXpMutation();
 
-  // Handle saving the answer
+  // Handle saving the answer using FirebaseQA
   const handleSaveAnswer = async () => {
-    if (!selectedProductId || !selectedQuestionId) {
+    if (!selectedProduct || !selectedQuestionId) {
       onShowToast({
         title: "Error",
         description: "No product or question selected",
@@ -339,20 +343,23 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
             return {
               ...q,
               answer,
-              updatedAt: Date.now() / 1000, // current timestamp in seconds
+              updatedAt: getCurrentUnixTimestamp(),
             };
           }
           return q;
         })
       );
 
-      const result = await answerProductQuestionAction(
-        selectedProductId,
+      // Use FirebaseQA to update the question
+      const updatedQuestion = await firebaseQA.updateQuestion(
         selectedQuestionId,
-        answer
+        {
+          answer,
+          updatedAt: getCurrentUnixTimestamp(),
+        }
       );
 
-      if (result.success) {
+      if (updatedQuestion) {
         // Award XP in background for answering a question
         xpMutation.mutate("answer_question");
 
@@ -364,12 +371,10 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
           duration: TOAST_DEFAULT_DURATION,
         });
       } else {
-        // If server update fails, show error and revert optimistic update
-        const errorMsg = result.error || "Failed to save answer";
-
+        // If update fails, show error and revert optimistic update
         onShowToast({
           title: "Error saving answer",
-          description: errorMsg,
+          description: "Failed to save answer",
           variant: "destructive",
         });
 
@@ -408,29 +413,15 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
     return !!question.answer && question.answer.trim().length > 0;
   };
 
-  // Special handler for Add Question button
-  // const handleAddQuestion = () => {
-  //   setModalOpen(true);
-  // };
-
-  // Log when component renders or modal state changes
-  useEffect(() => {
-    console.log("Modal state:", questionModalOpen);
-  }, [questionModalOpen]);
-
-  // Add a function to handle question deletion
+  // Add a function to handle question deletion using FirebaseQA
   const handleDeleteQuestion = async (questionId: string) => {
-    if (!selectedProductId || !questionId) return;
+    if (!selectedProduct || !questionId) return;
 
     try {
-      // Call the server action to delete from Firebase
-      // Fix parameter order: productId first, then questionId
-      const response = await deleteQuestionAction(
-        selectedProductId,
-        questionId
-      );
+      // Use FirebaseQA client to delete the question
+      const success = await firebaseQA.deleteQuestion(questionId);
 
-      if (response.success) {
+      if (success) {
         // Update the state after successful deletion
         setAllQuestions((prev) => prev.filter((q) => q.id !== questionId));
 
@@ -450,10 +441,9 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
         // Use callback for delete failure toast
         onShowToast({
           title: "Error deleting question",
-          description: response.error || "Failed to delete question",
+          description: "Failed to delete question",
           variant: "destructive",
         });
-        // throw new Error(response.error || "Failed to delete question"); // Don't throw if showing toast
       }
     } catch (error) {
       console.error("Error deleting question:", error);
@@ -475,7 +465,6 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
       // Don't re-render if clicking the already selected question
       if (id === selectedQuestionId) return;
 
-      console.log("Selecting question:", id);
       setSelectedQuestionId(id);
 
       // Find and set the answer immediately to avoid delay
@@ -577,10 +566,6 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
                         variant="ghost"
                         size="icon"
                         onClick={() => {
-                          console.log(
-                            "Edit button clicked for question ID:",
-                            selectedQuestionId
-                          );
                           setModalOpen(true);
                           // Store the ID of the question being edited in localStorage for the modal to access
                           if (selectedQuestionId) {
@@ -666,7 +651,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
               onClick={() =>
                 questionToDelete && handleDeleteQuestion(questionToDelete)
               }
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-500 hover:bg-red-600"
             >
               Delete
             </AlertDialogAction>

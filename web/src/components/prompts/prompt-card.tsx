@@ -10,12 +10,17 @@ import {
   Download,
   XCircle,
   Copy,
+  Eye,
+  Pencil,
+  Trash2,
+  FileCode,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { IconPlaylistAdd } from "@tabler/icons-react";
@@ -101,22 +106,41 @@ export function PromptCard({
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-[160px]">
+            <DropdownMenuItem
+              onClick={() => onClick(prompt)}
+              className="cursor-pointer"
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              View
+            </DropdownMenuItem>
             {onEdit && (
-              <DropdownMenuItem onClick={handleEditClick}>
+              <DropdownMenuItem
+                onClick={handleEditClick}
+                className="cursor-pointer"
+              >
+                <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
             )}
             {onDelete && (
-              <DropdownMenuItem
-                className="text-red-500"
-                onClick={handleDeleteClick}
-              >
-                Delete
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-red-500 cursor-pointer"
+                  onClick={handleDeleteClick}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </>
             )}
             {onUseAsTemplate && (
-              <DropdownMenuItem onClick={handleUseAsTemplateClick}>
+              <DropdownMenuItem
+                onClick={handleUseAsTemplateClick}
+                className="cursor-pointer"
+              >
+                <FileCode className="mr-2 h-4 w-4" />
                 Use as Template
               </DropdownMenuItem>
             )}
@@ -211,7 +235,7 @@ export function PromptCard({
         </div>
       )}
 
-      <div className="flex items-start mb-2 pr-10">
+      <div className="flex items-start mb-2 pr-10 border-b border-primary/20 pb-4">
         <IconPlaylistAdd className="h-4 w-4 mr-2 mt-1 flex-shrink-0" />
         <h3 className="font-semibold text-md leading-tight line-clamp-1">
           {prompt.title}

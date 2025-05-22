@@ -4,10 +4,12 @@ import { adminDb } from "@/lib/firebase/admin";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { Phases } from "@/lib/firebase/schema";
 
 export interface NoteData {
   id: string;
   note_body: string;
+  phases: Phases[];
   tags: string[];
   updatedAt?: number;
 }
@@ -28,10 +30,12 @@ async function getNotesCollectionRef(productId: string) {
 export async function createNote({
   productId,
   noteBody,
+  phases,
   tags,
 }: {
   productId: string;
   noteBody: string;
+  phases: Phases[];
   tags: string[];
 }) {
   try {
@@ -41,9 +45,11 @@ export async function createNote({
 
     const noteData = {
       note_body: noteBody,
+      phases,
       tags,
       updatedAt: getCurrentUnixTimestamp(),
       createdAt: getCurrentUnixTimestamp(),
+      productId,
     };
 
     const currentUserId = await getCurrentUserId();
@@ -56,12 +62,15 @@ export async function createNote({
       .doc(productId)
       .collection("notes");
 
-    await ref.add(noteData);
+    const docRef = await ref.add(noteData);
 
     return {
       success: true,
       message: "Note added successfully",
-      note: noteData,
+      note: {
+        ...noteData,
+        id: docRef.id,
+      },
     };
   } catch (error) {
     console.error("Error saving note:", error);
@@ -79,11 +88,13 @@ export async function updateNote({
   productId,
   noteId,
   noteBody,
+  phases,
   tags,
 }: {
   productId: string;
   noteId: string;
   noteBody: string;
+  phases: Phases[];
   tags: string[];
 }) {
   try {
@@ -93,6 +104,7 @@ export async function updateNote({
 
     const noteData = {
       note_body: noteBody,
+      phases,
       tags,
       updatedAt: getCurrentUnixTimestamp(),
     };
@@ -107,7 +119,10 @@ export async function updateNote({
     return {
       success: true,
       message: "Note updated successfully",
-      noteId,
+      note: {
+        id: noteId,
+        ...noteData,
+      },
     };
   } catch (error) {
     console.error("Error updating note:", error);
@@ -146,7 +161,7 @@ export async function deleteNotes(formData: FormData) {
     }
     await batch.commit();
 
-    // revalidatePath("/notes");
+    revalidatePath("/notes");
 
     return {
       success: true,

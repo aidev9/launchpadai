@@ -18,8 +18,8 @@ interface DatabaseOption {
 export function DatabaseStep() {
   const [wizardState, setWizardState] = useAtom(techStackWizardStateAtom);
   const [showOther, setShowOther] = useState(
-    wizardState.database &&
-      !["Relational", "NoSQL", "Hybrid"].includes(wizardState.database)
+    wizardState.databaseStack &&
+      !["Relational", "NoSQL", "Hybrid"].includes(wizardState.databaseStack)
   );
 
   const databaseOptions: DatabaseOption[] = [
@@ -46,21 +46,21 @@ export function DatabaseStep() {
   const handleDatabaseChange = (value: string) => {
     if (value === "Other") {
       setShowOther(true);
-      setWizardState({ ...wizardState, database: "" });
+      setWizardState({ ...wizardState, databaseStack: "" });
     } else {
       setShowOther(false);
-      setWizardState({ ...wizardState, database: value });
+      setWizardState({ ...wizardState, databaseStack: value });
     }
   };
 
   const handleOtherChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setWizardState({ ...wizardState, database: e.target.value });
+    setWizardState({ ...wizardState, databaseStack: e.target.value });
   };
 
   return (
     <div className="space-y-6">
       <RadioGroup
-        value={showOther ? "Other" : wizardState.database || undefined}
+        value={showOther ? "Other" : wizardState.databaseStack || undefined}
         onValueChange={handleDatabaseChange}
         className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
@@ -72,7 +72,7 @@ export function DatabaseStep() {
             label={option.label}
             subtitle={option.subtitle}
             footer={option.footer}
-            checked={!showOther && wizardState.database === option.value}
+            checked={!showOther && wizardState.databaseStack === option.value}
             onValueChange={handleDatabaseChange}
           />
         ))}
@@ -93,7 +93,7 @@ export function DatabaseStep() {
           <Textarea
             id="other-database"
             placeholder="Enter your database type"
-            value={wizardState.database}
+            value={wizardState.databaseStack}
             onChange={handleOtherChange}
             className="mt-1"
           />

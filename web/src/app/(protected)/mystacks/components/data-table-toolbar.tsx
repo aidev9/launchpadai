@@ -48,15 +48,15 @@ export function DataTableToolbar<TData>({
     <div className="flex items-center justify-between py-2">
       <div className="flex flex-1 items-center space-x-2">
         {/* Table Search Input */}
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative flex-1 max-w-96">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Filter stacks..." // Changed placeholder
             value={(globalFilter as string) ?? ""}
             onChange={
               (event) => table.setGlobalFilter(event.target.value) // Use table's setter
             }
-            className="h-8 pl-8"
+            className="pl-8"
           />
           {globalFilter && (
             <button

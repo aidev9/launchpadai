@@ -94,7 +94,7 @@ export async function generatePrd(feature: Feature) {
       ? {
           name: (product as Product).name,
           description: (product as Product).description || "",
-          stage: (product as Product).stage || "",
+          stage: (product as Product).phases[0] || "",
           problem: (product as Product).problem || "",
         }
       : { name: "Unknown Product", description: "", stage: "", problem: "" };
@@ -257,7 +257,7 @@ export async function enhancePrd(formData: FormData) {
       productContext = `
       Product Name: ${(product as Product).name}
       Product Description: ${(product as Product).description || "N/A"}
-      Product Stage: ${(product as Product).stage || "N/A"}
+      Product Stage: ${(product as Product).phases[0] || "N/A"}
       Product Problem: ${(product as Product).problem || "N/A"}
       `;
     }

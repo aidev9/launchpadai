@@ -31,7 +31,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAtom } from "jotai";
 import {
   selectedTechStackAtom,
-  selectedTechStackIdAtom,
+  techStackWizardStateAtom,
+  isEditModeAtom,
+  currentWizardStepAtom,
 } from "@/lib/store/techstack-store";
 import { deleteTechStack } from "@/lib/firebase/techstacks";
 
@@ -41,6 +43,9 @@ export default function TechStackDetailPage() {
 
   // Use the tech stack atoms directly
   const [selectedTechStack] = useAtom(selectedTechStackAtom);
+  const [isEditMode, setIsEditMode] = useAtom(isEditModeAtom);
+  const [currentStep, setCurrentStep] = useAtom(currentWizardStepAtom);
+  const [wizardState, setWizardState] = useAtom(techStackWizardStateAtom);
 
   // Use our tech stack assets hook without passing techStackId
   const {
@@ -72,9 +77,14 @@ export default function TechStackDetailPage() {
   // Handle tech stack edit
   const handleEdit = () => {
     if (selectedTechStack?.id) {
-      // Use jotai state instead of URL params
-      // The edit page should read the selectedTechStackId from jotai state
-      router.push(`/mystacks/edit`);
+      // Set wizard state from the selected tech stack
+      setWizardState(selectedTechStack);
+      // Set edit mode to true
+      setIsEditMode(true);
+      // Reset to first step of wizard
+      setCurrentStep(1);
+      // Navigate to create page
+      router.push(`/mystacks/create`);
     }
   };
 
@@ -254,13 +264,13 @@ export default function TechStackDetailPage() {
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">{selectedTechStack.appType}</Badge>
           <Badge variant="outline">{selectedTechStack.frontEndStack}</Badge>
-          <Badge variant="outline">{selectedTechStack.backendStack}</Badge>
-          <Badge variant="outline">{selectedTechStack.database}</Badge>
+          <Badge variant="outline">{selectedTechStack.backEndStack}</Badge>
+          <Badge variant="outline">{selectedTechStack.databaseStack}</Badge>
           {selectedTechStack.deploymentStack && (
             <Badge variant="outline">{selectedTechStack.deploymentStack}</Badge>
           )}
-          {selectedTechStack.phase &&
-            selectedTechStack.phase.map((phase) => (
+          {selectedTechStack.phases &&
+            selectedTechStack.phases.map((phase) => (
               <Badge key={phase}>{phase}</Badge>
             ))}
         </div>

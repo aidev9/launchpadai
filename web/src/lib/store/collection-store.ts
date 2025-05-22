@@ -9,7 +9,6 @@ import { Table, ColumnFiltersState, SortingState } from "@tanstack/react-table";
 
 // Layout view type
 export type CollectionViewMode = "grid" | "table";
-export const collectionViewModeAtom = atom<CollectionViewMode>("grid");
 
 // Base data atoms
 export const allCollectionsAtom = atom<Collection[]>([]);
@@ -38,6 +37,7 @@ export const collectionPhaseFilterAtom = atom<string[]>([]);
 export const collectionStatusFilterAtom = atom<CollectionStatus[]>([]);
 export const documentSearchQueryAtom = atom<string>("");
 export const documentStatusFilterAtom = atom<DocumentStatus[]>([]);
+export const collectionViewModeAtom = atom<"grid" | "table">("grid");
 
 // Table state atoms
 export const collectionRowSelectionAtom = atom<Record<string, boolean>>({});

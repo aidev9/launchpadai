@@ -4,7 +4,6 @@ import { useCallback, useEffect } from "react";
 import { useAtom } from "jotai";
 import {
   selectedTechStackAtom,
-  selectedTechStackIdAtom,
   techStackAssetsAtom,
   selectedAssetAtom,
   selectedAssetIdAtom,
@@ -24,6 +23,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
 
+// TODO: Remove this hook and use React Firebase Hooks
+
 /**
  * Custom hook for managing tech stack assets with React Server Actions
  */
@@ -32,9 +33,6 @@ export function useTechStackAssets() {
   const [assets, setAssets] = useAtom(techStackAssetsAtom);
   const [selectedTechStack, setSelectedTechStack] = useAtom(
     selectedTechStackAtom
-  );
-  const [selectedTechStackId, setSelectedTechStackId] = useAtom(
-    selectedTechStackIdAtom
   );
   const [selectedAsset, setSelectedAsset] = useAtom(selectedAssetAtom);
   const [selectedAssetId, setSelectedAssetId] = useAtom(selectedAssetIdAtom);
@@ -51,18 +49,11 @@ export function useTechStackAssets() {
 
   // Fetch tech stack
   const fetchTechStackDetails = useCallback(async () => {
-    console.log("fetchTechStackDetails called with ID:", selectedTechStackId);
-    if (!selectedTechStackId) {
-      console.log("No tech stack ID provided");
-      return;
-    }
-
     try {
       setIsLoading(true);
       setError(null);
-      console.log("Fetching tech stack with ID:", selectedTechStackId);
 
-      const result = await getTechStack(selectedTechStackId);
+      const result = await getTechStack(selectedTechStack?.id || "");
 
       if (result.success && result.techStack) {
         console.log("Setting tech stack:", result.techStack);
@@ -77,12 +68,12 @@ export function useTechStackAssets() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedTechStackId, setSelectedTechStack, setIsLoading, setError]);
+  }, [selectedTechStack, setSelectedTechStack, setIsLoading, setError]);
 
   // Fetch assets
   const fetchAssets = useCallback(
     async (showLoading = false) => {
-      if (!selectedTechStackId) {
+      if (!selectedTechStack) {
         setAssets([]);
         return;
       }
@@ -93,7 +84,7 @@ export function useTechStackAssets() {
         }
         setError(null);
 
-        const result = await fetchTechStackAssets(selectedTechStackId);
+        const result = await fetchTechStackAssets(selectedTechStack?.id || "");
 
         if (result.success) {
           setAssets(result.assets || []);
@@ -110,7 +101,7 @@ export function useTechStackAssets() {
         }
       }
     },
-    [selectedTechStackId, setAssets, setIsLoading, setError]
+    [selectedTechStack, setAssets, setIsLoading, setError]
   );
 
   // Generate asset content
@@ -126,7 +117,7 @@ export function useTechStackAssets() {
       techStackDetails: TechStack;
       userInstructions?: string;
     }) => {
-      if (!selectedTechStackId) return;
+      if (!selectedTechStack) return;
 
       // try {
       //   // Reset insufficient credits state
@@ -281,7 +272,7 @@ export function useTechStackAssets() {
       // }
     },
     [
-      selectedTechStackId,
+      selectedTechStack,
       fetchAssets,
       setIsGenerating,
       setGeneratingAssets,
@@ -305,26 +296,26 @@ export function useTechStackAssets() {
   );
 
   // Fetch tech stack and assets on initial mount
-  useEffect(() => {
-    if (selectedTechStackId) {
-      // Fetch tech stack details if not already loaded
-      if (!selectedTechStack || selectedTechStack.id !== selectedTechStackId) {
-        fetchTechStackDetails();
-      }
+  // useEffect(() => {
+  //   if (selectedTechStack) {
+  //     // Fetch tech stack details if not already loaded
+  //     if (!selectedTechStack || selectedTechStack.id !== selectedTechStackId) {
+  //       fetchTechStackDetails();
+  //     }
 
-      // Fetch assets without showing loading spinner
-      fetchAssets(false);
-    }
-  }, [
-    selectedTechStackId,
-    selectedTechStack,
-    fetchTechStackDetails,
-    fetchAssets,
-  ]);
+  //     // Fetch assets without showing loading spinner
+  //     fetchAssets(false);
+  //   }
+  // }, [
+  //   selectedTechStackId,
+  //   selectedTechStack,
+  //   fetchTechStackDetails,
+  //   fetchAssets,
+  // ]);
 
   // Fetch assets when tab changes to assets
   useEffect(() => {
-    if (activeTab === "assets" && selectedTechStackId) {
+    if (activeTab === "assets" && selectedTechStack) {
       // Add a small delay to avoid immediate refetch
       const timer = setTimeout(() => {
         // Fetch assets without showing loading spinner
@@ -333,7 +324,7 @@ export function useTechStackAssets() {
 
       return () => clearTimeout(timer);
     }
-  }, [activeTab, selectedTechStackId, fetchAssets]);
+  }, [activeTab, selectedTechStack, fetchAssets]);
 
   return {
     assets,

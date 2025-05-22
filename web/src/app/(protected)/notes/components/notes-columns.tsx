@@ -18,6 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useSetAtom } from "jotai";
@@ -42,17 +43,21 @@ const ActionsCell = ({ note }: { note: Note }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
+        <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
           <span className="sr-only">Open menu</span>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleEdit}>
+        <DropdownMenuItem onClick={handleEdit} className="cursor-pointer">
           <Pencil className="h-4 w-4 mr-2" />
           Edit
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDelete}>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={handleDelete}
+          className="text-destructive focus:text-destructive cursor-pointer"
+        >
           <Trash2 className="h-4 w-4 mr-2" />
           Delete
         </DropdownMenuItem>
@@ -112,54 +117,61 @@ export const columns: ColumnDef<Note>[] = [
     enableHiding: false,
   },
   {
+    accessorKey: "phases",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Phases" />
+    ),
+    cell: ({ row }) => {
+      const phases = row.getValue<string[]>("phases") || [];
+      return (
+        <div className="flex flex-wrap gap-1">
+          {phases.map((phase) => (
+            <Badge key={phase} variant="secondary" className="text-xs">
+              {phase}
+            </Badge>
+          ))}
+        </div>
+      );
+    },
+    enableSorting: true,
+    enableHiding: true,
+  },
+  {
     accessorKey: "tags",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Tags" />
     ),
     cell: ({ row }) => {
-      const tags = row.getValue("tags") as string[];
-      if (!tags || tags.length === 0) return null;
-
+      const tags = row.getValue<string[]>("tags") || [];
       return (
         <div className="flex flex-wrap gap-1">
-          {tags.map((tag, index) => (
-            <Badge
-              key={index}
-              variant="outline"
-              className="px-2 py-0.5 text-xs"
-            >
+          {tags.map((tag) => (
+            <Badge key={tag} variant="outline" className="text-xs">
               {tag}
             </Badge>
           ))}
         </div>
       );
     },
-    meta: {
-      className: "max-w-[200px]",
-    },
-    filterFn: (row, id, value) => {
-      const tags = row.getValue(id) as string[];
-      if (!tags || !Array.isArray(tags) || !Array.isArray(value)) return false;
-      return value.some((v) => tags.includes(v));
-    },
+    enableSorting: true,
+    enableHiding: true,
   },
   {
     accessorKey: "updatedAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Modified" />
+      <DataTableColumnHeader column={column} title="Last Updated" />
     ),
     cell: ({ row }) => {
-      // Use the unixTimestampToDate utility function to convert seconds to Date
-      const updatedAt = parseInt(row.getValue("updatedAt"));
-      const formatteDate = formatTimestamp(updatedAt);
-      return <div className="font-medium">{formatteDate}</div>;
+      const timestamp = row.getValue<number>("updatedAt");
+      return <div>{formatTimestamp(timestamp)}</div>;
     },
-    meta: {
-      className: "whitespace-nowrap",
-    },
+    enableSorting: true,
+    enableHiding: true,
   },
   {
     id: "actions",
     cell: ({ row }) => <ActionsCell note={row.original} />,
+    enableSorting: false,
+    enableHiding: false,
   },
 ];

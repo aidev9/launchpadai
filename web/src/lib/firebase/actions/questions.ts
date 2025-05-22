@@ -1,19 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-// import { adminDb } from "../admin";
 import { getCurrentUserId } from "../adminAuth";
-import { getProductQuestionsRef } from "../questions";
+import { getUserQuestionsRef } from "../questions";
 import { awardXpPoints } from "@/xp/server-actions"; // Import XP award function
-import { get } from "http";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
 
-// Get reference to the questions collection
-// const questionsCollection = adminDb.collection("questions");
-
 // Helper function for getting question reference (not exported)
-async function getProductQuestionsRefHelper(userId: string, productId: string) {
-  return await getProductQuestionsRef(userId, productId);
+async function getUserQuestionsRefHelper(userId: string) {
+  return getUserQuestionsRef(userId);
 }
 
 /**
@@ -40,8 +35,8 @@ export async function saveQuestionAnswer(
       };
     }
 
-    // Get reference to the question using the helper function
-    const questionsRef = await getProductQuestionsRefHelper(userId, productId);
+    // Get reference to the questions collection
+    const questionsRef = await getUserQuestionsRefHelper(userId);
     const questionRef = questionsRef.doc(questionId);
 
     // We'll just update without checking existence first, which is faster
@@ -93,13 +88,16 @@ export async function getOrderedProductQuestions(productId: string) {
       };
     }
 
-    // Get reference to the questions collection using the helper function
-    const questionsRef = await getProductQuestionsRefHelper(userId, productId);
+    // Get reference to the questions collection
+    const questionsRef = await getUserQuestionsRefHelper(userId);
 
-    // Get questions ordered by 'order' in ascending order
-    const snapshot = await questionsRef.orderBy("order", "asc").get();
+    // Get questions for this product ordered by 'order' in ascending order
+    const snapshot = await questionsRef
+      .where("productId", "==", productId)
+      .orderBy("order", "asc")
+      .get();
 
-    const questions = snapshot.docs.map((doc) => ({
+    const questions = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),
     }));
@@ -137,8 +135,8 @@ export async function deleteQuestionAction(
       };
     }
 
-    // Get reference to the questions collection using the helper function
-    const questionsRef = await getProductQuestionsRefHelper(userId, productId);
+    // Get reference to the questions collection
+    const questionsRef = await getUserQuestionsRefHelper(userId);
     const questionRef = questionsRef.doc(questionId);
 
     // Delete the question document
@@ -190,8 +188,8 @@ export async function addProductQuestionAction(
       };
     }
 
-    // Get reference to the questions collection using the helper function
-    const questionsRef = await getProductQuestionsRefHelper(userId, productId);
+    // Get reference to the questions collection
+    const questionsRef = await getUserQuestionsRefHelper(userId);
 
     // Generate a unique ID
     const questionId = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -211,9 +209,11 @@ export async function addProductQuestionAction(
       answer: questionData.answer,
       tags: questionData.tags,
       phases: phases,
+      productId: productId, // Add productId to question
       order: getCurrentUnixTimestamp(), // Use timestamp for default ordering
       createdAt: getCurrentUnixTimestamp(),
       updatedAt: getCurrentUnixTimestamp(),
+      userId: userId, // Add userId to question
     };
 
     // Add to Firestore
@@ -271,7 +271,7 @@ export async function updateProductQuestionAction(
     }
 
     // Get reference to the questions collection using the helper function
-    const questionsRef = await getProductQuestionsRefHelper(userId, productId);
+    const questionsRef = await getUserQuestionsRefHelper(userId);
 
     // Check if question exists
     const questionDoc = await questionsRef.doc(questionId).get();
@@ -357,7 +357,7 @@ export async function answerProductQuestionAction(
     }
 
     // Get reference to the questions collection using the helper function
-    const questionsRef = await getProductQuestionsRefHelper(userId, productId);
+    const questionsRef = await getUserQuestionsRefHelper(userId);
 
     // Get the question document to check if it exists
     const questionDoc = await questionsRef.doc(questionId).get();

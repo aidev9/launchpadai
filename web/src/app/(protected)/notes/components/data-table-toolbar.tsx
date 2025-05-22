@@ -46,10 +46,10 @@ export function DataTableToolbar<TData>({
     <div className="flex flex-col space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-1 items-center space-x-2">
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 max-w-96">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search notes..."
+              placeholder="Filter notes..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               className="pl-8"

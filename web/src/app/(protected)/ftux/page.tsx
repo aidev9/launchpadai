@@ -36,6 +36,7 @@ import {
   Circle,
   Sparkles,
   Trophy,
+  PlusIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -370,8 +371,8 @@ export default function FTUXPage() {
               router.push("/welcome/wizard?template=blank&type=blank")
             }
           >
-            <Sparkles className="mr-2 h-4 w-4" />
-            Create Your First Product
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Add Product
           </Button>
         </CardContent>
       </Card>

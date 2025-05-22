@@ -131,10 +131,28 @@ export function StackDataTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  // onClick={() => onViewStack(row.original)} // Row click for view, if desired in addition to menu
+                  onClick={(e) => {
+                    // Don't navigate if clicking on checkbox or actions column
+                    const target = e.target as HTMLElement;
+                    const checkboxCell = target.closest(
+                      'td[data-column="select"]'
+                    );
+                    const actionsCell = target.closest(
+                      'td[data-column="actions"]'
+                    );
+
+                    if (!checkboxCell && !actionsCell) {
+                      onViewStack(row.original);
+                    }
+                  }}
+                  className="cursor-pointer hover:bg-muted/50"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      data-column={cell.column.id}
+                      className={cell.column.id === "actions" ? "relative" : ""}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

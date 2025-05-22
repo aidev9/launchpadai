@@ -3,10 +3,11 @@
 import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
-import { FirestoreAsset, Asset } from "@/lib/firebase/schema";
+import { FirestoreAsset, Asset, Phases } from "@/lib/firebase/schema";
 import { awardXpPoints } from "@/xp/server-actions";
-import { get } from "http";
+import { SaveAssetSchema } from "@/app/(protected)/review_assets/actions/asset-actions";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { z } from "zod";
 
 // Get the assets reference for a specific user and product
 function getUserAssetRef(userId: string, productId: string) {
@@ -86,10 +87,7 @@ export async function getProductAssets(productId: string) {
 /**
  * Get assets by phase for a specific product
  */
-export async function getAssetsByPhase(
-  productId: string,
-  phase: Asset["phase"]
-) {
+export async function getAssetsByPhase(productId: string, phase: Phases) {
   try {
     const userId = await getCurrentUserId();
     const assetsRef = getUserAssetRef(userId, productId);
@@ -167,7 +165,7 @@ export async function getAsset(productId: string, assetId: string) {
  */
 export async function saveAsset(
   productId: string,
-  assetData: Partial<FirestoreAsset> & { id: string }
+  assetData: z.infer<typeof SaveAssetSchema>["asset"] & { id: string }
 ) {
   try {
     const userId = await getCurrentUserId();
@@ -181,7 +179,7 @@ export async function saveAsset(
     const assetWithTimestamp = {
       ...assetData,
       updatedAt: getCurrentUnixTimestamp(),
-      createdAt: assetData.createdAt || getCurrentUnixTimestamp(),
+      createdAt: getCurrentUnixTimestamp(),
     };
 
     await assetDocRef.set(assetWithTimestamp, { merge: true });

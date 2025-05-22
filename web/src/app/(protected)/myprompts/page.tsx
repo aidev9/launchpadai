@@ -2,20 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useXpMutation } from "@/xp/useXpMutation";
-import {
-  Plus,
-  Search as SearchIcon,
-  X,
-  LayoutGrid,
-  Table as TableIcon,
-  Trash,
-  Sparkles,
-} from "lucide-react";
-import { usePrompts } from "@/hooks/usePrompts";
-import { PhaseFilter, getPhaseColor } from "@/components/prompts/phase-filter";
+import { Plus, Trash, Sparkles } from "lucide-react";
 import { PromptCard } from "@/components/prompts/prompt-card";
 import { Prompt, PromptInput } from "@/lib/firebase/schema";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -48,8 +37,15 @@ import {
   deleteMultiplePromptsAtom,
   addPromptAtom,
   highlightedPromptIdAtom,
+  promptPhaseFilterAtom,
+  promptSearchQueryAtom,
+  selectedPromptAtom,
 } from "@/lib/store/prompt-store";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import { FilterBar } from "@/components/ui/components/filter-bar";
+import { useCollectionData } from "react-firebase-hooks/firestore";
+import { firebasePrompts } from "@/lib/firebase/client/FirebasePrompts";
+import { NotesPrimaryButtons } from "../notes/components/notes-primary-buttons";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -57,7 +53,7 @@ export const dynamic = "force-dynamic";
 export default function MyPrompts() {
   const router = useRouter();
   const { toast } = useToast();
-  const [layoutView, setLayoutView] = useAtom(layoutViewAtom);
+  const [layoutView] = useAtom(layoutViewAtom);
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -69,101 +65,57 @@ export default function MyPrompts() {
     highlightedPromptIdAtom
   );
   const highlightedCardRef = useRef<HTMLDivElement>(null);
+  const [phaseFilter] = useAtom(promptPhaseFilterAtom);
+  const [searchQuery] = useAtom(promptSearchQueryAtom);
 
   // Add atoms for optimistic updates
   const updatePrompt = useSetAtom(updatePromptAtom);
   const deletePrompt = useSetAtom(deletePromptAtom);
   const deleteMultiplePrompts = useSetAtom(deleteMultiplePromptsAtom);
   const addPrompt = useSetAtom(addPromptAtom);
+  const setSelectedPrompt = useSetAtom(selectedPromptAtom);
+  const setPhaseFilter = useSetAtom(promptPhaseFilterAtom);
 
   // Row selection state
   const [rowSelection, setRowSelection] = useAtom(promptRowSelectionAtom);
   const hasSelectedRows = Object.keys(rowSelection).length > 0;
 
-  const {
-    prompts,
-    isLoading,
-    error,
-    phaseFilter,
-    setPhaseFilter,
-    searchQuery,
-    setSearchQuery,
-    setSelectedPrompt,
-    fetchUserPrompts,
-    fetchPromptById,
-  } = usePrompts({
-    userPromptsOnly: true,
-  });
+  // Use react-firebase-hooks to get prompts directly
+  const [promptsData, isLoading, firestoreError] = useCollectionData(
+    phaseFilter.length > 0
+      ? firebasePrompts.getUserPromptsByPhase(phaseFilter)
+      : firebasePrompts.getUserPrompts(),
+    {
+      snapshotListenOptions: { includeMetadataChanges: true },
+    }
+  );
+
+  // Format the data to include the document ID
+  const prompts = (promptsData || []).map((prompt) => ({
+    ...prompt,
+    id: prompt.id,
+  })) as Prompt[];
+
+  // Apply search filter
+  const filteredPrompts =
+    searchQuery.trim() === ""
+      ? prompts
+      : prompts.filter((prompt) => {
+          const query = searchQuery.toLowerCase();
+          return (
+            prompt.title?.toLowerCase().includes(query) ||
+            (prompt.body || "").toLowerCase().includes(query)
+          );
+        });
+
+  // XP mutation
+  const xpMutation = useXpMutation();
 
   // Sort prompts to show newest first
-  const sortedPrompts = [...prompts].sort((a, b) => {
+  const sortedPrompts = [...filteredPrompts].sort((a, b) => {
     // Sort by creation date descending (newest first)
     return (b.createdAt || 0) - (a.createdAt || 0);
   });
-
-  // Only fetch prompts on initial mount, not when highlighted prompt ID changes
-  useEffect(() => {
-    // Only fetch on initial mount if we don't have prompts yet
-    if (prompts.length === 0) {
-      fetchUserPrompts(true);
-    }
-  }, [fetchUserPrompts, prompts.length]);
-
-  // Check for highlighted prompt and scroll to it
-  useEffect(() => {
-    if (highlightedPromptId && sortedPrompts.length > 0) {
-      // Find the prompt in the sorted list
-      const highlightedPrompt = sortedPrompts.find(
-        (p) => p.id === highlightedPromptId
-      );
-
-      if (!highlightedPrompt) {
-        // If we can't find the prompt in the current list, fetch it
-        fetchUserPrompts(false).then(() => {
-          // The scroll effect will happen on the next render when the prompt is available
-        });
-        return;
-      }
-
-      // Scroll to the highlighted prompt after a short delay to ensure rendering
-      setTimeout(() => {
-        if (highlightedCardRef.current) {
-          highlightedCardRef.current.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-
-          // Add a temporary highlight effect with green border
-          highlightedCardRef.current.classList.add(
-            "ring-4",
-            "ring-green-500",
-            "ring-opacity-70",
-            "transition-all",
-            "duration-500"
-          );
-
-          // Remove the highlight effect after a delay
-          setTimeout(() => {
-            if (highlightedCardRef.current) {
-              highlightedCardRef.current.classList.remove(
-                "ring-4",
-                "ring-green-500",
-                "ring-opacity-70"
-              );
-
-              // Clear the highlighted prompt ID after the animation
-              setHighlightedPromptId(null);
-            }
-          }, 3000);
-        }
-      }, 300);
-    }
-  }, [
-    highlightedPromptId,
-    sortedPrompts,
-    setHighlightedPromptId,
-    fetchUserPrompts,
-  ]);
 
   const handlePromptClick = (prompt: Prompt) => {
     setSelectedPrompt(prompt);
@@ -175,68 +127,128 @@ export default function MyPrompts() {
     setIsPromptModalOpen(true);
   };
 
-  const clearSearch = () => {
-    setSearchQuery("");
-  };
-
   const handleEditPrompt = (prompt: Prompt) => {
-    if (!prompt || !prompt.id) {
-      toast({
-        title: "Error",
-        duration: TOAST_DEFAULT_DURATION,
-        description: "Cannot edit prompt - missing prompt data",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setEditingPrompt({ ...prompt });
+    setEditingPrompt(prompt);
     setIsPromptModalOpen(true);
   };
 
   const handleDeletePrompt = (prompt: Prompt) => {
-    if (!prompt || !prompt.id) {
-      toast({
-        title: "Error",
-        description: "Cannot delete prompt - missing prompt ID",
-        variant: "destructive",
-        duration: TOAST_DEFAULT_DURATION,
-      });
-      return;
-    }
-
-    setPromptToDelete({ ...prompt });
+    setPromptToDelete(prompt);
     setIsDeleteDialogOpen(true);
   };
 
   const handleTagClick = (tag: string) => {
-    // Add the tag to the phase filter if it's not already there
-    if (!phaseFilter.includes(tag)) {
+    // Update the phase filter atom
+    if (phaseFilter.includes(tag)) {
+      setPhaseFilter(phaseFilter.filter((t) => t !== tag));
+    } else {
       setPhaseFilter([...phaseFilter, tag]);
     }
   };
 
-  // Use the common XP mutation hook
-  const xpMutation = useXpMutation();
+  const handleDeleteSelected = () => {
+    setIsMultipleDeleteDialogOpen(true);
+  };
+
+  const confirmDeletePrompt = async () => {
+    if (!promptToDelete) return;
+
+    setIsSubmitting(true);
+    try {
+      const result = await deletePromptAction(promptToDelete.id!);
+
+      if (result.success) {
+        // Optimistic UI update
+        deletePrompt(promptToDelete.id!);
+
+        // Close the dialog
+        setIsDeleteDialogOpen(false);
+        toast({
+          title: "Success",
+          description: "Prompt deleted",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete prompt",
+          variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+        variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const confirmDeleteMultiple = async () => {
+    const selectedPromptIds = Object.keys(rowSelection)
+      .map((index) => prompts[parseInt(index)]?.id)
+      .filter(Boolean) as string[];
+
+    if (selectedPromptIds.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const result = await deleteMultiplePromptsAction(selectedPromptIds);
+
+      if (result.success) {
+        // Optimistic update
+        deleteMultiplePrompts(selectedPromptIds);
+
+        // Clear selection
+        setRowSelection({});
+
+        toast({
+          title: "Success",
+          description: `${selectedPromptIds.length} prompts deleted`,
+          duration: TOAST_DEFAULT_DURATION,
+        });
+        setIsMultipleDeleteDialogOpen(false);
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete prompts",
+          variant: "destructive",
+          duration: TOAST_DEFAULT_DURATION,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+        variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSubmitPrompt = async (data: PromptInput, promptId?: string) => {
     setIsSubmitting(true);
     try {
       if (promptId) {
-        // Optimistic update
-        if (editingPrompt) {
-          const optimisticPrompt = {
-            ...editingPrompt,
-            ...data,
-            updatedAt: Date.now() / 1000, // Current timestamp
-          };
-          updatePrompt(optimisticPrompt);
-        }
-
-        // Perform actual update
+        // Update existing prompt
         const result = await updatePromptAction(promptId, data);
 
         if (result.success) {
+          // Update prompt in atom for optimistic UI updates
+          updatePrompt(result.prompt!);
+
           toast({
             title: "Success",
             description: "Prompt updated successfully",
@@ -250,10 +262,6 @@ export default function MyPrompts() {
             variant: "destructive",
             duration: TOAST_DEFAULT_DURATION,
           });
-          // Only refresh the specific prompt that failed to update
-          if (editingPrompt?.id) {
-            fetchPromptById(editingPrompt.id);
-          }
         }
       } else {
         // Create new prompt
@@ -274,8 +282,7 @@ export default function MyPrompts() {
           setIsPromptModalOpen(false);
 
           // Navigate to the prompt detail page with the newly created prompt
-          setSelectedPrompt(result.prompt);
-          router.push("/myprompts/prompt");
+          // This is now handled by useCollectionData
         } else {
           toast({
             title: "Error",
@@ -301,357 +308,193 @@ export default function MyPrompts() {
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!promptToDelete || !promptToDelete.id) return;
-
-    try {
-      // Optimistic update
-      deletePrompt(promptToDelete.id);
-
-      // Actual delete operation
-      const result = await deletePromptAction(promptToDelete.id);
-
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: "Prompt deleted successfully",
-          duration: TOAST_DEFAULT_DURATION,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to delete prompt",
-          variant: "destructive",
-          duration: TOAST_DEFAULT_DURATION,
-        });
-        // If deletion failed, we need to add the prompt back to the UI
-        // We can do this by fetching just that prompt
-        if (promptToDelete?.id) {
-          fetchPromptById(promptToDelete.id);
-        }
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
-        duration: TOAST_DEFAULT_DURATION,
-      });
-      // If deletion failed, we need to add the prompt back to the UI
-      if (promptToDelete?.id) {
-        fetchPromptById(promptToDelete.id);
-      }
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setPromptToDelete(null);
-    }
-  };
-
-  // Function to handle multiple delete
-  const handleDeleteSelected = () => {
-    // Open confirmation dialog
-    setIsMultipleDeleteDialogOpen(true);
-  };
-
-  // Function to execute multiple delete after confirmation
-  const executeMultipleDelete = async () => {
-    try {
-      setIsSubmitting(true);
-
-      // Get selected prompts from the table data
-      const selectedPromptIds = prompts
-        .filter((_, index) => rowSelection[index])
-        .map((prompt) => prompt.id as string)
-        .filter(Boolean);
-
-      if (selectedPromptIds.length === 0) {
-        setIsMultipleDeleteDialogOpen(false);
-        return;
-      }
-
-      // Call server action to delete multiple prompts
-      const result = await deleteMultiplePromptsAction(selectedPromptIds);
-
-      if (result.success) {
-        // Optimistically update UI with deletion
-        deleteMultiplePrompts(selectedPromptIds);
-
-        // Reset row selection
-        setRowSelection({});
-
-        // Show success message
-        toast({
-          title: "Prompts deleted",
-          description: `Successfully deleted ${result.deletedCount} prompt${result.deletedCount !== 1 ? "s" : ""}.`,
-          duration: TOAST_DEFAULT_DURATION,
-        });
-      } else {
-        // Show error message
-        toast({
-          title: "Error",
-          description: result.error || "Failed to delete prompts",
-          variant: "destructive",
-          duration: TOAST_DEFAULT_DURATION,
-        });
-
-        // Refresh the data to restore the deleted prompts
-        fetchUserPrompts(false);
-
-        // Refresh the data to restore the deleted prompts
-        fetchUserPrompts(false);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
-        duration: TOAST_DEFAULT_DURATION,
-      });
-    } finally {
-      setIsSubmitting(false);
-      setIsMultipleDeleteDialogOpen(false);
-    }
-  };
-
   return (
     <Main>
-      <div className="space-y-6">
-        <Breadcrumbs
-          items={[
-            { label: "Home", href: "/dashboard" },
-            { label: "My Prompts", isCurrentPage: true },
-          ]}
-        />
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: "Home", href: "/dashboard" },
+          { label: "My Prompts", isCurrentPage: true },
+        ]}
+      />
 
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">My Prompts</h1>
-          <div className="flex flex-wrap gap-2">
-            {hasSelectedRows && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDeleteSelected}
-                disabled={isSubmitting}
-                className="h-9"
-              >
-                <Trash className="h-4 w-4 mr-2" /> Delete Selected
-              </Button>
-            )}
+      <div className="mb-6 flex flex-row md:flex-row gap-6 justify-between items-center">
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold tracking-tight">My Prompts</h2>
+          <p className="text-muted-foreground">Manage your prompts here.</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {hasSelectedRows && (
             <Button
-              onClick={() => router.push("/myprompts/pace")}
-              variant="outline"
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelected}
+              disabled={isSubmitting}
+              className="h-9"
             >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Create PACE Prompt
+              <Trash className="h-4 w-4 mr-2" /> Delete Selected
             </Button>
-            <Button onClick={handleCreatePrompt}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create New Prompt
-            </Button>
-          </div>
+          )}
+          <Button
+            onClick={() => router.push("/myprompts/pace")}
+            variant="outline"
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            Create PACE Prompt
+          </Button>
+          <Button onClick={handleCreatePrompt}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create New Prompt
+          </Button>
         </div>
+      </div>
 
-        {/* Filter and Search row */}
-        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-          {/* Phase filter pills */}
-          <div className="w-full md:flex-1 overflow-x-auto pb-2">
-            <div className="inline-flex md:flex flex-nowrap md:flex-wrap">
-              <PhaseFilter
-                selectedPhases={phaseFilter}
-                onChange={setPhaseFilter}
-              />
-            </div>
-          </div>
+      {/* Use the FilterBar component */}
+      <FilterBar
+        mode="prompts"
+        placeholderText="Filter prompts..."
+        data-testid="prompt-filter-bar"
+      />
 
-          {/* Search bar and view toggles */}
-          <div className="flex gap-2 w-full md:w-auto">
-            {/* Search bar - expanded by 20% */}
-            <div className="relative w-full md:w-[18rem] flex-shrink-0">
-              <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Filter my prompts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10"
-              />
-              {searchQuery && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+      <div className="py-3" />
+      {/* Loading state */}
+      {isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-40 bg-muted rounded-lg"></div>
             </div>
-
-            {/* View toggle buttons */}
-            <div className="flex border rounded-md">
-              <Button
-                variant={layoutView === "card" ? "default" : "ghost"}
-                size="icon"
-                onClick={() => setLayoutView("card")}
-                className="rounded-r-none"
-                title="Card View"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={layoutView === "table" ? "default" : "ghost"}
-                size="icon"
-                onClick={() => setLayoutView("table")}
-                className="rounded-l-none"
-                title="Table View"
-              >
-                <TableIcon className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          ))}
         </div>
+      )}
 
-        {/* Loading state */}
-        {isLoading && (
+      {/* Empty state */}
+      {!isLoading && !firestoreError && prompts.length === 0 && (
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold">No personal prompts found</h2>
+          <p className="text-muted-foreground mt-2">
+            Create a new prompt or copy one from the public collection
+          </p>
+          <Button
+            onClick={() => router.push("/prompts")}
+            variant="outline"
+            className="mt-4"
+          >
+            Browse Public Prompts
+          </Button>
+        </div>
+      )}
+
+      {/* Prompt cards grid */}
+      {!isLoading &&
+        !firestoreError &&
+        prompts.length > 0 &&
+        layoutView === "card" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="animate-pulse">
-                <div className="h-40 bg-muted rounded-lg"></div>
+            {sortedPrompts.map((prompt) => (
+              <div
+                key={prompt.id}
+                ref={
+                  prompt.id === highlightedPromptId
+                    ? highlightedCardRef
+                    : undefined
+                }
+                className={`transition-all duration-300 ${prompt.id === highlightedPromptId ? "scale-[1.02]" : ""}`}
+              >
+                <PromptCard
+                  prompt={prompt}
+                  onClick={handlePromptClick}
+                  onEdit={handleEditPrompt}
+                  onDelete={handleDeletePrompt}
+                  onTagClick={handleTagClick}
+                />
               </div>
             ))}
           </div>
         )}
 
-        {/* Error state */}
-        {error && !isLoading && (
-          <div className="text-center py-8">
-            <p className="text-red-500">{error}</p>
-          </div>
+      {/* Table view */}
+      {!isLoading &&
+        !firestoreError &&
+        prompts.length > 0 &&
+        layoutView === "table" && (
+          <PromptTable
+            data={sortedPrompts}
+            onEdit={handleEditPrompt}
+            onDelete={handleDeletePrompt}
+            onTagClick={handleTagClick}
+            onClick={handlePromptClick}
+          />
         )}
 
-        {/* Empty state */}
-        {!isLoading && !error && prompts.length === 0 && (
-          <div className="text-center py-12">
-            <h2 className="text-xl font-semibold">No personal prompts found</h2>
-            <p className="text-muted-foreground mt-2">
-              Create a new prompt or copy one from the public collection
-            </p>
-            <Button
-              onClick={() => router.push("/prompts")}
-              variant="outline"
-              className="mt-4"
+      {/* Prompt edit/create modal */}
+      <PromptForm
+        prompt={editingPrompt}
+        open={isPromptModalOpen}
+        onOpenChange={setIsPromptModalOpen}
+        onSubmit={handleSubmitPrompt}
+      />
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              prompt
+              <span className="font-semibold">
+                {promptToDelete && ` "${promptToDelete.title}"`}
+              </span>
+              .
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeletePrompt}
+              disabled={isSubmitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Browse Public Prompts
-            </Button>
-          </div>
-        )}
+              {isSubmitting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        {/* Prompt cards grid */}
-        {!isLoading &&
-          !error &&
-          prompts.length > 0 &&
-          layoutView === "card" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sortedPrompts.map((prompt) => (
-                <div
-                  key={prompt.id}
-                  ref={
-                    prompt.id === highlightedPromptId
-                      ? highlightedCardRef
-                      : undefined
-                  }
-                  className={`transition-all duration-300 ${prompt.id === highlightedPromptId ? "scale-[1.02]" : ""}`}
-                >
-                  <PromptCard
-                    prompt={prompt}
-                    onClick={handlePromptClick}
-                    onEdit={handleEditPrompt}
-                    onDelete={handleDeletePrompt}
-                    onTagClick={handleTagClick}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-        {/* Table view */}
-        {!isLoading &&
-          !error &&
-          prompts.length > 0 &&
-          layoutView === "table" && (
-            <PromptTable
-              data={sortedPrompts}
-              onEdit={handleEditPrompt}
-              onDelete={handleDeletePrompt}
-              onTagClick={handleTagClick}
-              onClick={handlePromptClick}
-            />
-          )}
-
-        {/* Prompt edit/create modal */}
-        <PromptForm
-          prompt={editingPrompt}
-          open={isPromptModalOpen}
-          onOpenChange={setIsPromptModalOpen}
-          onSubmit={handleSubmitPrompt}
-        />
-
-        {/* Delete confirmation dialog */}
-        <AlertDialog
-          open={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete this prompt. This action cannot be
-                undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirmDelete}
-                className="bg-red-600 hover:bg-red-700"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Deleting..." : "Delete"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Multiple delete confirmation dialog */}
-        <AlertDialog
-          open={isMultipleDeleteDialogOpen}
-          onOpenChange={setIsMultipleDeleteDialogOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Selected Prompts</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete the selected prompts? This
-                action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmitting}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={(e) => {
-                  e.preventDefault();
-                  executeMultipleDelete();
-                }}
-                disabled={isSubmitting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {isSubmitting ? "Deleting..." : "Delete"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+      {/* Multiple delete confirmation dialog */}
+      <AlertDialog
+        open={isMultipleDeleteDialogOpen}
+        onOpenChange={setIsMultipleDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete multiple prompts?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              selected prompts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteMultiple}
+              disabled={isSubmitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSubmitting ? "Deleting..." : "Delete Selected"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Main>
   );
 }

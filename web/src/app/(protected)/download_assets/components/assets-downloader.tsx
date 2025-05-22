@@ -63,8 +63,12 @@ export function AssetsDownloader() {
     if (selectedPhases.includes("All")) {
       setDisplayedAssets(allAssets);
     } else {
-      const filteredAssets = allAssets.filter((asset) =>
-        selectedPhases.includes(asset.phase)
+      const filteredAssets = allAssets.filter(
+        (asset) =>
+          asset.phases &&
+          asset.phases.some((phase) =>
+            selectedPhases.includes(phase.toString())
+          )
       );
       setDisplayedAssets(filteredAssets);
     }
@@ -181,7 +185,9 @@ export function AssetsDownloader() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs px-2 py-1 rounded-full bg-secondary">
-                            {asset.phase}
+                            {asset.phases && asset.phases.length > 0
+                              ? asset.phases[0].toString()
+                              : "N/A"}
                           </span>
                           <span className="text-sm text-muted-foreground">
                             {asset.updatedAt

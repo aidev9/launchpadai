@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAtom } from "jotai";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useXpMutation } from "@/xp/useXpMutation";
@@ -19,7 +19,6 @@ import {
   getCurrentUnixTimestamp,
   TOAST_DEFAULT_DURATION,
 } from "@/utils/constants";
-import { createNote, updateNote } from "../actions";
 import {
   Dialog,
   DialogContent,
@@ -27,9 +26,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { clientAuth } from "@/lib/firebase/client";
-
-const userId = clientAuth.currentUser?.uid;
+import { MultiSelect } from "@/components/ui/multi-select";
+import { Phases } from "@/lib/firebase/schema";
+import { firebaseNotes } from "@/lib/firebase/client/FirebaseNotes";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -40,199 +39,137 @@ interface NotesDialogsProps {
   onShowToast: (options: ShowToastOptions) => void;
 }
 
-export function NotesDialogs({
-  onSuccess,
-  onOptimisticAdd,
-  onShowToast,
-}: NotesDialogsProps) {
+export function NotesDialogs({ onSuccess, onShowToast }: NotesDialogsProps) {
   const [addModalOpen, setAddModalOpen] = useAtom(addNoteModalOpenAtom);
   const [editModalOpen, setEditModalOpen] = useAtom(editNoteModalOpenAtom);
   const [selectedNote, setSelectedNote] = useAtom(selectedNoteAtom);
-  const [allNotes, setAllNotes] = useAtom(allNotesAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
+  const [, setAllNotes] = useAtom(allNotesAtom);
 
+  // Form state
   const [noteBody, setNoteBody] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [phases, setPhases] = useState<Phases[]>([]);
   const [saving, setSaving] = useState(false);
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
 
-  // Use the common XP mutation hook
+  // XP mutation hook
   const xpMutation = useXpMutation();
 
-  // Update form when editing a note
+  // Reset form when modal closes
   useEffect(() => {
-    if (selectedNote && editModalOpen) {
-      setNoteBody(selectedNote.note_body);
-      setTags(selectedNote.tags || []);
-    }
-  }, [selectedNote, editModalOpen]);
-
-  // Reset form when opening the add modal
-  useEffect(() => {
-    if (addModalOpen) {
+    if (!addModalOpen && !editModalOpen) {
       setNoteBody("");
       setTags([]);
+      setPhases([]);
     }
-  }, [addModalOpen]);
+  }, [addModalOpen, editModalOpen]);
 
-  async function handleSaveWithServerAction(formData: FormData) {
+  // Load selected note data when editing
+  useEffect(() => {
+    if (selectedNote && (editModalOpen || addModalOpen)) {
+      setNoteBody(selectedNote.note_body || "");
+      setTags(selectedNote.tags || []);
+      setPhases(selectedNote.phases || []);
+    }
+  }, [selectedNote, editModalOpen, addModalOpen]);
+
+  const handlePhaseChange = (selected: string[]) => {
+    setPhases(
+      selected.filter((phase): phase is Phases =>
+        Object.values(Phases).includes(phase as Phases)
+      )
+    );
+  };
+
+  async function handleCreateNote(e: React.FormEvent) {
+    e.preventDefault();
     setSaving(true);
 
     try {
-      // Get data for optimistic update
-      const noteBody = formData.get("noteBody") as string;
-
-      // Close dialog and reset form
+      if (!selectedProduct) {
+        throw new Error("No product selected");
+      }
       setAddModalOpen(false);
-      setNoteBody("");
-      setTags([]);
 
-      // Ensure selectedProductId is a string
-      if (!selectedProductId) {
-        onShowToast({
-          title: "Error",
-          description: "No product selected.",
-          variant: "destructive",
-          duration: TOAST_DEFAULT_DURATION,
-        });
-        setSaving(false);
-        return;
-      }
-      // Call server action to save the note
-      const result = await createNote({
-        productId: selectedProductId,
-        noteBody: noteBody,
-        tags: tags,
+      const timestamp = getCurrentUnixTimestamp();
+      const noteData = {
+        note_body: noteBody,
+        phases,
+        tags,
+        productId: selectedProduct.id,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      // Create new note
+      const savedNote = await firebaseNotes.createNote(noteData);
+      setSelectedNote(savedNote);
+      xpMutation.mutate("create_note");
+
+      onShowToast({
+        title: "Note added",
+        description: "Your note has been added successfully",
+        duration: TOAST_DEFAULT_DURATION,
       });
-
-      if (result.success) {
-        // Create the new note object with the server response data
-        const newNote: Note = {
-          // Use a fallback id if not present (e.g., Date.now().toString())
-          id:
-            result.note && "id" in result.note
-              ? (result.note as any).id
-              : Date.now().toString(),
-          note_body: result.note?.note_body || noteBody,
-          tags: result.note?.tags || tags,
-          createdAt: result.note?.createdAt || getCurrentUnixTimestamp(),
-          updatedAt: result.note?.updatedAt || getCurrentUnixTimestamp(),
-        };
-
-        // Update the allNotes atom directly
-        setAllNotes((prevNotes) => [newNote, ...prevNotes]);
-
-        // Award XP for creating a note - using background mutation
-        const createNoteActionId = "create_note";
-        const pointsAwarded = 5;
-
-        // Fire XP award in background without waiting
-        xpMutation.mutate(createNoteActionId);
-
-        // Show success toast immediately
-        onShowToast({
-          title: "Note added",
-          description: `Your note has been added successfully and you earned ${pointsAwarded} XP!`,
-          duration: TOAST_DEFAULT_DURATION,
-        });
-
-        // Call onSuccess to ensure any additional refreshing logic is executed
-        onSuccess();
-      } else {
-        onShowToast({
-          title: "Error saving note",
-          description: result.error || "Failed to save note",
-          variant: "destructive",
-          duration: TOAST_DEFAULT_DURATION,
-        });
-        // Refresh the notes to ensure UI is consistent
-        onSuccess();
-      }
+      onSuccess();
     } catch (error) {
       console.error("Error saving note:", error);
       onShowToast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Unknown error",
+        title: "Error saving note",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
         duration: TOAST_DEFAULT_DURATION,
       });
+      // Refresh the notes to ensure UI is consistent
       onSuccess();
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleUpdateWithServerAction(formData: FormData) {
-    if (!selectedProductId || !selectedNote?.id) {
-      console.error("Missing required data for update: ", {
-        selectedProductId,
-        noteId: selectedNote?.id,
-      });
-      return;
-    }
+  async function handleUpdateNote(e: React.FormEvent) {
+    e.preventDefault();
     setSaving(true);
 
     try {
-      // Get form data for the update
-      const noteBody = formData.get("noteBody") as string;
-
-      // Store the note ID for reference in case selectedNote becomes null
-      const noteId = selectedNote.id;
-
-      // Close dialog and reset state
+      if (!selectedProduct) {
+        throw new Error("No product selected");
+      }
       setEditModalOpen(false);
-      setNoteBody("");
-      setTags([]);
-      setSelectedNote(null);
 
-      // Call server action to update the note
-      const result = await updateNote({
-        productId: selectedProductId,
-        noteId: noteId,
-        noteBody: noteBody,
-        tags: tags,
+      const timestamp = getCurrentUnixTimestamp();
+      const noteData = {
+        note_body: noteBody,
+        phases,
+        tags,
+        productId: selectedProduct.id,
+        updatedAt: timestamp,
+      };
+
+      // Update existing note - only send fields that can be updated
+      const savedNote = await firebaseNotes.updateNote(
+        selectedNote?.id || "",
+        noteData
+      );
+      setSelectedNote(savedNote);
+
+      onShowToast({
+        title: "Note updated",
+        description: "Your note has been updated successfully",
+        duration: TOAST_DEFAULT_DURATION,
       });
 
-      if (result.success) {
-        // Update the allNotes atom with the updated note data
-        setAllNotes((prevNotes) =>
-          prevNotes.map((note) =>
-            note.id === noteId
-              ? {
-                  ...note,
-                  note_body: noteBody,
-                  tags: tags,
-                  updatedAt: getCurrentUnixTimestamp(),
-                }
-              : note
-          )
-        );
-
-        onShowToast({
-          title: "Note updated",
-          description: "Your note has been updated successfully.",
-          duration: TOAST_DEFAULT_DURATION,
-        });
-
-        // Call onSuccess to ensure any additional refresh logic is executed
-        onSuccess();
-      } else {
-        onShowToast({
-          title: "Error updating note",
-          description: result.error || "Failed to update note",
-          variant: "destructive",
-          duration: TOAST_DEFAULT_DURATION,
-        });
-        // Refresh to ensure UI is consistent
-        onSuccess();
-      }
+      onSuccess();
     } catch (error) {
-      console.error("Error updating note:", error);
+      console.error("Error saving note:", error);
       onShowToast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Unknown error",
+        title: "Error saving note",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
         duration: TOAST_DEFAULT_DURATION,
       });
+      // Refresh the notes to ensure UI is consistent
       onSuccess();
     } finally {
       setSaving(false);
@@ -242,43 +179,58 @@ export function NotesDialogs({
   return (
     <>
       {/* Add Note Dialog */}
-      <Dialog
-        open={addModalOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setAddModalOpen(false);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Note</DialogTitle>
           </DialogHeader>
-          <form action={handleSaveWithServerAction}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
+          <form onSubmit={handleCreateNote}>
+            <div className="space-y-4">
+              <div>
                 <Label htmlFor="note-body">Note</Label>
                 <Textarea
                   id="note-body"
-                  name="noteBody"
                   value={noteBody}
                   onChange={(e) => setNoteBody(e.target.value)}
                   placeholder="Enter your note..."
-                  disabled={saving}
-                  className="min-h-[120px]"
+                  className="min-h-[100px]"
+                  data-testid="note-body-input"
                 />
               </div>
-              <div className="grid gap-2">
+              <div>
+                <Label htmlFor="phases">Phases</Label>
+                <MultiSelect
+                  options={Object.values(Phases)
+                    .filter((phase) => phase !== "All")
+                    .map((phase) => ({
+                      label: phase,
+                      value: phase,
+                    }))}
+                  selected={phases}
+                  onChange={handlePhaseChange}
+                  placeholder="Select phases..."
+                  data-testid="phases-select"
+                />
+              </div>
+              <div>
                 <Label htmlFor="tags">Tags</Label>
                 <TagInput
                   value={tags}
                   onChange={setTags}
-                  placeholder="Type and press Enter to add tags..."
-                  disabled={saving}
+                  placeholder="Add tags..."
+                  data-testid="tags-input"
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddModalOpen(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
               <Button type="submit" disabled={saving || !noteBody.trim()}>
                 {saving ? "Saving..." : "Save"}
               </Button>
@@ -288,46 +240,63 @@ export function NotesDialogs({
       </Dialog>
 
       {/* Edit Note Dialog */}
-      <Dialog
-        open={editModalOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditModalOpen(false);
-            setSelectedNote(null);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Note</DialogTitle>
           </DialogHeader>
-          <form action={handleUpdateWithServerAction}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
+          <form onSubmit={handleUpdateNote}>
+            <div className="space-y-4">
+              <div>
                 <Label htmlFor="edit-note-body">Note</Label>
                 <Textarea
                   id="edit-note-body"
-                  name="noteBody"
                   value={noteBody}
                   onChange={(e) => setNoteBody(e.target.value)}
                   placeholder="Enter your note..."
-                  disabled={saving}
-                  className="min-h-[120px]"
+                  className="min-h-[100px]"
+                  data-testid="edit-note-body-input"
                 />
               </div>
-              <div className="grid gap-2">
+              <div>
+                <Label htmlFor="edit-phases">Phases</Label>
+                <MultiSelect
+                  options={Object.values(Phases)
+                    .filter((phase) => phase !== "All")
+                    .map((phase) => ({
+                      label: phase,
+                      value: phase,
+                    }))}
+                  selected={phases}
+                  onChange={handlePhaseChange}
+                  placeholder="Select phases..."
+                  data-testid="edit-phases-select"
+                />
+              </div>
+              <div>
                 <Label htmlFor="edit-tags">Tags</Label>
                 <TagInput
                   value={tags}
                   onChange={setTags}
-                  placeholder="Type and press Enter to add tags..."
-                  disabled={saving}
+                  placeholder="Add tags..."
+                  data-testid="edit-tags-input"
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEditModalOpen(false);
+                  setSelectedNote(null);
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
               <Button type="submit" disabled={saving || !noteBody.trim()}>
-                {saving ? "Updating..." : "Update"}
+                {saving ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </form>

@@ -155,11 +155,13 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
 
       try {
         const { saveAsset } = await import("@/lib/firebase/assets");
-        await saveAsset(selectedProductId, {
-          id: assetIdToPreserve,
-          content: completionText,
-          updatedAt: getCurrentUnixTimestamp(),
-        });
+        const assetToUpdate = firestoreAssets[assetIdToPreserve];
+        if (assetToUpdate) {
+          await saveAsset(selectedProductId, {
+            ...assetToUpdate,
+            content: completionText,
+          });
+        }
       } catch (saveError) {
         console.error(
           "Error saving generated content post-completion:",
@@ -248,7 +250,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
       filteredAssets = assets;
     } else {
       filteredAssets = assets.filter((asset) =>
-        selectedPhases.includes(asset.phase)
+        asset.phases.some((phase) => selectedPhases.includes(phase))
       );
     }
 
@@ -351,7 +353,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
             setDisplayedAssets(assets);
           } else {
             const filteredAssets = assets.filter((asset) =>
-              selectedPhases.includes(asset.phase)
+              asset.phases.some((phase) => selectedPhases.includes(phase))
             );
             setDisplayedAssets(filteredAssets);
           }
@@ -440,6 +442,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         asset: {
           ...selectedAsset,
           content: assetContent,
+          phases: ["Discover"],
         },
       });
 
@@ -660,7 +663,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         const newDisplayedAssets = Object.values(updatedAssets).filter(
           (asset) =>
             selectedPhases.includes("All") ||
-            selectedPhases.includes(asset.phase)
+            asset.phases.some((phase) => selectedPhases.includes(phase))
         );
         if (newDisplayedAssets.length > 0) {
           const newSelectionIndex = Math.min(
@@ -747,7 +750,9 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
                       } else {
                         setDisplayedAssets(
                           assets.filter((asset) =>
-                            selectedPhases.includes(asset.phase)
+                            asset.phases.some((phase) =>
+                              selectedPhases.includes(phase)
+                            )
                           )
                         );
                       }
@@ -759,7 +764,9 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
                         filteredByPhase = assets;
                       } else {
                         filteredByPhase = assets.filter((asset) =>
-                          selectedPhases.includes(asset.phase)
+                          asset.phases.some((phase) =>
+                            selectedPhases.includes(phase)
+                          )
                         );
                       }
 
@@ -1097,7 +1104,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-500 hover:bg-red-600 text-white"
             >
               {isDeleting ? "Deleting..." : "Delete Asset"}
             </Button>

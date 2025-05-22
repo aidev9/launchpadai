@@ -11,11 +11,12 @@ import { DataTableFacetedFilter } from "./data-table-faceted-filter";
 import { statusTypes } from "../data/data";
 import { phaseOptions } from "../data/data";
 import {
-  questionFilterAtom,
+  searchQueryAtom,
   statusFilterAtom,
   tagsFilterAtom,
-  phaseFilterAtom,
+  questionsPhaseFilterAtom,
 } from "./qa-store";
+import { Phases } from "@/lib/firebase/schema";
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
@@ -24,10 +25,10 @@ interface DataTableToolbarProps<TData> {
 export function DataTableToolbar<TData>({
   table,
 }: DataTableToolbarProps<TData>) {
-  const [questionFilter, setQuestionFilter] = useAtom(questionFilterAtom);
+  const [searchQuery, setSearchQuery] = useAtom(searchQueryAtom);
   const [statusFilter, setStatusFilter] = useAtom(statusFilterAtom);
   const [tagsFilter, setTagsFilter] = useAtom(tagsFilterAtom);
-  const [phaseFilter, setPhaseFilter] = useAtom(phaseFilterAtom);
+  const [phaseFilter, setPhaseFilter] = useAtom(questionsPhaseFilterAtom);
 
   // Get unique tags from all rows
   const uniqueTags = new Set<string>();
@@ -51,28 +52,32 @@ export function DataTableToolbar<TData>({
     value: key,
   }));
 
-  // Convert phase options
+  // Convert phase options to use Phases enum
   const phaseOptionsMapped = phaseOptions.map((phase) => ({
     label: phase,
-    value: phase,
+    value: phase as Phases,
   }));
+
+  const handlePhaseFilterChange = (values: string[]) => {
+    setPhaseFilter(values.map((value) => value as Phases));
+  };
 
   const isFiltered =
     statusFilter.length > 0 ||
     tagsFilter.length > 0 ||
     phaseFilter.length > 0 ||
-    questionFilter.trim() !== "";
+    searchQuery.trim() !== "";
 
   return (
     <div className="flex flex-col space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-1 items-center space-x-2">
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 max-w-96">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search questions..."
-              value={questionFilter}
-              onChange={(e) => setQuestionFilter(e.target.value)}
+              placeholder="Filter questions..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8"
             />
           </div>
@@ -90,8 +95,8 @@ export function DataTableToolbar<TData>({
             <DataTableFacetedFilter
               title="Phase"
               options={phaseOptionsMapped}
-              value={phaseFilter}
-              onChange={setPhaseFilter}
+              value={phaseFilter as string[]}
+              onChange={handlePhaseFilterChange}
             />
           )}
 
@@ -108,7 +113,7 @@ export function DataTableToolbar<TData>({
             <Button
               variant="ghost"
               onClick={() => {
-                setQuestionFilter("");
+                setSearchQuery("");
                 setStatusFilter([]);
                 setTagsFilter([]);
                 setPhaseFilter([]);

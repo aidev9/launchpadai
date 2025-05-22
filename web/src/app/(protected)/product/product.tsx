@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,22 +17,23 @@ import {
 import {
   Edit,
   Trash2,
-  Building,
   ArrowUpRight,
   MessageSquare,
   FileSearch,
   Download,
   ChevronRight,
   Plus,
+  ChevronLeft,
 } from "lucide-react";
-import { deleteProduct } from "@/lib/firebase/products";
+import { firebaseProducts } from "@/lib/firebase/client/FirebaseProducts";
 import { useAtom } from "jotai";
 import {
-  selectedProductIdAtom,
   selectedProductAtom,
+  editedProductAtom,
+  deleteProductAtom,
+  productsAtom,
 } from "@/lib/store/product-store";
 import { featureWizardStateAtom } from "@/lib/store/feature-store";
-import { useProducts } from "@/hooks/useProducts";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   Collapsible,
@@ -40,6 +41,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { formatTimestamp } from "@/utils/constants";
+import { useToast } from "@/hooks/use-toast";
+import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 
 // Static color mapping function - outside component to avoid recreation
 const getStageColor = (stage: string) => {
@@ -65,16 +68,28 @@ const trimText = (text: string, maxLength: number = 150) => {
 };
 
 // Collapsible text component
-function CollapsibleText({ text, label }: { text: string; label?: string }) {
+function CollapsibleText({
+  text,
+  label,
+  className,
+}: {
+  text: string | undefined;
+  label?: string;
+  className?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const maxLength = 150;
   const needsTrimming = text && text.length > maxLength;
+
+  if (!text) return null;
 
   if (!needsTrimming)
     return (
       <div>
         {label && (
-          <h3 className="text-sm font-medium text-muted-foreground mb-1">
+          <h3
+            className={`text-sm font-medium text-muted-foreground mb-1 ${className}`}
+          >
             {label}
           </h3>
         )}
@@ -85,7 +100,9 @@ function CollapsibleText({ text, label }: { text: string; label?: string }) {
   return (
     <div>
       {label && (
-        <h3 className="text-sm font-medium text-muted-foreground mb-1">
+        <h3
+          className={`text-sm font-medium text-muted-foreground mb-1 ${className}`}
+        >
           {label}
         </h3>
       )}
@@ -110,69 +127,92 @@ function CollapsibleText({ text, label }: { text: string; label?: string }) {
 }
 
 export function ProductDashboard() {
-  // All hooks must be called at the top level and in the same order for every render
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
-  // Use Jotai atoms and the optimized hook
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
-  const [selectedProduct] = useAtom(selectedProductAtom);
+  // Use Jotai atoms
+  const [selectedProduct, setSelectedProduct] = useAtom(selectedProductAtom);
+  const [products] = useAtom(productsAtom);
   const [featureWizardState, setFeatureWizardState] = useAtom(
     featureWizardStateAtom
   );
-  const { isLoading, selectProduct } = useProducts();
+  const [, setEditedProduct] = useAtom(editedProductAtom);
+  const deleteProductAtomFn = useAtom(deleteProductAtom)[1];
 
-  // Performance tracking ref - no conditional rules
-  const mountTime = useRef(Date.now());
-
-  // Ensure product data is loaded when ID changes
-  useEffect(() => {
-    if (
-      selectedProductId &&
-      (!selectedProduct || selectedProduct.id !== selectedProductId)
-    ) {
-      console.log(
-        `[ProductDashboard] Loading product data for ID: ${selectedProductId}`
-      );
-      selectProduct(selectedProductId);
-    }
-  }, [selectedProductId, selectedProduct, selectProduct]);
-
-  // Track render count for debugging - no conditional rules
-  useEffect(() => {
-    console.log(
-      `[ProductDashboard] Render time since mount: ${Date.now() - mountTime.current}ms`
-    );
-
-    return () => {
-      console.log("[ProductDashboard] Component unmounting");
-    };
-  }, [selectedProductId]); // Add selectedProductId to trigger re-render when it changes
+  // If no product is selected, redirect back to products list
+  if (!selectedProduct) {
+    router.push("/myproducts");
+    return null;
+  }
 
   const handleEdit = () => {
-    if (selectedProduct) {
-      router.push(`/welcome/wizard?edit=${selectedProduct.id}`);
-    }
+    // Set the current product as the one being edited
+    setEditedProduct(selectedProduct);
+    // Navigate to the create/edit page
+    router.push("/myproducts/create");
   };
 
   const handleDelete = async () => {
-    if (!selectedProduct) return;
-
     setIsDeleting(true);
     try {
-      const result = await deleteProduct(selectedProduct.id);
+      const result = await firebaseProducts.deleteProduct(selectedProduct.id);
       if (result.success) {
-        // Clear localStorage when product is deleted
-        localStorage.removeItem("selectedProductId");
+        // Optimistically update UI
+        deleteProductAtomFn(selectedProduct);
+
+        // Find the next product to select
+        if (products.length > 1) {
+          // Find the index of the current product
+          const currentIndex = products.findIndex(
+            (p) => p.id === selectedProduct.id
+          );
+
+          // Get the next product, or the previous if we're at the end
+          const nextIndex =
+            currentIndex < products.length - 1
+              ? currentIndex + 1
+              : currentIndex - 1;
+
+          // Set the next product (this will already exclude the deleted one due to the deleteProductAtomFn call)
+          // Filter out the deleted product first
+          const remainingProducts = products.filter(
+            (p) => p.id !== selectedProduct.id
+          );
+          setSelectedProduct(
+            remainingProducts.length > 0 ? remainingProducts[0] : null
+          );
+        } else {
+          // No more products left after deletion
+          setSelectedProduct(null);
+        }
+
+        toast({
+          title: "Success",
+          description: "Product deleted successfully",
+          duration: TOAST_DEFAULT_DURATION,
+        });
 
         setOpenConfirmDialog(false);
-        router.push("/dashboard");
+        router.push("/myproducts");
       } else {
-        console.error("Failed to delete product:", result.error);
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete product",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error deleting product:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+        variant: "destructive",
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -193,252 +233,144 @@ export function ProductDashboard() {
 
   const navigateToFeatures = () => {
     // Update the feature wizard state with the current product ID
-    if (selectedProductId) {
-      // This ensures the features page has access to the product ID via Jotai atom
-      // instead of relying on URL parameters
-      setFeatureWizardState({
-        ...featureWizardState,
-        productId: selectedProductId,
-      });
-    }
+    setFeatureWizardState({
+      ...featureWizardState,
+      productId: selectedProduct.id,
+    });
     router.push("/myproducts/product/features");
   };
-
-  // Handle product not found - return early
-  if (!selectedProductId) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <div className="text-center max-w-md">
-          <Building className="mx-auto h-12 w-12 text-primary mb-4" />
-          <h2 className="text-2xl font-bold mb-2">No Product Selected</h2>
-          <p className="text-muted-foreground mb-6">
-            Please select a product from the dashboard to get started.
-          </p>
-          <Button onClick={() => router.push("/dashboard")}>
-            Go to Dashboard
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Loading state - return early
-  if (isLoading || !selectedProduct) {
-    return (
-      <div className="flex flex-col gap-4 animate-pulse p-6">
-        <div className="h-8 w-2/3 bg-muted rounded"></div>
-        <div className="h-4 w-1/2 bg-muted rounded"></div>
-        <div className="h-32 w-full bg-muted rounded mt-4"></div>
-      </div>
-    );
-  }
 
   // Selected product view
   return (
     <div className="space-y-6">
       {/* Navigation and header section with responsive layout */}
       <div className="flex flex-col space-y-4">
-        {/* Replace the Back button with Breadcrumbs */}
-        {selectedProduct && (
-          <Breadcrumbs
-            items={[
-              { label: "Products", href: "/dashboard" },
-              {
-                label: selectedProduct.name,
-                href: `/product`,
-                isCurrentPage: true,
-              },
-            ]}
-          />
-        )}
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/dashboard" },
+            { label: "My Products", href: "/myproducts" },
+            {
+              label: selectedProduct.name,
+              href: "",
+              isCurrentPage: true,
+            },
+          ]}
+        />
 
         {/* Action buttons - now in their own row for mobile, will be hidden on desktop */}
-        <div className="flex items-center gap-2 md:hidden">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleEdit}
-            className="flex-1"
-          >
-            <Edit className="mr-2 h-4 w-4" />
+        <div className="flex flex-wrap gap-2 md:hidden">
+          <Button onClick={handleEdit} variant="outline" size="sm">
+            <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>
-          <Dialog open={openConfirmDialog} onOpenChange={setOpenConfirmDialog}>
-            <DialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="flex-1">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete Product</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete "{selectedProduct.name}"? This
-                  action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setOpenConfirmDialog(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button
+            onClick={() => setOpenConfirmDialog(true)}
+            variant="outline"
+            size="sm"
+            className="text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
         </div>
 
-        {/* Title and badges in a responsive container */}
-        <div className="flex justify-between items-start">
-          <div>
+        {/* Product header with title and actions */}
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
             <h1 className="text-3xl font-bold tracking-tight">
               {selectedProduct.name}
             </h1>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge
-                variant="outline"
-                className={getStageColor(selectedProduct.stage)}
-              >
-                {selectedProduct.stage}
-              </Badge>
-              {selectedProduct.template_type &&
-                selectedProduct.template_type !== "blank" && (
-                  <Badge variant="outline">
-                    {selectedProduct.template_type.charAt(0).toUpperCase() +
-                      selectedProduct.template_type.slice(1)}
-                  </Badge>
-                )}
-            </div>
+            <Badge
+              variant="outline"
+              className={`${getStageColor("Discovery")} flex items-center gap-2`}
+            >
+              {/* {selectedProduct.phases[0]} */}
+              Discover
+            </Badge>
           </div>
 
-          {/* Action buttons for desktop - hidden on mobile */}
-          <div className="hidden md:flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleEdit}>
-              <Edit className="mr-2 h-4 w-4" />
+          {/* Desktop action buttons */}
+          <div className="hidden md:flex gap-2">
+            <Button onClick={handleEdit} variant="outline">
+              <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <Dialog
-              open={openConfirmDialog}
-              onOpenChange={setOpenConfirmDialog}
+            <Button
+              onClick={() => setOpenConfirmDialog(true)}
+              variant="outline"
+              className="text-destructive"
             >
-              <DialogTrigger asChild>
-                <Button variant="destructive" size="sm">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Delete Product</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to delete "{selectedProduct.name}"?
-                    This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setOpenConfirmDialog(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? "Deleting..." : "Delete"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Main content grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Product Information */}
         <Card>
           <CardHeader>
-            <CardTitle>Product Details</CardTitle>
+            <CardTitle>Product Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selectedProduct.description && (
-              <CollapsibleText
-                text={selectedProduct.description}
-                label="Description"
-              />
-            )}
-            {selectedProduct.problem && (
-              <CollapsibleText
-                text={selectedProduct.problem}
-                label="Problem Statement"
-              />
-            )}
-            {selectedProduct.team && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                  Team
-                </h3>
-                <p>{selectedProduct.team}</p>
-              </div>
-            )}
+            <CollapsibleText
+              text={selectedProduct.description}
+              label="Description"
+              className="text-sm"
+            />
             {selectedProduct.website && (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   Website
                 </h3>
-                <p>
-                  <a
-                    href={selectedProduct.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline flex items-center"
-                  >
-                    {selectedProduct.website}
-                    <ArrowUpRight className="ml-1 h-3 w-3" />
-                  </a>
-                </p>
+                <a
+                  href={selectedProduct.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline flex items-center text-sm"
+                >
+                  {selectedProduct.website}
+                  <ArrowUpRight className="h-4 w-4 ml-1" />
+                </a>
               </div>
             )}
-            {selectedProduct.country && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                  Country
-                </h3>
-                <p>{selectedProduct.country}</p>
-              </div>
-            )}
-            {selectedProduct.createdAt && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                  Created
-                </h3>
-                <p>{formatTimestamp(selectedProduct.createdAt)}</p>
-              </div>
-            )}
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                Created
+              </h3>
+              <p className="text-sm">
+                {formatTimestamp(selectedProduct.createdAt || Date.now())}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                Last Updated
+              </h3>
+              <p className="text-xs">
+                {formatTimestamp(
+                  selectedProduct.updatedAt ||
+                    selectedProduct.createdAt ||
+                    Date.now()
+                )}
+              </p>
+            </div>
           </CardContent>
         </Card>
 
+        {/* Quick Actions */}
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <CardTitle>Next Steps</CardTitle>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground">
               Continue building your product
             </p>
           </CardHeader>
-          <CardContent className="flex flex-col space-y-3">
+          <CardContent className="space-y-3">
             <div
-              onClick={navigateToAnswerQuestions}
               className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+              onClick={navigateToAnswerQuestions}
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
@@ -453,17 +385,16 @@ export function ProductDashboard() {
                   </p>
                 </div>
               </div>
-              <ChevronRight className="h-5 w-5 text-gray-400 ml-2 flex-shrink-0" />
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
 
             <div
-              onClick={navigateToReviewAssets}
               className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-              data-testid="review-assets-button"
+              onClick={navigateToReviewAssets}
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
-                  <FileSearch className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <FileSearch className="h-4 w-4 text-purple-500" />
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-sm md:text-base truncate">
@@ -474,16 +405,16 @@ export function ProductDashboard() {
                   </p>
                 </div>
               </div>
-              <ChevronRight className="h-5 w-5 text-gray-400 ml-2 flex-shrink-0" />
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
 
             <div
-              onClick={navigateToDownloadAssets}
               className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+              onClick={navigateToDownloadAssets}
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
-                  <Download className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <Download className="h-4 w-4 text-green-500" />
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-sm md:text-base truncate">
@@ -494,16 +425,16 @@ export function ProductDashboard() {
                   </p>
                 </div>
               </div>
-              <ChevronRight className="h-5 w-5 text-gray-400 ml-2 flex-shrink-0" />
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
 
             <div
-              onClick={navigateToFeatures}
               className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+              onClick={navigateToFeatures}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900">
-                  <Plus className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900">
+                  <Plus className="h-4 w-4 text-yellow-500" />
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-sm md:text-base truncate">
@@ -514,11 +445,40 @@ export function ProductDashboard() {
                   </p>
                 </div>
               </div>
-              <ChevronRight className="h-5 w-5 text-gray-400 ml-2 flex-shrink-0" />
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={openConfirmDialog} onOpenChange={setOpenConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete your
+              product and all associated data.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOpenConfirmDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Product"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

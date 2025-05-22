@@ -13,6 +13,7 @@ interface PromptsColumnsProps {
   onEdit?: (prompt: Prompt) => void;
   onDelete?: (prompt: Prompt) => void;
   onTagClick?: (tag: string) => void;
+  onClick?: (prompt: Prompt) => void;
 }
 
 // Define the column meta type to include custom properties
@@ -25,6 +26,7 @@ export const getColumns = ({
   onEdit,
   onDelete,
   onTagClick,
+  onClick,
 }: PromptsColumnsProps): ColumnDef<Prompt, any>[] => [
   {
     id: "select",
@@ -206,7 +208,12 @@ export const getColumns = ({
   {
     id: "actions",
     cell: ({ row }) => (
-      <DataTableRowActions row={row} onEdit={onEdit} onDelete={onDelete} />
+      <DataTableRowActions
+        row={row}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onClick={onClick}
+      />
     ),
     meta: {
       align: "right",

@@ -5,18 +5,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { questions as staticQuestions } from "@/app/(protected)/answer_questions/data/questions";
-// import { productQuestionInputSchema } from "./schema";
 import { initializeProductAssets } from "./initialize-assets";
 import { awardXpPoints } from "@/xp/server-actions";
-
-// Import Jotai atoms
-import {
-  productCountAtom,
-  productCountLoadedAtom,
-} from "../store/product-store";
-import { getDefaultStore } from "jotai";
-import { get } from "http";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { firebaseQA } from "./client/FirebaseQA";
 
 // Root products collection reference
 // const productsCollection = adminDb.collection("products");
@@ -31,27 +23,14 @@ function getUserProductsRef(userId: string) {
 
 // Get the questionsRef for a specific user
 function getUserQuestionsRef(userId: string) {
-  return adminDb.collection("questions").doc(userId).collection("products");
-}
-
-// Get the product questions ref for a specific user and product
-function getProductQuestionsRef(userId: string, productId: string) {
-  return getUserQuestionsRef(userId).doc(productId).collection("questions");
+  return adminDb.collection("questions").doc(userId).collection("questions");
 }
 
 // Schema for product creation/update
 const productInputSchema = z.object({
   name: z.string().min(1, "Product name is required"),
   description: z.string().optional(),
-  stage: z.enum([
-    "Discover",
-    "Validate",
-    "Design",
-    "Build",
-    "Secure",
-    "Launch",
-    "Grow",
-  ]),
+  phases: z.array(z.string()).optional(),
   problem: z.string().optional(),
   team: z.string().optional(),
   website: z.string().optional(),
@@ -138,7 +117,7 @@ export async function createProduct(data: ProductInput) {
 }
 
 /**
- * Create questions for a product in the questions collection
+ * Create questions for a product in the questions collection using the correct path structure
  */
 async function createProductQuestions(userId: string, productId: string) {
   try {
@@ -146,33 +125,98 @@ async function createProductQuestions(userId: string, productId: string) {
       `Creating questions for product ${productId} (user ${userId}) in questions collection`
     );
 
-    // Get references
-    const productQuestionsRef = getProductQuestionsRef(userId, productId);
+    // Prepare the questions data from static questions
+    const questionsData = staticQuestions.map((staticQuestion) => ({
+      question: staticQuestion.text,
+      answer: null,
+      tags: [staticQuestion.phases[0].toLowerCase()],
+      phases: staticQuestion.phases,
+      order: staticQuestion.order,
+      userId: userId, // Add userId to each question
+      productId: productId, // Add productId to each question
+    }));
+
+    // Use the new bulk create method through a server-side wrapper
+    const result = await createBulkQuestionsServerWrapper(
+      productId,
+      questionsData
+    );
+
+    if (result.success) {
+      console.log(
+        `Successfully created ${result.count} questions for product ${productId} in questions collection`
+      );
+      return result;
+    } else {
+      console.error(
+        `Failed to create questions for product ${productId}:`,
+        result.error
+      );
+      throw new Error(result.error || "Failed to create questions");
+    }
+  } catch (error) {
+    console.error("Failed to create product questions:", error);
+    throw error;
+  }
+}
+
+/**
+ * Server wrapper to use firebase client in server actions with the correct path
+ */
+async function createBulkQuestionsServerWrapper(
+  productId: string,
+  questionsData: Array<{
+    question: string;
+    answer: null;
+    tags: string[];
+    phases: string[];
+    order: number;
+    userId: string;
+    productId: string; // Include productId field
+  }>
+) {
+  // We're going to use the Firebase Admin SDK to create the questions
+  // using the path questions/{userId}/questions with productId in each question
+
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return {
+        success: false,
+        count: 0,
+        error: "User not authenticated",
+      };
+    }
+
+    // Get a reference to the questions collection (UPDATED PATH)
+    const questionsRef = adminDb
+      .collection("questions")
+      .doc(userId)
+      .collection("questions");
 
     // Create a batch write
     const batch = adminDb.batch();
     let count = 0;
 
-    // Add each question from the static questions data
-    for (const staticQuestion of staticQuestions) {
+    // Current timestamp
+    const timestamp = getCurrentUnixTimestamp();
+
+    // Add each question to the batch
+    for (const questionData of questionsData) {
       try {
         // Generate a unique ID for each question
-        const questionId = adminDb.collection("_").doc().id; // Generate a Firebase auto-ID
+        const questionId = adminDb.collection("_").doc().id;
 
-        // Format the question data - without the id from staticQuestions
-        const questionData = {
-          question: staticQuestion.text,
-          answer: null,
-          tags: [staticQuestion.phases[0].toLowerCase()],
-          phases: staticQuestion.phases,
-          order: staticQuestion.order,
-          createdAt: getCurrentUnixTimestamp(),
-          updatedAt: getCurrentUnixTimestamp(),
+        // Format the question data with timestamps
+        const data = {
+          ...questionData,
+          createdAt: timestamp,
+          updatedAt: timestamp,
         };
 
         // Add to batch
-        const newQuestionRef = productQuestionsRef.doc(questionId);
-        batch.set(newQuestionRef, questionData);
+        const newQuestionRef = questionsRef.doc(questionId);
+        batch.set(newQuestionRef, data);
         count++;
       } catch (err) {
         console.error(`Error processing question:`, err);
@@ -181,25 +225,27 @@ async function createProductQuestions(userId: string, productId: string) {
     }
 
     if (count === 0) {
-      console.warn(
-        "No questions were added to the batch. Check if staticQuestions is empty or has invalid data."
-      );
-      return { success: false, count: 0 };
+      return {
+        success: false,
+        count: 0,
+        error: "No questions were added to the batch",
+      };
     }
 
     // Commit the batch
     await batch.commit();
-    console.log(
-      `Successfully created ${count} questions for product ${productId} in questions collection`
-    );
 
     return {
       success: true,
-      count: count,
+      count,
     };
   } catch (error) {
     console.error("Failed to create product questions:", error);
-    throw error;
+    return {
+      success: false,
+      count: 0,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -280,6 +326,71 @@ export async function deleteProduct(id: string) {
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Delete multiple products
+ * @param ids Array of product IDs to delete
+ * @returns Object with success status and count of deleted products
+ */
+export async function deleteMultipleProducts(ids: string[]) {
+  try {
+    // Validate inputs
+    if (!ids || ids.length === 0) {
+      return {
+        success: false,
+        error: "No product IDs provided",
+        deletedCount: 0,
+      };
+    }
+
+    // Limit the number of products that can be deleted at once
+    if (ids.length > 100) {
+      return {
+        success: false,
+        error: "Cannot delete more than 100 products at once",
+        deletedCount: 0,
+      };
+    }
+
+    const userId = await getCurrentUserId();
+    const productsRef = getUserProductsRef(userId);
+
+    // Create a batch write
+    const batch = adminDb.batch();
+    let deletedCount = 0;
+
+    // Add each product to the batch delete
+    for (const id of ids) {
+      const productRef = productsRef.doc(id);
+      const productDoc = await productRef.get();
+
+      if (productDoc.exists) {
+        batch.delete(productRef);
+        deletedCount++;
+      }
+    }
+
+    // Commit the batch
+    await batch.commit();
+
+    // Revalidate relevant paths
+    revalidatePath("/welcome");
+    revalidatePath("/dashboard");
+    revalidatePath("/product");
+
+    return {
+      success: true,
+      deletedCount,
+    };
+  } catch (error) {
+    console.error("Error deleting multiple products:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      deletedCount: 0,
     };
   }
 }

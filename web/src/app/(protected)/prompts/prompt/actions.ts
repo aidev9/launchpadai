@@ -4,7 +4,7 @@ import { generateText, streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { PROMPT_ENHANCEMENT_SYSTEM_PROMPT } from "@/utils/constants";
 import { Message } from "ai";
-import { Product, ProductNote, AIModelSettings } from "@/lib/firebase/schema";
+import { Product, Note, AIModelSettings } from "@/lib/firebase/schema";
 import { getOrderedProductQuestions } from "@/lib/firebase/actions/questions";
 import { getProjectNotes } from "@/lib/firebase/notes";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
@@ -108,7 +108,7 @@ export async function enhancePromptStream(
 
       if (notesResult.success && notesResult.notes) {
         // Type assertion for notes
-        const notes = notesResult.notes as ProductNote[];
+        const notes = notesResult.notes as Note[];
         noteTexts.push(...notes.map((note) => note.note_body));
       }
 

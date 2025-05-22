@@ -2,3 +2,4 @@
 - Always use Tanstac Query whenever possible for mutations and queries
 - Never use APIs, instead use React Server Actions
 - Always create Tanstack tables with headers, filters and pagination
+- Never start a server like pnpm run dev

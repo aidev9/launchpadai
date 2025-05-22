@@ -1,31 +1,13 @@
-"use server";
-
 import { adminDb } from "./admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/firebase/adminAuth";
 import { productQuestionInputSchema, ProductQuestionInput } from "./schema";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
-import { get } from "http";
-
-// Root questions collection reference
-const questionsCollection = adminDb.collection("questions");
 
 // Get the questionsRef for a specific user
-function getUserQuestionsRef(userId: string) {
-  return questionsCollection.doc(userId).collection("questions");
-}
-
-// Get the product questions ref for a specific user and product
-export async function getProductQuestionsRef(
-  userId: string,
-  productId: string
-) {
-  return questionsCollection
-    .doc(userId)
-    .collection("products")
-    .doc(productId)
-    .collection("questions");
+export function getUserQuestionsRef(userId: string) {
+  return adminDb.collection("questions").doc(userId).collection("questions");
 }
 
 // Schema for question creation/update
@@ -269,7 +251,7 @@ export async function getAllQuestionsAdmin() {
 }
 
 /**
- * Save/update answer to a product question
+ * Save an answer to a product question
  */
 export async function saveProductQuestionAnswer(
   productId: string,
@@ -277,52 +259,35 @@ export async function saveProductQuestionAnswer(
   answer: string
 ) {
   try {
-    if (!productId || !questionId) {
-      console.error("Missing required parameters:", { productId, questionId });
-      return {
-        success: false,
-        error: "Product ID and Question ID are required",
-      };
-    }
-
     const userId = await getCurrentUserId();
-    if (!userId) {
-      return {
-        success: false,
-        error: "User not authenticated",
-      };
-    }
 
-    console.log(
-      `Saving answer for question ${questionId} in product ${productId}`
-    );
-
-    const questionsRef = await getProductQuestionsRef(userId, productId);
+    // Get the reference to the questions collection (using the correct path)
+    const questionsRef = getUserQuestionsRef(userId);
     const questionRef = questionsRef.doc(questionId);
 
-    // Check if the question exists
+    // Get the question to verify it belongs to the product
     const questionDoc = await questionRef.get();
+
     if (!questionDoc.exists) {
-      console.error(`Question ${questionId} not found in product ${productId}`);
       return {
         success: false,
         error: "Question not found",
       };
     }
 
-    console.log(
-      `Question found, updating with answer: "${answer.substring(0, 20)}${answer.length > 20 ? "..." : ""}"`
-    );
+    // Verify the question belongs to the specified product
+    const questionData = questionDoc.data();
+    if (!questionData || questionData.productId !== productId) {
+      return {
+        success: false,
+        error: "Question does not belong to the specified product",
+      };
+    }
 
     await questionRef.update({
       answer,
       updatedAt: getCurrentUnixTimestamp(),
     });
-
-    console.log(`Successfully saved answer for question ${questionId}`);
-
-    revalidatePath("/answer_questions");
-    revalidatePath("/product");
 
     return {
       success: true,
@@ -361,47 +326,43 @@ export async function saveQuestionAnswer(
 }
 
 /**
- * Add a new question to a product
+ * Add a question to a product
  */
 export async function addProductQuestion(
   productId: string,
   data: ProductQuestionInput
 ) {
   try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return {
-        success: false,
-        error: "User not authenticated",
-      };
-    }
-
     // Validate input data
     const validatedData = productQuestionInputSchema.parse(data);
-    const questionsRef = await getProductQuestionsRef(userId, productId);
+    const userId = await getCurrentUserId();
+    const questionsRef = getUserQuestionsRef(userId);
 
     // Generate a unique ID for custom questions
-    const questionId = `custom_${Date.now()}`;
+    const questionId = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-    // Add timestamps
+    // Prepare question data
     const questionData = {
       ...validatedData,
+      productId, // Add productId field
+      userId, // Add userId field
       createdAt: getCurrentUnixTimestamp(),
       updatedAt: getCurrentUnixTimestamp(),
     };
 
-    // Add to Firestore
+    // Add the question
     await questionsRef.doc(questionId).set(questionData);
-
-    revalidatePath("/answer_questions");
 
     return {
       success: true,
       id: questionId,
-      data: questionData,
+      data: {
+        id: questionId,
+        ...questionData,
+      },
     };
   } catch (error) {
-    console.error(`Failed to add question to product ${productId}:`, error);
+    console.error("Failed to add product question:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -410,7 +371,7 @@ export async function addProductQuestion(
 }
 
 /**
- * Delete a product question
+ * Delete a question from a product
  */
 export async function deleteProductQuestion(
   productId: string,
@@ -418,18 +379,12 @@ export async function deleteProductQuestion(
 ) {
   try {
     const userId = await getCurrentUserId();
-    if (!userId) {
-      return {
-        success: false,
-        error: "User not authenticated",
-      };
-    }
-
-    const questionsRef = await getProductQuestionsRef(userId, productId);
+    const questionsRef = getUserQuestionsRef(userId);
     const questionRef = questionsRef.doc(questionId);
 
-    // Check if question exists
+    // Get the question to verify it belongs to the product
     const questionDoc = await questionRef.get();
+
     if (!questionDoc.exists) {
       return {
         success: false,
@@ -437,10 +392,17 @@ export async function deleteProductQuestion(
       };
     }
 
+    // Verify the question belongs to the specified product
+    const questionData = questionDoc.data();
+    if (!questionData || questionData.productId !== productId) {
+      return {
+        success: false,
+        error: "Question does not belong to the specified product",
+      };
+    }
+
     // Delete the question
     await questionRef.delete();
-
-    revalidatePath("/answer_questions");
 
     return {
       success: true,
