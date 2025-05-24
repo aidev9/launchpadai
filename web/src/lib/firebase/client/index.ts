@@ -10,13 +10,14 @@ export { firebaseProducts } from "./FirebaseProducts";
 export { firebaseQA } from "./FirebaseQA";
 export { firebaseStacks } from "./FirebaseStacks";
 export { firebasePrompts } from "./FirebasePrompts";
-export {
-  createMcpEndpointConfig,
-  getMcpEndpointConfig,
-  getMcpEndpointConfigsByCollection,
-  updateMcpEndpointConfig,
-  deleteMcpEndpointConfig,
-} from "./FirebaseMcpEndpoints";
+export { firebaseRules } from "./FirebaseRules";
+export { firebaseMcpEndpoints } from "./FirebaseMcpEndpoints";
+
+// Export wizard-related Firebase classes
+export { FirebaseProgress } from "./FirebaseProgress";
+export { FirebaseFeatureLocks } from "./FirebaseFeatureLocks";
+export { FirebaseRewards } from "./FirebaseRewards";
+export { firebaseUsers } from "./FirebaseUsers";
 
 // Re-export types if needed
 export type { FirebaseOptions } from "firebase/app";

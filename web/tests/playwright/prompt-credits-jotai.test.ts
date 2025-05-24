@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { login } from "./utils/auth";
-import { mockFirebaseCredits } from "./utils/firebase";
+import { mockFirebaseCredits } from "../../src/lib/firebase/testing/mockUtils";
 
 /**
  * Comprehensive test for the Prompt Credits system using Jotai state management

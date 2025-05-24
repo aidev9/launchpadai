@@ -14,10 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Copy, Edit, Trash2, PlayCircle } from "lucide-react";
 import { McpEndpointConfig } from "@/lib/firebase/schema/mcp-endpoints";
 import { useToast } from "@/hooks/use-toast";
-import {
-  updateMcpEndpointConfig,
-  deleteMcpEndpointConfig,
-} from "@/lib/firebase/client/mcp-endpoints";
+import { firebaseMcpEndpoints } from "@/lib/firebase/client/FirebaseMcpEndpoints";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,10 +60,13 @@ export function McpEndpointCard({
   const handleToggleEnabled = async () => {
     setIsUpdating(true);
     try {
-      const result = await updateMcpEndpointConfig(endpoint.id, {
-        ...endpoint,
-        isEnabled: !endpoint.isEnabled,
-      });
+      const result = await firebaseMcpEndpoints.updateMcpEndpointConfig(
+        endpoint.id,
+        {
+          ...endpoint,
+          isEnabled: !endpoint.isEnabled,
+        }
+      );
 
       if (result.success) {
         toast({
@@ -101,7 +101,9 @@ export function McpEndpointCard({
 
   const handleDelete = async () => {
     try {
-      const result = await deleteMcpEndpointConfig(endpoint.id);
+      const result = await firebaseMcpEndpoints.deleteMcpEndpointConfig(
+        endpoint.id
+      );
 
       if (result.success) {
         toast({

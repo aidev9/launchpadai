@@ -10,7 +10,7 @@ import { McpBrowserTest } from "./mcp-browser-test";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getMcpEndpointConfigsByCollection } from "@/lib/firebase/client/mcp-endpoints";
+import { firebaseMcpEndpoints } from "@/lib/firebase/client/FirebaseMcpEndpoints";
 
 interface McpTabProps {
   collectionId: string;
@@ -33,7 +33,10 @@ export function McpTab({ collectionId }: McpTabProps) {
     const fetchEndpoints = async () => {
       try {
         setIsLoading(true);
-        const result = await getMcpEndpointConfigsByCollection(collectionId);
+        const result =
+          await firebaseMcpEndpoints.getMcpEndpointConfigsByCollection(
+            collectionId
+          );
         if (result.success) {
           setEndpoints(result.endpoints || []);
           // Select the first endpoint for testing if available
@@ -92,7 +95,10 @@ export function McpTab({ collectionId }: McpTabProps) {
   const refreshEndpoints = async () => {
     try {
       setIsLoading(true);
-      const result = await getMcpEndpointConfigsByCollection(collectionId);
+      const result =
+        await firebaseMcpEndpoints.getMcpEndpointConfigsByCollection(
+          collectionId
+        );
       if (result.success) {
         setEndpoints(result.endpoints || []);
       } else {

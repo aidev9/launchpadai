@@ -72,7 +72,7 @@ export default function CollectionDetail() {
   // Fetch documents using react-firebase-hooks
   const [documents, documentsLoading, documentsError] = useCollectionData(
     selectedCollection
-      ? firebaseDocuments.getDocumentsByCollections(selectedCollection.id)
+      ? firebaseDocuments.getDocumentsByCollection(selectedCollection.id)
       : null,
     {
       snapshotListenOptions: {

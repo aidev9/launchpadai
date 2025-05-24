@@ -397,21 +397,113 @@ export interface SearchResponse {
 function extractKeywords(text: string): string[] {
   try {
     const doc = nlp(text);
+
     // Extract nouns, proper nouns, and verbs which are likely to be important keywords
-    const terms = [
+    const nlpTerms = [
       ...doc.nouns().out("array"),
       ...doc.verbs().out("array"),
       ...doc.match("#Adjective").out("array"),
     ];
 
-    // Remove duplicates and common words
-    return [...new Set(terms)]
-      .filter((term) => term.length > 2) // Filter out very short terms
+    // Also split the text into individual words to catch important terms
+    const simpleWords = text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "") // Remove punctuation
+      .split(/\s+/)
+      .filter((word) => word.length > 2);
+
+    // Common stop words to filter out
+    const stopWords = new Set([
+      "the",
+      "and",
+      "or",
+      "but",
+      "in",
+      "on",
+      "at",
+      "to",
+      "for",
+      "of",
+      "with",
+      "by",
+      "from",
+      "up",
+      "about",
+      "into",
+      "through",
+      "during",
+      "before",
+      "after",
+      "above",
+      "below",
+      "is",
+      "are",
+      "was",
+      "were",
+      "be",
+      "been",
+      "being",
+      "have",
+      "has",
+      "had",
+      "do",
+      "does",
+      "did",
+      "will",
+      "would",
+      "should",
+      "could",
+      "can",
+      "may",
+      "might",
+      "must",
+      "shall",
+      "this",
+      "that",
+      "these",
+      "those",
+      "a",
+      "an",
+      "as",
+      "if",
+      "each",
+      "how",
+      "what",
+      "where",
+      "when",
+      "why",
+      "who",
+      "which",
+    ]);
+
+    // Combine and clean all terms
+    const allTerms = [...nlpTerms, ...simpleWords];
+
+    return [...new Set(allTerms)]
+      .filter((term) => term.length > 2 && !stopWords.has(term.toLowerCase()))
       .map((term) => term.toLowerCase());
   } catch (error) {
     console.error("Error extracting keywords:", error);
-    // Return the original text split into words if keyword extraction fails
-    return text.split(/\s+/).filter((word) => word.length > 2);
+    // Return the original text split into words if keyword extraction fails, with stop words filtered
+    const stopWords = new Set([
+      "the",
+      "and",
+      "or",
+      "but",
+      "in",
+      "on",
+      "at",
+      "to",
+      "for",
+      "of",
+      "with",
+      "by",
+    ]);
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "")
+      .split(/\s+/)
+      .filter((word) => word.length > 2 && !stopWords.has(word));
   }
 }
 
@@ -518,12 +610,11 @@ export async function searchDocumentChunks(
       );
     }
 
-    // Lower the similarity threshold to 0.3 for better recall
-    const similarityThreshold = 0.3;
+    // Very low similarity threshold for better recall
+    const similarityThreshold = 0.1;
     console.log(`[DEBUG] Using similarity threshold: ${similarityThreshold}`);
 
     // Properly format the embedding for the database query
-    // PostgreSQL's vector type expects a specific format - try with array rather than JSON string
     const embeddingFormatted = `[${embedding.join(",")}]`;
     console.log(`[DEBUG] Embedding formatted as array`);
 
@@ -532,45 +623,100 @@ export async function searchDocumentChunks(
       SELECT COUNT(*) as total
       FROM document_chunks
       WHERE collection_id = $1
+        AND user_id = $2
     `;
 
     const simpleCountResult = await client.query(simpleCountQuery, [
       collectionId,
+      userId,
     ]);
     console.log(
-      `[DEBUG] Documents in this collection: ${simpleCountResult.rows[0].total}`
+      `[DEBUG] Documents in this collection for user: ${simpleCountResult.rows[0].total}`
     );
 
-    // Then, count total results with vector similarity or keyword match
-    let countQuery = `
+    // Let's also see a sample of what's in the database
+    const sampleQuery = `
+      SELECT document_title, filename, 
+             LEFT(chunk_content, 100) as content_preview,
+             COALESCE(chunk_keywords::text, '') as keywords_preview,
+             COALESCE(document_keywords::text, '') as doc_keywords_preview
+      FROM document_chunks 
+      WHERE collection_id = $1 AND user_id = $2 
+      LIMIT 3
+    `;
+
+    const sampleResult = await client.query(sampleQuery, [
+      collectionId,
+      userId,
+    ]);
+    console.log(`[DEBUG] Sample documents:`, sampleResult.rows);
+
+    // Build comprehensive search query with multiple field matching
+    const searchConditions: string[] = [];
+    let paramIndex = 4; // Start after collectionId, userId, and embedding
+
+    // Add vector similarity condition (embedding is $3 since user_id is $2)
+    searchConditions.push(
+      `(1 - (c.embedding_vector <-> $3::vector)) > ${similarityThreshold}`
+    );
+
+    // Add keyword search across multiple fields if keywords exist
+    if (keywords.length > 0) {
+      const fieldConditions: string[] = [];
+
+      keywords.forEach((keyword) => {
+        const escapedKeyword = `%${keyword}%`;
+        // Search in chunk content (highest weight)
+        fieldConditions.push(`c.chunk_content ILIKE $${paramIndex}`);
+        paramIndex++;
+
+        // Search in document title (high weight)
+        fieldConditions.push(`c.document_title ILIKE $${paramIndex}`);
+        paramIndex++;
+
+        // Search in filename (medium weight)
+        fieldConditions.push(`c.filename ILIKE $${paramIndex}`);
+        paramIndex++;
+
+        // Search in chunk keywords if column exists (handle JSONB)
+        fieldConditions.push(
+          `COALESCE(c.chunk_keywords::text, '') ILIKE $${paramIndex}`
+        );
+        paramIndex++;
+
+        // Search in document keywords if column exists (handle JSONB)
+        fieldConditions.push(
+          `COALESCE(c.document_keywords::text, '') ILIKE $${paramIndex}`
+        );
+        paramIndex++;
+      });
+
+      searchConditions.push(`(${fieldConditions.join(" OR ")})`);
+    }
+
+    // Build count query
+    const countQuery = `
       SELECT COUNT(*) as total
       FROM document_chunks c
       WHERE c.collection_id = $1
-        AND (
-          1 - (c.embedding_vector <-> $2::vector) > ${similarityThreshold}
+        AND c.user_id = $2
+        AND (${searchConditions.join(" OR ")})
     `;
-
-    if (keywords.length > 0) {
-      countQuery += ` OR (`;
-      keywords.forEach((_, index) => {
-        if (index > 0) countQuery += " OR ";
-        countQuery += `c.chunk_content ILIKE $${index + 3}`;
-      });
-      countQuery += `))`;
-    } else {
-      countQuery += `)`;
-    }
 
     console.log(`[DEBUG] Count query: ${countQuery}`);
 
-    const countParams = [
-      collectionId,
-      embeddingFormatted,
-      ...keywords.map((k) => `%${k}%`),
-    ];
-    console.log(
-      `[DEBUG] Count params: [Collection: ${collectionId}, Embedding: [vector], Keywords: ${keywords.map((k) => `%${k}%`).join(", ")}]`
-    );
+    // Build parameters array
+    const countParams: any[] = [collectionId, userId, embeddingFormatted];
+
+    // Add keyword parameters for each field
+    keywords.forEach((keyword) => {
+      const escapedKeyword = `%${keyword}%`;
+      countParams.push(escapedKeyword); // chunk_content
+      countParams.push(escapedKeyword); // document_title
+      countParams.push(escapedKeyword); // filename
+      countParams.push(escapedKeyword); // chunk_keywords
+      countParams.push(escapedKeyword); // document_keywords
+    });
 
     try {
       const countResult = await client.query(countQuery, countParams);
@@ -581,8 +727,9 @@ export async function searchDocumentChunks(
         `[DEBUG] Found ${totalResults} total results, ${totalPages} pages`
       );
 
-      // Then, get paginated results with less restrictive conditions
-      let searchQuery = `
+      // Build main search query with scoring - adjust paramIndex for user_id
+      const adjustedParamIndex = paramIndex + 1;
+      const searchQuery = `
         SELECT 
           c.id,
           c.document_id,
@@ -596,64 +743,151 @@ export async function searchDocumentChunks(
           c.file_url,
           c.document_title,
           c.collection_name,
-          1 - (c.embedding_vector <-> $2::vector) AS similarity
+          COALESCE(c.chunk_keywords::text, '') as chunk_keywords,
+          COALESCE(c.document_keywords::text, '') as document_keywords,
+          (1 - (c.embedding_vector <-> $3::vector)) AS vector_similarity,
+          (
+            -- Calculate keyword match score with field weighting
+            CASE 
+              WHEN ${
+                keywords.length === 0
+                  ? "FALSE"
+                  : keywords
+                      .map((_, i) => {
+                        const baseIndex = 4 + i * 5;
+                        return `(c.chunk_content ILIKE $${baseIndex} OR c.document_title ILIKE $${baseIndex + 1} OR c.filename ILIKE $${baseIndex + 2} OR COALESCE(c.chunk_keywords::text, '') ILIKE $${baseIndex + 3} OR COALESCE(c.document_keywords::text, '') ILIKE $${baseIndex + 4})`;
+                      })
+                      .join(" OR ")
+              }
+              THEN 1.0 
+              ELSE 0.0 
+            END
+          ) AS keyword_score,
+          (
+            -- Combined relevance score (weighted combination)
+            (1 - (c.embedding_vector <-> $3::vector)) * 0.7 +
+            (
+                              CASE 
+                  WHEN ${
+                    keywords.length === 0
+                      ? "FALSE"
+                      : keywords
+                          .map((_, i) => {
+                            const baseIndex = 4 + i * 5;
+                            return `(c.chunk_content ILIKE $${baseIndex} OR c.document_title ILIKE $${baseIndex + 1} OR c.filename ILIKE $${baseIndex + 2} OR COALESCE(c.chunk_keywords::text, '') ILIKE $${baseIndex + 3} OR COALESCE(c.document_keywords::text, '') ILIKE $${baseIndex + 4})`;
+                          })
+                          .join(" OR ")
+                  }
+                  THEN 1.0 
+                  ELSE 0.0 
+                END
+            ) * 0.3
+          ) AS relevance_score
         FROM document_chunks c
         WHERE c.collection_id = $1
-          AND (
-            1 - (c.embedding_vector <-> $2::vector) > ${similarityThreshold}
-      `;
-
-      if (keywords.length > 0) {
-        searchQuery += ` OR (`;
-        keywords.forEach((_, index) => {
-          if (index > 0) searchQuery += " OR ";
-          searchQuery += `c.chunk_content ILIKE $${index + 3}`;
-        });
-        searchQuery += `))`;
-      } else {
-        searchQuery += `)`;
-      }
-
-      searchQuery += `
-        ORDER BY similarity DESC
-        LIMIT $${keywords.length + 3} OFFSET $${keywords.length + 4}
+          AND c.user_id = $2
+          AND (${searchConditions.join(" OR ")})
+        ORDER BY relevance_score DESC, vector_similarity DESC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
 
       console.log(`[DEBUG] Search query: ${searchQuery}`);
 
       const offset = (page - 1) * pageSize;
-      const searchParams = [
-        collectionId,
-        embeddingFormatted,
-        ...keywords.map((k) => `%${k}%`),
-        pageSize,
-        offset,
-      ];
-      console.log(
-        `[DEBUG] Search params: [Collection: ${collectionId}, Embedding: [vector], Keywords: ${keywords.map((k) => `%${k}%`).join(", ")}, Limit: ${pageSize}, Offset: ${offset}]`
-      );
+      const searchParams = [...countParams, pageSize, offset];
 
       const searchResult = await client.query(searchQuery, searchParams);
       console.log(`[DEBUG] Query returned ${searchResult.rows.length} results`);
 
       if (searchResult.rows.length > 0) {
         console.log(
-          `[DEBUG] First result: document "${searchResult.rows[0].document_title}" with similarity ${searchResult.rows[0].similarity}`
+          `[DEBUG] First result: document "${searchResult.rows[0].document_title}" with vector similarity ${searchResult.rows[0].vector_similarity} and relevance score ${searchResult.rows[0].relevance_score}`
         );
       }
 
+      // Map results to maintain backward compatibility
+      const mappedResults = searchResult.rows.map((row: any) => ({
+        ...row,
+        similarity: row.relevance_score || row.vector_similarity, // Use relevance score as similarity
+      }));
+
+      // If we got results, return them
+      if (mappedResults.length > 0) {
+        return {
+          success: true,
+          results: mappedResults,
+          page,
+          totalPages,
+          totalResults,
+        };
+      }
+
+      // If no results found, try a much more permissive search
+      console.log("[DEBUG] No results found, trying more permissive search...");
+
+      const permissiveQuery = `
+        SELECT 
+          c.id,
+          c.document_id,
+          c.user_id,
+          c.product_id,
+          c.collection_id,
+          c.chunk_index,
+          c.total_chunks,
+          c.chunk_content,
+          c.filename,
+          c.file_url,
+          c.document_title,
+          c.collection_name,
+          COALESCE(c.chunk_keywords::text, '') as chunk_keywords,
+          COALESCE(c.document_keywords::text, '') as document_keywords,
+          0.3 AS similarity
+        FROM document_chunks c
+        WHERE c.collection_id = $1
+          AND c.user_id = $2
+          AND (
+            ${keywords
+              .map(
+                (_, i) =>
+                  `(c.chunk_content ILIKE $${3 + i} OR c.document_title ILIKE $${3 + i} OR c.filename ILIKE $${3 + i})`
+              )
+              .join(" OR ")}
+          )
+        ORDER BY c.document_id, c.chunk_index
+        LIMIT $${3 + keywords.length} OFFSET $${4 + keywords.length}
+      `;
+
+      const permissiveParams: any[] = [collectionId, userId];
+      keywords.forEach((keyword) => {
+        permissiveParams.push(`%${keyword}%`);
+      });
+      permissiveParams.push(pageSize, (page - 1) * pageSize);
+
+      console.log(`[DEBUG] Permissive query: ${permissiveQuery}`);
+      console.log(
+        `[DEBUG] Permissive params: ${JSON.stringify(permissiveParams)}`
+      );
+
+      const permissiveResult = await client.query(
+        permissiveQuery,
+        permissiveParams
+      );
+      console.log(
+        `[DEBUG] Permissive search returned ${permissiveResult.rows.length} results`
+      );
+
       return {
         success: true,
-        results: searchResult.rows,
-        page,
-        totalPages,
-        totalResults,
+        results: permissiveResult.rows,
+        page: 1,
+        totalPages: Math.ceil(permissiveResult.rows.length / pageSize),
+        totalResults: permissiveResult.rows.length,
       };
     } catch (error) {
       console.error("[DEBUG] Error executing search query:", error);
 
-      // If vector search fails, fall back to keyword-only search
-      console.log("[DEBUG] Falling back to keyword-only search");
+      // Enhanced fallback to keyword-only search across multiple fields
+      console.log("[DEBUG] Falling back to enhanced keyword-only search");
 
       let fallbackQuery = `
         SELECT 
@@ -669,41 +903,50 @@ export async function searchDocumentChunks(
           c.file_url,
           c.document_title,
           c.collection_name,
-          0.7 AS similarity
+          COALESCE(c.chunk_keywords::text, '') as chunk_keywords,
+          COALESCE(c.document_keywords::text, '') as document_keywords,
+          0.5 AS similarity
         FROM document_chunks c
         WHERE c.collection_id = $1
+          AND c.user_id = $2
       `;
 
+      const fallbackParams: any[] = [collectionId, userId];
+      let paramCounter = 3;
+
       if (keywords.length > 0) {
-        fallbackQuery += ` AND (`;
-        keywords.forEach((_, index) => {
-          if (index > 0) fallbackQuery += " OR ";
-          fallbackQuery += `c.chunk_content ILIKE $${index + 2}`;
+        const keywordConditions: string[] = [];
+        keywords.forEach((keyword) => {
+          const escapedKeyword = `%${keyword}%`;
+          keywordConditions.push(`(
+            c.chunk_content ILIKE $${paramCounter} OR 
+            c.document_title ILIKE $${paramCounter} OR 
+            c.filename ILIKE $${paramCounter} OR
+            COALESCE(c.chunk_keywords::text, '') ILIKE $${paramCounter} OR
+            COALESCE(c.document_keywords::text, '') ILIKE $${paramCounter}
+          )`);
+          fallbackParams.push(escapedKeyword);
+          paramCounter++;
         });
-        fallbackQuery += `)`;
+
+        fallbackQuery += ` AND (${keywordConditions.join(" OR ")})`;
       }
 
       fallbackQuery += `
         ORDER BY c.document_id, c.chunk_index
-        LIMIT $${keywords.length + 2} OFFSET $${keywords.length + 3}
+        LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
       `;
 
       console.log(`[DEBUG] Fallback query: ${fallbackQuery}`);
 
       const offset = (page - 1) * pageSize;
-      const fallbackParams = [
-        collectionId,
-        ...keywords.map((k) => `%${k}%`),
-        pageSize,
-        offset,
-      ];
+      fallbackParams.push(pageSize, offset);
 
       const fallbackResult = await client.query(fallbackQuery, fallbackParams);
       console.log(
         `[DEBUG] Fallback query returned ${fallbackResult.rows.length} results`
       );
 
-      // For fallback, we'll just assume there's only one page
       return {
         success: true,
         results: fallbackResult.rows,

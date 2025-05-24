@@ -102,6 +102,12 @@ export const xpActions: XpAction[] = [
     description: "Created a new feature for a product",
     points: 50,
   },
+  {
+    id: "create_collection",
+    name: "Create Collection",
+    description: "Created a new collection with documents for a product",
+    points: 50,
+  },
 ];
 
 export default xpActions;

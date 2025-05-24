@@ -1,0 +1,7 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- Never start a development server, we always have one running in the background on port 3000
+- Never test the build to make sure everything is working correctly. There's always a runing server

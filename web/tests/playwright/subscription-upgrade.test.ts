@@ -1,7 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 import { login } from "./utils/auth";
-import { mockFirebaseCredits } from "./utils/firebase";
-import { getExpectedCreditsByPlan } from "./utils/firebase";
+import { mockFirebaseCredits } from "../../src/lib/firebase/testing/mockUtils";
+import { getExpectedCreditsByPlan } from "../../src/lib/firebase/testing/mockUtils";
 
 // Test user ID for testing
 const TEST_USER_ID = "test_user_123";

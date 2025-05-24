@@ -11,6 +11,10 @@ export interface Feature {
   tags: string[];
   productId: string;
   prdContent?: string;
+  priority?: "high" | "medium" | "low"; // Priority level for feature
+  userStories?: string[]; // User stories associated with the feature
+  acceptanceCriteria?: string[]; // Acceptance criteria for the feature
+  dependencies?: string[]; // Dependencies on other features or components
   createdAt?: number;
   updatedAt?: number;
 }
@@ -25,6 +29,10 @@ export const featureInputSchema = z.object({
   tags: z.array(z.string()).default([]),
   productId: z.string().min(1, "Product ID is required"),
   prdContent: z.string().optional(),
+  priority: z.enum(["high", "medium", "low"]).optional(),
+  userStories: z.array(z.string()).optional(),
+  acceptanceCriteria: z.array(z.string()).optional(),
+  dependencies: z.array(z.string()).optional(),
 });
 
 export type FeatureInput = z.infer<typeof featureInputSchema>;

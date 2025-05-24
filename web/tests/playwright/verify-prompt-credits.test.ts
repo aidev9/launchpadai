@@ -3,7 +3,7 @@ import { login } from "./utils/auth";
 import {
   mockFirebaseCredits,
   getExpectedCreditsByPlan,
-} from "./utils/firebase";
+} from "../../src/lib/firebase/testing/mockUtils";
 
 // Test user ID for testing
 const TEST_USER_ID = "test_user_123";

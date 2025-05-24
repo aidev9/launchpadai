@@ -18,6 +18,7 @@ import {
   DocumentReference,
   deleteDoc,
   WithFieldValue,
+  writeBatch,
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { clientApp, clientAuth, clientDb } from "@/lib/firebase/client";
@@ -71,7 +72,7 @@ class FirebaseNotes {
     }
   }
 
-  getRefCollection(): CollectionReference<Note> {
+  private getRefCollection(): CollectionReference<Note> {
     if (!this.auth || !this.auth.currentUser) {
       console.log("[FirebaseNotes][getRefCollection] User not authenticated");
     }
@@ -87,7 +88,7 @@ class FirebaseNotes {
     ).withConverter(noteConverter);
   }
 
-  getRefDocument(id: string): DocumentReference<Note> {
+  private getRefDocument(id: string): DocumentReference<Note> {
     if (!this.auth || !this.auth.currentUser) {
       console.log("[FirebaseNotes][getRefDocument] User not authenticated");
     }
@@ -102,6 +103,9 @@ class FirebaseNotes {
     ).withConverter(noteConverter);
   }
 
+  /**
+   * Get all notes for the current user
+   */
   getNotes(): Query<DocumentData, DocumentData> | null {
     try {
       const notesQuery = query(
@@ -116,6 +120,9 @@ class FirebaseNotes {
     }
   }
 
+  /**
+   * Get notes by phase
+   */
   getNotesByPhase(phases: Phases[]): Query<DocumentData, DocumentData> | null {
     if (phases.length === 0) {
       return null;
@@ -135,6 +142,9 @@ class FirebaseNotes {
     }
   }
 
+  /**
+   * Get notes by product ID
+   */
   getNotesByProduct(
     productId: string
   ): Query<DocumentData, DocumentData> | null {
@@ -156,6 +166,9 @@ class FirebaseNotes {
     }
   }
 
+  /**
+   * Create a new note
+   */
   async createNote(noteData: CreateNoteData): Promise<Note | null> {
     try {
       const ref = this.getRefCollection();
@@ -175,6 +188,9 @@ class FirebaseNotes {
     }
   }
 
+  /**
+   * Update an existing note
+   */
   async updateNote(
     id: string,
     noteData: Partial<CreateNoteData>
@@ -196,6 +212,9 @@ class FirebaseNotes {
     }
   }
 
+  /**
+   * Delete a single note
+   */
   async deleteNote(id: string): Promise<boolean> {
     try {
       const ref = this.getRefDocument(id);
@@ -207,14 +226,65 @@ class FirebaseNotes {
     }
   }
 
+  /**
+   * Delete multiple notes using batch operation
+   */
   async deleteNotes(ids: string[]): Promise<boolean> {
     try {
-      const promises = ids.map((id) => this.deleteNote(id));
-      const results = await Promise.all(promises);
-      return results.every((result) => result === true);
+      const batch = writeBatch(this.db);
+
+      ids.forEach((id) => {
+        const ref = this.getRefDocument(id);
+        batch.delete(ref);
+      });
+
+      await batch.commit();
+      return true;
     } catch (error) {
       console.error("[FirebaseNotes][deleteNotes] Error:", error);
       return false;
+    }
+  }
+
+  /**
+   * Create multiple notes using batch operation
+   */
+  async createNotes(notesData: CreateNoteData[]): Promise<boolean> {
+    try {
+      const batch = writeBatch(this.db);
+      const ref = this.getRefCollection();
+
+      notesData.forEach((noteData) => {
+        const docRef = doc(ref);
+        const data: FirestoreNoteData = {
+          ...noteData,
+          createdAt: getCurrentUnixTimestamp(),
+          updatedAt: getCurrentUnixTimestamp(),
+        };
+        batch.set(docRef, data);
+      });
+
+      await batch.commit();
+      return true;
+    } catch (error) {
+      console.error("[FirebaseNotes][createNotes] Error:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Get a single note by ID
+   */
+  async getNote(id: string): Promise<Note | null> {
+    try {
+      const ref = this.getRefDocument(id);
+      const docData = await getDoc(ref);
+      const data = docData.data();
+      if (!data) return null;
+      return data;
+    } catch (error) {
+      console.error("[FirebaseNotes][getNote] Error:", error);
+      return null;
     }
   }
 }

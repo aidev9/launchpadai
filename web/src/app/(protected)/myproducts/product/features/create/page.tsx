@@ -27,6 +27,7 @@ import { selectedProductIdAtom } from "@/lib/store/product-store";
 import { Feature, FeatureInput } from "@/lib/firebase/schema";
 import { createFeature, updateFeature } from "@/lib/firebase/features";
 import { ArrowRight } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 // Import step components
 import { ProductStep } from "./components/steps/product-step";
@@ -131,6 +132,46 @@ export default function FeatureWizard() {
   ]);
 
   const totalSteps = 3;
+
+  // Calculate progress for current step
+  const getCurrentStepProgress = () => {
+    switch (currentStep) {
+      case 1: // Product Step
+        const hasProductId = !!wizardState.productId;
+        return hasProductId ? 100 : 0;
+      case 2: // Details Step
+        const hasName = !!wizardState.name;
+        const hasDescription = !!wizardState.description;
+        const hasStatus = !!wizardState.status;
+        const hasTags = wizardState.tags && wizardState.tags.length > 0;
+
+        let completedFields = 0;
+        if (hasName) completedFields++;
+        if (hasDescription) completedFields++;
+        if (hasStatus) completedFields++;
+        if (hasTags) completedFields++;
+
+        return (completedFields / 4) * 100;
+      case 3: // Review Step
+        return 100; // Review step is always complete when reached
+      default:
+        return 0;
+    }
+  };
+
+  // Calculate overall progress
+  const getOverallProgress = () => {
+    let totalProgress = 0;
+    for (let i = 1; i <= totalSteps; i++) {
+      if (i < currentStep) {
+        totalProgress += 100; // Completed steps
+      } else if (i === currentStep) {
+        totalProgress += getCurrentStepProgress(); // Current step progress
+      }
+      // Future steps contribute 0
+    }
+    return totalProgress / totalSteps; // Average across all steps
+  };
 
   // Navigate to next step
   const goToNextStep = () => {
@@ -339,6 +380,24 @@ export default function FeatureWizard() {
             stepNames={["Select Product", "Feature Details", "Review"]}
             onStepClick={handleStepClick}
           />
+
+          {/* Progress Bars */}
+          <div className="grid grid-cols-2 gap-4 mb-6 max-w-[90%]">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Step Progress</span>
+                <span>{Math.round(getCurrentStepProgress())}%</span>
+              </div>
+              <Progress value={getCurrentStepProgress()} className="h-2" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Overall Progress</span>
+                <span>{Math.round(getOverallProgress())}%</span>
+              </div>
+              <Progress value={getOverallProgress()} className="h-2" />
+            </div>
+          </div>
 
           <Card className="mb-8 max-w-[90%]">
             <CardHeader>

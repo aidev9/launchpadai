@@ -26,10 +26,7 @@ import {
   McpEndpointConfig,
   McpEndpointConfigInput,
 } from "@/lib/firebase/schema/mcp-endpoints";
-import {
-  createMcpEndpointConfig,
-  updateMcpEndpointConfig,
-} from "@/lib/firebase/client/mcp-endpoints";
+import { firebaseMcpEndpoints } from "@/lib/firebase/client/FirebaseMcpEndpoints";
 
 interface McpEndpointFormProps {
   isOpen: boolean;
@@ -149,10 +146,13 @@ export function McpEndpointForm({
 
       if (isEditing && endpointToEdit) {
         // Update existing endpoint
-        const result = await updateMcpEndpointConfig(endpointToEdit.id, {
-          ...endpointToEdit,
-          ...formData,
-        });
+        const result = await firebaseMcpEndpoints.updateMcpEndpointConfig(
+          endpointToEdit.id,
+          {
+            ...endpointToEdit,
+            ...formData,
+          }
+        );
 
         if (result.success && result.endpointConfig) {
           toast({
@@ -169,7 +169,10 @@ export function McpEndpointForm({
         }
       } else {
         // Create new endpoint
-        const result = await createMcpEndpointConfig(formData, collectionId);
+        const result = await firebaseMcpEndpoints.createMcpEndpointConfig(
+          formData,
+          collectionId
+        );
 
         if (result.success && result.endpointConfig) {
           toast({

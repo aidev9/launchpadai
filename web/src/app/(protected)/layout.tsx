@@ -14,6 +14,10 @@ import { ProfileDropdown } from "@/components/profile-dropdown";
 import { motion } from "framer-motion";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import SkipToMain from "@/components/skip-to-main";
+import Cookies from "js-cookie";
+import { cn } from "@/lib/utils";
 
 const topNav = [
   {
@@ -104,6 +108,7 @@ export default function RootLayout({
   const [authError, setAuthError] = useState<string | null>(null);
   const setUserProfile = useSetAtom(setUserProfileAtom);
   const [redirectedToAdmin, setRedirectedToAdmin] = useState(false);
+  const defaultOpen = Cookies.get("sidebar:state") !== "false";
 
   useEffect(() => {
     // Initialize auth state
@@ -131,32 +136,9 @@ export default function RootLayout({
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center space-y-4">
-          {/* <span className="sr-only">Loading the lauch codes...</span>
-          <div className="w-8 h-8">
-            <svg
-              className="animate-spin text-gray-500"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-              />
-            </svg>
-          </div> */}
-
           <AnimatedCode />
           <span className="text-sm text-muted-foreground">
-            Loading lauch codes...
+            Loading launch codes...
           </span>
         </div>
       </div>
@@ -181,22 +163,34 @@ export default function RootLayout({
 
   return (
     <Providers>
-      {/* <DebugAtoms /> */}
-      <div className="flex h-screen">
+      {/* Protected layout with sidebar */}
+      <SidebarProvider defaultOpen={defaultOpen}>
+        <SkipToMain />
         <AppSidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header>
-            {/* <TopNav links={topNav} /> */}
-            <div className="ml-auto flex items-center space-x-4">
-              {/* <Search /> */}
-              <FeedbackButton />
-              <ThemeSwitch />
-              <ProfileDropdown />
-            </div>
-          </Header>
-          <main className="flex-1 overflow-auto">{children}</main>
+        <div
+          id="content"
+          className={cn(
+            "ml-auto w-full max-w-full",
+            "peer-data-[state=collapsed]:w-[calc(100%-var(--sidebar-width-icon)-1rem)]",
+            "peer-data-[state=expanded]:w-[calc(100%-var(--sidebar-width))]",
+            "transition-[width] duration-200 ease-linear",
+            "flex h-svh flex-col",
+            "group-data-[scroll-locked=1]/body:h-full",
+            "group-data-[scroll-locked=1]/body:has-[main.fixed-main]:h-svh"
+          )}
+        >
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <Header>
+              <div className="ml-auto flex items-center space-x-4">
+                <FeedbackButton />
+                <ThemeSwitch />
+                <ProfileDropdown />
+              </div>
+            </Header>
+            <main className="flex-1 overflow-auto">{children}</main>
+          </div>
         </div>
-      </div>
+      </SidebarProvider>
     </Providers>
   );
 }

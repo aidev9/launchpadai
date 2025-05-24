@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { login } from "./utils/auth";
-import { mockFirebaseCredits } from "./utils/firebase";
+import { mockFirebaseCredits } from "../../src/lib/firebase/testing/mockUtils";
 
 // Focus test on the most important functionality first
 test.describe("Prompt Credits Core Functionality", () => {

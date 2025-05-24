@@ -1,5 +1,5 @@
 import { Page } from "@playwright/test";
-import { PromptCreditsData } from "./firebase";
+import { PromptCreditsData } from "../../../src/lib/firebase/testing/mockUtils";
 
 /**
  * Enhanced function to mock prompt credits in the application

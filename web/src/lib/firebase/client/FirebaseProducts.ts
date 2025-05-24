@@ -15,10 +15,13 @@ import {
   doc,
   getDoc,
   writeBatch,
+  setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { clientApp, clientAuth, clientDb } from "@/lib/firebase/client";
 import { Phases, Product } from "../schema";
+import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 const productConverter: FirestoreDataConverter<Product> = {
   toFirestore: (product) => product,
@@ -161,6 +164,138 @@ class FirebaseProducts {
         `[FirebaseProducts][deleteProduct] Error deleting product ${id}:`,
         error
       );
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Create a new product
+   * @param product Product data to save
+   * @returns Promise with success status and product data
+   */
+  async createProduct(product: Omit<Product, 'id'>) {
+    try {
+      if (!this.auth.currentUser) {
+        return {
+          success: false,
+          error: "User not authenticated",
+        };
+      }
+
+      // Generate a new ID if one is not provided
+      const productRef = doc(this.getRefCollection());
+      const productId = productRef.id;
+
+      console.log(`[FirebaseProducts][createProduct] Creating product with ID: ${productId}`);
+      
+      const productData = {
+        ...product,
+        id: productId,
+        createdAt: getCurrentUnixTimestamp(),
+        updatedAt: getCurrentUnixTimestamp(),
+        userId: this.auth.currentUser.uid,
+      };
+
+      await setDoc(productRef, productData);
+
+      return {
+        success: true,
+        data: productData,
+      };
+    } catch (error) {
+      console.error('[FirebaseProducts][createProduct] Error creating product:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Update an existing product
+   * @param id Product ID to update
+   * @param product Product data to update
+   * @returns Promise with success status and updated product data
+   */
+  async updateProduct(id: string, product: Partial<Product>) {
+    try {
+      if (!this.auth.currentUser) {
+        return {
+          success: false,
+          error: "User not authenticated",
+        };
+      }
+
+      const productRef = doc(this.getRefCollection(), id);
+
+      // Check if product exists first
+      const productDoc = await getDoc(productRef);
+      if (!productDoc.exists()) {
+        return {
+          success: false,
+          error: "Product not found",
+        };
+      }
+
+      console.log(`[FirebaseProducts][updateProduct] Updating product with ID: ${id}`);
+      
+      const productData = {
+        ...product,
+        updatedAt: getCurrentUnixTimestamp(),
+      };
+
+      await updateDoc(productRef, productData);
+
+      return {
+        success: true,
+        data: {
+          ...productDoc.data(),
+          ...productData,
+          id,
+        },
+      };
+    } catch (error) {
+      console.error(`[FirebaseProducts][updateProduct] Error updating product ${id}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Get a product by ID
+   * @param id Product ID to retrieve
+   * @returns Promise with success status and product data
+   */
+  async getProductById(id: string) {
+    try {
+      if (!this.auth.currentUser) {
+        return {
+          success: false,
+          error: "User not authenticated",
+        };
+      }
+
+      const productRef = doc(this.getRefCollection(), id);
+      const productDoc = await getDoc(productRef);
+
+      if (!productDoc.exists()) {
+        return {
+          success: false,
+          error: "Product not found",
+        };
+      }
+
+      return {
+        success: true,
+        data: productDoc.data(),
+      };
+    } catch (error) {
+      console.error(`[FirebaseProducts][getProductById] Error getting product ${id}:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),

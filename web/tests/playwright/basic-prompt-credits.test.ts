@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { login } from "./utils/auth";
-import { mockFirebaseCredits } from "./utils/firebase";
+import { mockFirebaseCredits } from "../../src/lib/firebase/testing/mockUtils";
 
 /**
  * Simple test for prompt credits in LaunchpadAI
