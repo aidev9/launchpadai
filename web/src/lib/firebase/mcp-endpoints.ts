@@ -292,7 +292,41 @@ class AdminMcpEndpoints {
     try {
       console.log(`[MCP Server] Looking for endpoint with ID: ${endpointId}`);
 
-      // Get all users first
+      // Try the direct collectionGroup approach first for better performance
+      try {
+        console.log(`[MCP Server] Searching using collectionGroup...`);
+        const allEndpointsSnapshot = await this.db
+          .collectionGroup(this.collectionName)
+          .get();
+        console.log(
+          `[MCP Server] Found ${allEndpointsSnapshot.size} total endpoints`
+        );
+
+        for (const doc of allEndpointsSnapshot.docs) {
+          const data = doc.data();
+          console.log(
+            `[MCP Server] Checking endpoint with ID: ${data.id}, Document ID: ${doc.id}`
+          );
+
+          // Check both the data.id field and the document ID
+          if (data.id === endpointId || doc.id === endpointId) {
+            console.log(
+              `[MCP Server] Found endpoint by collectionGroup search: ${endpointId}`
+            );
+            return {
+              success: true,
+              endpointConfig: data as McpEndpointConfig,
+            };
+          }
+        }
+        console.log(
+          `[MCP Server] Endpoint ${endpointId} not found in collectionGroup search`
+        );
+      } catch (err) {
+        console.error("[MCP Server] Error in collectionGroup search:", err);
+      }
+
+      // Fallback: Get all users and check their endpoint collections
       const usersSnapshot = await this.db.collection(this.collectionName).get();
       console.log(
         `[MCP Server] Found ${usersSnapshot.size} users with ${this.collectionName}`
@@ -302,32 +336,7 @@ class AdminMcpEndpoints {
         console.log(
           `[MCP Server] No users found with ${this.collectionName} collection`
         );
-
-        // Try a direct approach as a fallback
-        try {
-          // Try to find the endpoint directly by ID across all collections
-          const allEndpointsSnapshot = await this.db
-            .collectionGroup("endpoints")
-            .get();
-          console.log(
-            `[MCP Server] Found ${allEndpointsSnapshot.size} total endpoints`
-          );
-
-          for (const doc of allEndpointsSnapshot.docs) {
-            const data = doc.data();
-            if (data.id === endpointId) {
-              console.log(
-                `[MCP Server] Found endpoint by direct search: ${endpointId}`
-              );
-              return {
-                success: true,
-                endpointConfig: data as McpEndpointConfig,
-              };
-            }
-          }
-        } catch (err) {
-          console.error("[MCP Server] Error in fallback search:", err);
-        }
+        return { success: false, error: "Endpoint not found" };
       }
 
       // Iterate through each user's endpoints collection
@@ -335,9 +344,9 @@ class AdminMcpEndpoints {
         const userId = userDoc.id;
         console.log(`[MCP Server] Checking user: ${userId}`);
 
-        // Check if this user has the endpoint
+        // Check if this user has the endpoint - using correct path
         const endpointDoc = await this.db
-          .collection(`${this.collectionName}/${userId}/endpoints`)
+          .collection(`${this.collectionName}/${userId}/${this.collectionName}`)
           .doc(endpointId)
           .get();
 
