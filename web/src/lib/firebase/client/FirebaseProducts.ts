@@ -22,6 +22,8 @@ import { getStorage } from "firebase/storage";
 import { clientApp, clientAuth, clientDb } from "@/lib/firebase/client";
 import { Phases, Product } from "../schema";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
+import { questions as staticQuestions } from "@/app/(protected)/answer_questions/data/questions";
+import { firebaseQA } from "./FirebaseQA";
 
 const productConverter: FirestoreDataConverter<Product> = {
   toFirestore: (product) => product,
@@ -59,7 +61,7 @@ class FirebaseProducts {
       );
 
       this.storage = getStorage(clientApp);
-      this.collectionName = "products";
+      this.collectionName = "myproducts";
     } catch (error) {
       console.error(
         "[FirebaseProducts][constructor] Error initializing:",
@@ -176,7 +178,7 @@ class FirebaseProducts {
    * @param product Product data to save
    * @returns Promise with success status and product data
    */
-  async createProduct(product: Omit<Product, 'id'>) {
+  async createProduct(product: Omit<Product, "id">) {
     try {
       if (!this.auth.currentUser) {
         return {
@@ -189,8 +191,10 @@ class FirebaseProducts {
       const productRef = doc(this.getRefCollection());
       const productId = productRef.id;
 
-      console.log(`[FirebaseProducts][createProduct] Creating product with ID: ${productId}`);
-      
+      console.log(
+        `[FirebaseProducts][createProduct] Creating product with ID: ${productId}`
+      );
+
       const productData = {
         ...product,
         id: productId,
@@ -199,14 +203,78 @@ class FirebaseProducts {
         userId: this.auth.currentUser.uid,
       };
 
+      // Create the product
       await setDoc(productRef, productData);
+
+      // Create 35 questions for the product using FirebaseQA
+      console.log(
+        `[FirebaseProducts][createProduct] Creating ${staticQuestions.length} questions for product ${productId}`
+      );
+
+      try {
+        // Prepare questions data for bulk creation
+        const questionsData = staticQuestions.map((staticQuestion) => ({
+          question: staticQuestion.text,
+          answer: null,
+          tags: [staticQuestion.phases[0].toLowerCase()],
+          phases: staticQuestion.phases.map((phase) => {
+            // Convert string phases to Phases enum
+            switch (phase) {
+              case "Discover":
+                return Phases.DISCOVER;
+              case "Validate":
+                return Phases.VALIDATE;
+              case "Design":
+                return Phases.DESIGN;
+              case "Build":
+                return Phases.BUILD;
+              case "Secure":
+                return Phases.SECURE;
+              case "Launch":
+                return Phases.LAUNCH;
+              case "Grow":
+                return Phases.GROW;
+              default:
+                return Phases.DISCOVER; // fallback
+            }
+          }),
+          order: staticQuestion.order,
+          productId: productId,
+          userId: this.auth.currentUser!.uid,
+        }));
+
+        // Use FirebaseQA to bulk create questions
+        const questionsResult =
+          await firebaseQA.bulkCreateQuestions(questionsData);
+
+        if (questionsResult.success) {
+          console.log(
+            `[FirebaseProducts][createProduct] Successfully created ${questionsResult.count} questions for product ${productId}`
+          );
+        } else {
+          console.warn(
+            `[FirebaseProducts][createProduct] Failed to create questions for product ${productId}:`,
+            questionsResult.error
+          );
+          // Don't fail the product creation if questions fail
+        }
+      } catch (questionsError) {
+        console.warn(
+          `[FirebaseProducts][createProduct] Error creating questions for product ${productId}:`,
+          questionsError
+        );
+        // Don't fail the product creation if questions fail
+      }
 
       return {
         success: true,
         data: productData,
       };
     } catch (error) {
-      console.error('[FirebaseProducts][createProduct] Error creating product:', error);
+      console.error(
+        "[FirebaseProducts][createProduct] Error creating product:",
+        error
+      );
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -240,8 +308,10 @@ class FirebaseProducts {
         };
       }
 
-      console.log(`[FirebaseProducts][updateProduct] Updating product with ID: ${id}`);
-      
+      console.log(
+        `[FirebaseProducts][updateProduct] Updating product with ID: ${id}`
+      );
+
       const productData = {
         ...product,
         updatedAt: getCurrentUnixTimestamp(),
@@ -258,7 +328,10 @@ class FirebaseProducts {
         },
       };
     } catch (error) {
-      console.error(`[FirebaseProducts][updateProduct] Error updating product ${id}:`, error);
+      console.error(
+        `[FirebaseProducts][updateProduct] Error updating product ${id}:`,
+        error
+      );
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -295,7 +368,10 @@ class FirebaseProducts {
         data: productDoc.data(),
       };
     } catch (error) {
-      console.error(`[FirebaseProducts][getProductById] Error getting product ${id}:`, error);
+      console.error(
+        `[FirebaseProducts][getProductById] Error getting product ${id}:`,
+        error
+      );
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),

@@ -113,10 +113,10 @@ test.describe("Subscription Upgrade", () => {
     page,
   }) => {
     // Simulate upgrade
-    await simulateSubscriptionUpgrade(page, "builder", "enterprise");
+    await simulateSubscriptionUpgrade(page, "builder", "accelerator");
 
     // Verify credits were updated correctly
-    await verifyCreditsAfterPlanChange(page, "enterprise");
+    await verifyCreditsAfterPlanChange(page, "accelerator");
   });
 
   test("should handle checkout flow for plan upgrade", async ({ page }) => {

@@ -15,11 +15,12 @@ import {
   featureTableRowSelectionAtom,
   featureWizardStateAtom,
 } from "@/lib/store/feature-store";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { getProductFeatures } from "@/lib/firebase/features";
 import { Feature } from "@/lib/firebase/schema";
 import { FeatureDataTable } from "./components/feature-data-table";
 import { FeatureGrid } from "./components/feature-grid";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FeaturesPage() {
   const [viewMode, setViewMode] = useAtom(featureViewModeAtom);
@@ -27,14 +28,14 @@ export default function FeaturesPage() {
   const [, setSelectedFeature] = useAtom(selectedFeatureAtom);
   const [rowSelection, setRowSelection] = useAtom(featureTableRowSelectionAtom);
   const [featureWizardState] = useAtom(featureWizardStateAtom);
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
   const [features, setFeatures] = useState<Feature[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
 
   // Get the product ID from Jotai atoms
-  const productId = featureWizardState.productId || selectedProductId;
+  const productId = featureWizardState.productId || selectedProduct?.id;
 
   // Load features when the component mounts
   useEffect(() => {
@@ -164,9 +165,47 @@ export default function FeaturesPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        viewMode === "table" ? (
+          <div className="border rounded-md">
+            <div className="p-4 space-y-4">
+              {/* Table header */}
+              <div className="flex items-center space-x-4 pb-2 border-b">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-8" />
+              </div>
+
+              {/* Table rows */}
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center space-x-4 py-2">
+                  <Skeleton className="h-4 w-4" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-8" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="border rounded-lg p-4 space-y-3">
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+                <div className="flex gap-2 pt-2">
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-6 w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       ) : (
         <>
           {viewMode === "table" ? (

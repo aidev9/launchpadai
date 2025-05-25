@@ -16,7 +16,6 @@ import {
   collectionPhaseFilterAtom,
   collectionSearchQueryAtom,
 } from "@/lib/store/collection-store";
-import { ProductSelector } from "./components/product-selector";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -35,12 +34,12 @@ import {
   deleteMultipleCollectionsAction,
 } from "./actions";
 import { CollectionForm } from "./components/collection-form";
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { CollectionCard } from "./components/collection-card";
 import { CollectionTable } from "./components/collection-table";
 import { productsAtom, selectedProductAtom } from "@/lib/store/product-store";
 import { useCollectionData } from "react-firebase-hooks/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusFilter } from "./components/status-filter";
 import { firebaseCollections } from "@/lib/firebase/client/FirebaseCollections";
 import { FilterBar } from "@/components/ui/components/filter-bar";
 
@@ -275,13 +274,22 @@ export default function MyCollections() {
     }
   };
 
-  if (collectionsError)
+  if (collectionsError) {
     return (
-      <>
-        <strong>Connection error!</strong>
-        <p>{collectionsError.message}</p>
-      </>
+      <Main>
+        <ErrorDisplay
+          error={collectionsError}
+          title="Collection rockets are offline!"
+          message="Our collection loading system hit some space debris. Mission control is working on it!"
+          onRetry={() => window.location.reload()}
+          retryText="Retry Launch"
+          component="MyCollections"
+          action="loading_collections"
+          metadata={{ productId: selectedProduct?.id }}
+        />
+      </Main>
     );
+  }
 
   return (
     <Main data-testid="mycollections-page">
@@ -342,9 +350,17 @@ export default function MyCollections() {
       </div>
 
       {collectionsError && (
-        <div className="bg-destructive/15 text-destructive p-4 rounded-md mt-4">
-          <p>Error loading collections</p>
-        </div>
+        <ErrorDisplay
+          error={collectionsError}
+          title="Collection data rockets are malfunctioning!"
+          message="Our collection loading system hit some space debris. Mission control is working on it!"
+          onRetry={() => window.location.reload()}
+          retryText="Reload Collections"
+          className="border rounded-lg mt-4"
+          component="MyCollections"
+          action="loading_collections_list"
+          metadata={{ productId: selectedProduct?.id }}
+        />
       )}
 
       <div className="mt-6">
@@ -373,34 +389,20 @@ export default function MyCollections() {
         ) : (
           <>
             {filteredCollections.length === 0 ? (
-              !selectedProduct ? (
-                <div className="p-12 text-center w-1/2 mx-auto">
-                  <h2 className="text-xl font-semibold mb-2">
-                    Please select a product to manage collections:
-                  </h2>
-                  <div className="mt-4 w-76 mx-auto">
-                    <ProductSelector
-                      value={null}
-                      onChange={handleProductChange}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="p-12 text-center">
-                  <h2 className="text-xl font-semibold mb-2">
-                    No collections found
-                  </h2>
-                  <p className="text-muted-foreground mb-6">
-                    {typedCollections.length === 0
-                      ? "You haven't created any collections yet"
-                      : "No collections match your search criteria"}
-                  </p>
-                  <Button onClick={handleCreateCollection}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Collection
-                  </Button>
-                </div>
-              )
+              <div className="p-12 text-center">
+                <h2 className="text-xl font-semibold mb-2">
+                  No collections found
+                </h2>
+                <p className="text-muted-foreground mb-6">
+                  {typedCollections.length === 0
+                    ? "You haven't created any collections yet"
+                    : "No collections match your search criteria"}
+                </p>
+                <Button onClick={handleCreateCollection}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Collection
+                </Button>
+              </div>
             ) : layoutView === "grid" ? (
               <div
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"

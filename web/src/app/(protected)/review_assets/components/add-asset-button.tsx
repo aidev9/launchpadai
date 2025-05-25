@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAtom } from "jotai";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import {
@@ -34,7 +34,7 @@ import { Phases } from "@/lib/firebase/schema";
 export const newlyCreatedAssetIdAtom = atom<string | null>(null);
 
 export function AddAssetButton() {
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -44,14 +44,14 @@ export function AddAssetButton() {
   const setNewlyCreatedAssetId = useSetAtom(newlyCreatedAssetIdAtom);
 
   const handleAddAsset = async () => {
-    if (!selectedProductId || !title || !phase || !content) return;
+    if (!selectedProduct || !title || !phase || !content) return;
 
     setIsSaving(true);
 
     try {
       const assetId = uuidv4();
       const response = await saveAssetAction({
-        productId: selectedProductId,
+        productId: selectedProduct.id,
         asset: {
           id: assetId,
           phases: [phase as Phases],

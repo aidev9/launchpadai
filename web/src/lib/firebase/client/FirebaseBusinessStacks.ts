@@ -69,7 +69,7 @@ class FirebaseBusinessStacks {
       this.auth = clientAuth;
       this.db = clientDb;
       this.storage = getStorage(clientApp);
-      this.collectionName = "business_stacks";
+      this.collectionName = "mybusinessstacks";
     } catch (error) {
       console.error(
         "[FirebaseBusinessStacks][constructor] Error initializing:",

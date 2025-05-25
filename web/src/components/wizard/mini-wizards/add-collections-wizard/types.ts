@@ -1,4 +1,4 @@
-import { Collection, Document } from "@/lib/atoms/product";
+import { Collection, Document } from "@/lib/store/product-store";
 import { DocumentStatus } from "@/lib/firebase/schema";
 
 // Type definitions for wizard state

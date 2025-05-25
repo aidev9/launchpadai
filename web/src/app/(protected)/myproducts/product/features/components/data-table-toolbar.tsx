@@ -12,7 +12,7 @@ import {
   featureTableRowSelectionAtom,
   featureWizardStateAtom,
 } from "@/lib/store/feature-store";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { deleteFeature } from "@/lib/firebase/features";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,11 +26,11 @@ export function DataTableToolbar<TData>({
   const isFiltered = table.getState().columnFilters.length > 0;
   const [rowSelection, setRowSelection] = useAtom(featureTableRowSelectionAtom);
   const [featureWizardState] = useAtom(featureWizardStateAtom);
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
   const { toast } = useToast();
 
   // Get the product ID from Jotai atoms
-  const productId = featureWizardState.productId || selectedProductId;
+  const productId = featureWizardState.productId || selectedProduct?.id;
 
   // Handle bulk delete
   const handleBulkDelete = async () => {

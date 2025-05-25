@@ -17,10 +17,12 @@ import {
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { FilterBar } from "@/components/ui/components/filter-bar";
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { useCollectionData } from "react-firebase-hooks/firestore";
 import { firebaseQA } from "@/lib/firebase/client/FirebaseQA";
 import { QAGrid } from "./components/qa-grid";
 import { PlusIcon } from "lucide-react";
+import { QAGridSkeleton, QATableSkeleton } from "./components/qa-skeleton";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -70,18 +72,29 @@ export default function QA() {
     showToast(options);
   };
 
-  // Handle errors from the query
-  if (firestoreError) {
-    console.error("QA Page: Fetch error:", firestoreError);
-    showToast({
-      title: "Error loading questions",
-      description: firestoreError.message || "Failed to load questions",
-      variant: "destructive",
-      duration: TOAST_DEFAULT_DURATION,
-    });
-  }
-
   const breadcrumbItems = [{ label: "Q&A" }];
+
+  // Handle Firebase errors
+  if (firestoreError) {
+    return (
+      <Main>
+        <ErrorDisplay
+          error={firestoreError}
+          title="Q&A rockets are offline!"
+          message="Our question loading system hit some space debris. Mission control is working on it!"
+          onRetry={() => window.location.reload()}
+          retryText="Retry Launch"
+          component="QA"
+          action="loading_questions"
+          metadata={{
+            productId: selectedProduct?.id,
+            phaseFilter,
+            searchQuery,
+          }}
+        />
+      </Main>
+    );
+  }
 
   return (
     <>
@@ -111,13 +124,11 @@ export default function QA() {
 
         <div className="flex-1">
           {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <p>Loading questions...</p>
-            </div>
-          ) : firestoreError ? (
-            <div className="flex justify-center items-center h-64 text-red-500">
-              <p>Error loading questions: {firestoreError.message}</p>
-            </div>
+            viewMode === "grid" ? (
+              <QAGridSkeleton />
+            ) : (
+              <QATableSkeleton />
+            )
           ) : filteredQuestions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64">
               <p className="text-muted-foreground">No questions found.</p>

@@ -17,21 +17,71 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
-import { useProducts } from "@/hooks/useProducts";
 import { useCallback, useEffect } from "react";
 import { productsAtom, selectedProductAtom } from "@/lib/store/product-store";
 import { useAtom } from "jotai";
+import { useCollectionData } from "react-firebase-hooks/firestore";
+import { firebaseProducts } from "@/lib/firebase/client/FirebaseProducts";
+import { Phases, Product } from "@/lib/firebase/schema";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { clientAuth } from "@/lib/firebase/client";
 
 const ProductSwitcher = React.memo(function ProductSwitcher() {
   const { isMobile } = useSidebar();
   const router = useRouter();
   const [selectedProduct, setSelectedProduct] = useAtom(selectedProductAtom);
   const [products, setProducts] = useAtom(productsAtom);
-  const { isLoading } = useProducts();
+  const [user, authLoading] = useAuthState(clientAuth);
+
+  // Only create the query if user is authenticated
+  const productsQuery = user ? firebaseProducts.getProducts() : null;
+
+  const [firebaseProductsData, isLoading, error] = useCollectionData(
+    productsQuery,
+    {
+      snapshotListenOptions: { includeMetadataChanges: true },
+    }
+  );
+
+  // The only useEffect we need
+  useEffect(() => {
+    if (firebaseProductsData) {
+      console.log(
+        "[ProductSwitcher] Firebase products data:::",
+        firebaseProductsData
+      );
+      const typedProducts = firebaseProductsData.map((p) => p as Product);
+      setProducts(typedProducts);
+    }
+  }, [firebaseProductsData, setProducts]);
+
+  // Update products atom when Firebase data changes
+  // useEffect(() => {
+  //   console.log("[ProductSwitcher] Auth state:", {
+  //     user: !!user,
+  //     authLoading,
+  //     isLoading,
+  //   });
+  //   console.log(
+  //     "[ProductSwitcher] Firebase products data:",
+  //     firebaseProductsData
+  //   );
+
+  //   if (firebaseProductsData) {
+  //     console.log(
+  //       "[ProductSwitcher] Processing products data:",
+  //       firebaseProductsData
+  //     );
+  //     const typedProducts = firebaseProductsData.map((p) => p as Product);
+  //     setProducts(typedProducts);
+  //   } else if (error) {
+  //     console.error("[ProductSwitcher] Firebase error:", error);
+  //   }
+  // }, [firebaseProductsData, setProducts, error, user, authLoading, isLoading]);
 
   const phase = selectedProduct?.phases
     ? selectedProduct?.phases[0]
-    : "Discovery";
+    : Phases.DISCOVER;
 
   // Handle creating a new product
   const handleCreateProduct = useCallback(() => {
@@ -43,16 +93,16 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
     router.push("/welcome");
   }, [router]);
 
-  useEffect(() => {
-    if (selectedProduct) {
-      const foundProduct = products.find((p) => p.id === selectedProduct.id);
-      if (foundProduct) {
-        setSelectedProduct(foundProduct);
-      }
-    }
-  }, [selectedProduct, products]);
+  // useEffect(() => {
+  //   if (selectedProduct) {
+  //     const foundProduct = products.find((p) => p.id === selectedProduct.id);
+  //     if (foundProduct) {
+  //       setSelectedProduct(foundProduct);
+  //     }
+  //   }
+  // }, [selectedProduct, products]);
 
-  if (isLoading && products.length === 0) {
+  if ((isLoading || authLoading) && products.length === 0) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
@@ -69,7 +119,8 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
     );
   }
 
-  if (products.length === 0) {
+  // Show create product if no products or user not authenticated
+  if (products.length === 0 && !authLoading && !isLoading) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>

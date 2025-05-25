@@ -68,7 +68,7 @@ class FirebaseDocuments {
       this.auth = clientAuth;
       this.db = clientDb;
       this.storage = getStorage(clientApp);
-      this.collectionName = "documents";
+      this.collectionName = "mydocuments";
     } catch (error) {
       console.error(
         "[FirebaseDocuments][constructor] Error initializing:",

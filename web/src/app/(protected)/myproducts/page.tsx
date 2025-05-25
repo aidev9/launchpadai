@@ -31,10 +31,15 @@ import { useToast } from "@/hooks/use-toast";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { ProductCard } from "./components/product-card";
 import { ProductTable } from "./components/product-table";
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { FilterBar } from "@/components/ui/components/filter-bar";
 import { useCollectionData } from "react-firebase-hooks/firestore";
 import { firebaseProducts } from "@/lib/firebase/client/FirebaseProducts";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import {
+  ProductGridSkeleton,
+  ProductTableSkeleton,
+} from "./components/product-skeleton";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -260,16 +265,22 @@ export default function MyProducts() {
 
       <div className="space-y-4">
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          </div>
+          layoutView === "grid" ? (
+            <ProductGridSkeleton />
+          ) : (
+            <ProductTableSkeleton />
+          )
         ) : error ? (
-          <div className="p-12 text-center">
-            <h2 className="text-xl font-semibold mb-2">
-              Error loading products
-            </h2>
-            <p className="text-muted-foreground">{error}</p>
-          </div>
+          <ErrorDisplay
+            error={firestoreError}
+            title="Product rockets are offline!"
+            message="Our product loading system hit some space debris. Mission control is working on it!"
+            onRetry={() => window.location.reload()}
+            retryText="Retry Launch"
+            component="MyProducts"
+            action="loading_products"
+            metadata={{ phaseFilter, searchQuery }}
+          />
         ) : filteredProducts.length === 0 ? (
           <div className="p-12 text-center">
             <h2 className="text-xl font-semibold mb-2">No products found</h2>

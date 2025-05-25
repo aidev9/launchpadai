@@ -35,7 +35,8 @@ import {
 } from "@/utils/constants";
 import { useXpMutation } from "@/xp/useXpMutation";
 import { firebaseQA } from "@/lib/firebase/client/FirebaseQA";
-import { getDocs } from "firebase/firestore";
+import { useCollectionData } from "react-firebase-hooks/firestore";
+import { ErrorDisplay } from "@/components/ui/error-display";
 
 // Extract the options type directly from the imported toast function
 type ShowToastOptions = Parameters<typeof showToast>[0];
@@ -154,9 +155,18 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
   );
 
   const [answer, setAnswer] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [allQuestions, setAllQuestions] = useAtom(allQuestionsAtom);
+
+  // Use React Firebase Hooks to get questions for the selected product
+  const [questionData, isLoading, firestoreError] = useCollectionData(
+    selectedProduct
+      ? firebaseQA.getQuestionsByProduct(selectedProduct.id)
+      : firebaseQA.getQuestions(),
+    {
+      snapshotListenOptions: { includeMetadataChanges: true },
+    }
+  );
 
   // Store displayedQuestions as a ref to prevent re-renders
   const displayedQuestionsRef = useRef<Question[]>([]);
@@ -243,58 +253,38 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
     previousSelectedQuestionIdRef.current = selectedQuestionId;
   }, [filteredQuestions, selectedQuestionId, setSelectedQuestionId, setAnswer]);
 
-  // Memoize the loadQuestions function - Use FirebaseQA client instead of server action
-  const loadQuestions = useCallback(async () => {
-    if (!selectedProduct) return;
+  // Update allQuestions atom when Firebase data changes
+  useEffect(() => {
+    if (questionData) {
+      // Format the data to include document ID and apply typing
+      const formattedQuestions = questionData.map((q: any) => ({
+        ...q,
+        id: q.id,
+      })) as Question[];
 
-    setIsLoading(true);
-    try {
-      // Use FirebaseQA client to get questions by product ID
-      const questionsQuery = firebaseQA.getQuestionsByProduct(
-        selectedProduct.id
+      // Sort questions by their order property
+      const sortedQuestions = [...formattedQuestions].sort(
+        (a, b) => (a.order || 0) - (b.order || 0)
       );
 
-      if (!questionsQuery) {
-        console.error("Failed to create questions query");
-        return;
-      }
+      // Check if questions have actually changed to avoid unnecessary updates
+      const hasQuestionsChanged =
+        sortedQuestions.length !== allQuestions.length ||
+        JSON.stringify(sortedQuestions.map((q) => q.id).sort()) !==
+          JSON.stringify(allQuestions.map((q) => q.id).sort());
 
-      const snapshot = await getDocs(questionsQuery);
-      const questions = snapshot.docs.map((doc) => doc.data() as Question);
+      if (hasQuestionsChanged) {
+        setAllQuestions(sortedQuestions);
 
-      if (questions) {
-        const hasQuestionsChanged =
-          questions.length !== allQuestions.length ||
-          JSON.stringify(questions.map((q) => q.id).sort()) !==
-            JSON.stringify(allQuestions.map((q) => q.id).sort());
-
-        if (hasQuestionsChanged) {
-          // Sort questions by their order property
-          const sortedQuestions = [...questions].sort(
-            (a, b) => (a.order || 0) - (b.order || 0)
-          );
-
-          setAllQuestions(sortedQuestions);
-
-          // Only select the first question if no question is currently selected
-          if (sortedQuestions.length > 0 && !selectedQuestionId) {
-            setSelectedQuestionId(sortedQuestions[0].id);
-            setAnswer(sortedQuestions[0].answer || "");
-          }
+        // Only select the first question if no question is currently selected
+        if (sortedQuestions.length > 0 && !selectedQuestionId) {
+          setSelectedQuestionId(sortedQuestions[0].id);
+          setAnswer(sortedQuestions[0].answer || "");
         }
       }
-    } catch (error) {
-      console.error("Error loading questions:", error);
-      toast({
-        title: "Error loading questions",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
     }
   }, [
-    selectedProduct,
+    questionData,
     setAllQuestions,
     selectedQuestionId,
     setSelectedQuestionId,
@@ -302,10 +292,7 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
     allQuestions,
   ]);
 
-  // Update the loadQuestions useEffect to use the memoized function
-  useEffect(() => {
-    loadQuestions();
-  }, [loadQuestions]);
+  // Handle Firebase errors
 
   // Update answer when selecting a different question
   useEffect(() => {
@@ -476,6 +463,43 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
     [setSelectedQuestionId, selectedQuestionId, allQuestions, setAnswer]
   );
 
+  // Show error state if there's no selected product
+  if (!selectedProduct) {
+    return (
+      <div className="rounded-lg bg-card text-card-foreground">
+        <div className="flex items-center justify-center h-64 text-center p-4">
+          <div>
+            <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+            <h3 className="text-lg font-medium mb-2">No Product Selected</h3>
+            <p className="text-muted-foreground max-w-md">
+              Please select a product to view and answer questions.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if there's a Firebase error
+  if (firestoreError) {
+    return (
+      <ErrorDisplay
+        error={firestoreError}
+        title="Question rockets are offline!"
+        message="Our question loading system hit some space debris. Mission control is working on it!"
+        onRetry={() => window.location.reload()}
+        retryText="Retry Launch"
+        component="QuestionsReviewer"
+        action="loading_questions"
+        metadata={{
+          productId: selectedProduct?.id,
+          selectedPhases,
+          searchTerm,
+        }}
+      />
+    );
+  }
+
   return (
     <div className="rounded-lg bg-card text-card-foreground">
       <div className="flex flex-col lg:flex-row lg:min-h-[500px] gap-4">
@@ -518,7 +542,9 @@ function QuestionsReviewerComponent({ onShowToast }: QuestionsReviewerProps) {
                       No Questions Found
                     </h3>
                     <p className="text-muted-foreground max-w-md mb-4">
-                      Add some questions to get started.
+                      {selectedProduct
+                        ? "No questions found for this product. Create a new product to generate questions automatically, or add questions manually."
+                        : "Add some questions to get started."}
                     </p>
                     <AddQuestionButton />
                   </div>

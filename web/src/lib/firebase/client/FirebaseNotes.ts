@@ -65,7 +65,7 @@ class FirebaseNotes {
       this.auth = clientAuth;
       this.db = clientDb;
       this.storage = getStorage(clientApp);
-      this.collectionName = "notes";
+      this.collectionName = "mynotes";
     } catch (error) {
       console.error("[FirebaseNotes][constructor] Error initializing:", error);
       throw error;

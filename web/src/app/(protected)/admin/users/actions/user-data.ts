@@ -126,6 +126,8 @@ export async function getUserSubscription(userId: string) {
  */
 export async function getUserAllData(userId: string) {
   try {
+    console.log("[getUserAllData] Fetching all data for user:", userId);
+
     const [
       productsResult,
       promptsResult,
@@ -138,15 +140,27 @@ export async function getUserAllData(userId: string) {
       getUserSubscription(userId),
     ]);
 
+    console.log("[getUserAllData] Results:", {
+      products: productsResult.success,
+      prompts: promptsResult.success,
+      techStacks: techStacksResult.success,
+      subscription: subscriptionResult.success,
+    });
+
     return {
       success: true,
       products: productsResult.success ? productsResult.products : [],
       prompts: promptsResult.success ? promptsResult.prompts : [],
       techStacks: techStacksResult.success ? techStacksResult.techStacks : [],
-      subscription: subscriptionResult.success ? subscriptionResult : null,
+      subscription: subscriptionResult.success
+        ? subscriptionResult.subscription
+        : null,
     };
   } catch (error) {
-    console.error(`Error fetching all data for user ${userId}:`, error);
+    console.error(
+      `[getUserAllData] Error fetching all data for user ${userId}:`,
+      error
+    );
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

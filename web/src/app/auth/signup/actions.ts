@@ -35,7 +35,7 @@ const signupSchema = z.object({
     .enum(["email", "google", "facebook", "twitter", "github"])
     .optional(),
   userType: z.enum(["user", "admin", "superadmin"]).optional(),
-  subscription: z.enum(["free", "pro", "enterprise"]).optional(),
+  subscription: z.enum(["free", "explorer", "builder", "accelerator"]).optional(),
 });
 
 export type SignupFormData = z.infer<typeof signupSchema>;

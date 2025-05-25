@@ -17,7 +17,7 @@ export const getCollectionDocumentsQuery = (
   if (!userId || !collectionId) return null;
 
   return query(
-    collection(clientDb, `documents/${userId}/documents`),
+    collection(clientDb, `mydocuments/${userId}/mydocuments`),
     where("collectionId", "==", collectionId),
     orderBy("updatedAt", "desc")
   );
@@ -33,7 +33,7 @@ export const getDocumentQuery = (userId: string, documentId: string) => {
   if (!userId || !documentId) return null;
 
   return query(
-    collection(clientDb, `documents/${userId}/documents`),
+    collection(clientDb, `mydocuments/${userId}/mydocuments`),
     where("id", "==", documentId)
   );
 };

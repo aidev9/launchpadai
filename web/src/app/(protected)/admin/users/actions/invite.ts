@@ -8,6 +8,7 @@ import {
   createInvitationEmail,
   invitationSchema,
 } from "@/lib/emails/invitation";
+import { initializePromptCredits } from "@/lib/firebase/prompt-credits";
 
 // Initialize Resend with API key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -17,7 +18,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  */
 function getPlanPrice(planType: string): number {
   switch (planType) {
-    case "enterprise":
+    case "accelerator":
       return 99.99;
     case "builder":
       return 49.99;
@@ -126,6 +127,7 @@ export async function inviteUser(
 
     // Create subscription object
     const subscriptionData = {
+      userId: userRecord.uid,
       planType: subscriptionLevel.toLowerCase(),
       billingCycle: "monthly", // Default to monthly
       price: getPlanPrice(subscriptionLevel.toLowerCase()),
@@ -133,14 +135,23 @@ export async function inviteUser(
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       createdAt: timestamp,
+      updatedAt: timestamp,
       paymentIntentId: null,
     };
 
     // Generate invitation URL
     const invitationUrl = await generateInvitationUrl(email);
 
+    // Store subscription in the subscriptions collection
+    console.log(`Storing subscription for user ${userRecord.uid} in subscriptions collection`);
+    await adminDb.collection("subscriptions").doc(userRecord.uid).set(subscriptionData);
+
+    // Initialize prompt credits based on subscription level
+    console.log(`Initializing prompt credits for user ${userRecord.uid} with plan ${subscriptionLevel.toLowerCase()}`);
+    await initializePromptCredits(userRecord.uid, subscriptionLevel.toLowerCase());
+
     if (isExistingUser) {
-      // For existing users, only update the invitation and subscription fields
+      // For existing users, only update the invitation fields
       const userDoc = adminDb.collection("users").doc(userRecord.uid);
 
       // Get current user data
@@ -149,8 +160,7 @@ export async function inviteUser(
       if (userData.exists) {
         // Update only specific fields without overwriting existing profile data
         await userDoc.update({
-          inviteSubscription: subscriptionLevel.toLowerCase(),
-          subscription: subscriptionData,
+          inviteSubscription: subscriptionLevel.toLowerCase(), // Keep this for reference
           invitationUrl: invitationUrl,
           invitationSentAt: timestamp,
           // Update displayName only if it's empty or if the new name is provided
@@ -162,8 +172,7 @@ export async function inviteUser(
           email,
           displayName: name,
           userType: "user",
-          inviteSubscription: subscriptionLevel.toLowerCase(),
-          subscription: subscriptionData,
+          inviteSubscription: subscriptionLevel.toLowerCase(), // Keep this for reference
           createdAt: timestamp,
           isEmailVerified: false,
           invitationUrl: invitationUrl,
@@ -176,8 +185,7 @@ export async function inviteUser(
         email,
         displayName: name,
         userType: "user",
-        inviteSubscription: subscriptionLevel.toLowerCase(),
-        subscription: subscriptionData,
+        inviteSubscription: subscriptionLevel.toLowerCase(), // Keep this for reference
         createdAt: timestamp,
         isEmailVerified: false,
         invitationUrl: invitationUrl,

@@ -65,7 +65,7 @@ class FirebaseFeatures {
       this.auth = clientAuth;
       this.db = clientDb;
       this.storage = getStorage(clientApp);
-      this.collectionName = "features";
+      this.collectionName = "myfeatures";
     } catch (error) {
       console.error(
         "[FirebaseFeatures][constructor] Error initializing:",

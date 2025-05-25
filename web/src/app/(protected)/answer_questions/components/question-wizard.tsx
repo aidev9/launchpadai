@@ -31,7 +31,7 @@ import {
   allQuestionsAtom,
 } from "@/lib/store/questions-store";
 import { Question, Phases } from "@/lib/firebase/schema";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { toast } from "@/components/ui/use-toast";
 import { useXpMutation } from "@/xp/useXpMutation";
 import { type ToastActionElement } from "@/components/ui/toast";
@@ -70,7 +70,7 @@ interface QuestionWizardProps {
 }
 
 export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
   const [modalOpen, setModalOpen] = useAtom(questionModalOpenAtom);
   const [allQuestions, setAllQuestions] = useAtom(allQuestionsAtom);
   const form = useForm<FormValues>({
@@ -177,7 +177,7 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
   }, [modalOpen, isEditing, editingQuestionId]);
 
   const onSubmit = async (data: FormValues) => {
-    if (!selectedProductId) {
+    if (!selectedProduct?.id) {
       toast({
         title: "Error",
         description: "No product selected",
@@ -202,7 +202,7 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
         createdAt: getCurrentUnixTimestamp(),
         updatedAt: getCurrentUnixTimestamp(),
         userId: "", // This will be set by the server
-        productId: selectedProductId || undefined,
+        productId: selectedProduct?.id || undefined,
       };
 
       // Add to state immediately for a snappy UI
@@ -219,7 +219,7 @@ export function QuestionWizard({ onShowToast }: QuestionWizardProps) {
         phases: data.phases.map((phase) => phase as unknown as Phases),
         order: getCurrentUnixTimestamp(), // Use timestamp for ordering
         userId: "", // This will be set by the FirebaseQA client
-        productId: selectedProductId,
+        productId: selectedProduct?.id,
       };
 
       const result = await firebaseQA.createQuestion(questionData);

@@ -25,11 +25,7 @@ import { allTemplates, Template } from "../data/templates";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import {
-  ProductInput,
-  createProduct,
-  updateProduct,
-} from "@/lib/firebase/products";
+import { firebaseProducts } from "@/lib/firebase/client/FirebaseProducts";
 import {
   editedProductAtom,
   selectedProductAtom,
@@ -37,7 +33,7 @@ import {
   addProductAtom,
   updateProductAtom,
 } from "@/lib/store/product-store";
-import { Product } from "@/lib/firebase/schema";
+import { Product, Phases } from "@/lib/firebase/schema";
 import { useAtom } from "jotai";
 import { CountrySelect } from "@/components/ui/country-select";
 import { useXpMutation } from "@/xp/useXpMutation";
@@ -48,6 +44,8 @@ import { PHASES } from "@/app/(protected)/myproducts/components/phase-filter";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { clientAuth } from "@/lib/firebase/client";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -82,10 +80,14 @@ const productFormSchema = z.object({
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
 
+// Type for creating a product (without id, createdAt, updatedAt)
+type ProductCreateInput = Omit<Product, "id" | "createdAt" | "updatedAt">;
+
 // Define the props for the wizard component
 
 export default function Wizard() {
   const router = useRouter();
+  const [user, authLoading] = useAuthState(clientAuth);
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
     null
@@ -161,37 +163,87 @@ export default function Wizard() {
     setSuccessMessage(null);
 
     try {
-      const productData: ProductInput = {
-        ...data,
+      const productData = {
+        name: data.name,
+        description: data.description,
+        phases: data.phases?.map((phase) => phase as Phases) || [],
+        problem: data.problem,
+        team: data.team,
+        website: data.website,
+        country: data.country,
+        template_id: data.template_id,
+        template_type: data.template_type as
+          | "app"
+          | "agent"
+          | "integration"
+          | "blank"
+          | undefined,
       };
+
+      console.log(
+        "[Wizard] About to create/update product with data:",
+        productData
+      );
+      console.log("[Wizard] User authentication state:", {
+        user: !!user,
+        authLoading,
+      });
+
+      if (!user) {
+        console.error("[Wizard] User not authenticated");
+        setFormError("User not authenticated. Please sign in and try again.");
+        toast({
+          title: "Authentication Error",
+          description: "User not authenticated. Please sign in and try again.",
+          duration: TOAST_DEFAULT_DURATION,
+          variant: "destructive",
+        });
+        return;
+      }
 
       let result;
 
       if (editedProduct) {
-        result = await updateProduct(editedProduct.id, productData);
+        console.log("[Wizard] Updating existing product:", editedProduct.id);
+        result = await firebaseProducts.updateProduct(
+          editedProduct.id,
+          productData
+        );
       } else {
-        result = await createProduct(productData);
+        console.log("[Wizard] Creating new product");
+        result = await firebaseProducts.createProduct(productData);
+      }
+
+      console.log("[Wizard] Firebase operation result:", result);
+
+      if (!result) {
+        console.error("[Wizard] Firebase operation returned undefined");
+        setFormError("Firebase operation failed - no response received");
+        toast({
+          title: "Error saving product",
+          description: "Firebase operation failed - no response received",
+          duration: TOAST_DEFAULT_DURATION,
+          variant: "destructive",
+        });
+        return;
       }
 
       if (result.success) {
         if (result.data) {
-          const updatedProduct = {
-            id: result.id,
-            ...result.data,
-          } as Product;
+          const updatedProduct = result.data as Product;
 
-          // Award XP for creating a new product
+          // Set the product in the selectedProductAtom
+          setSelectedProduct(updatedProduct);
+
           if (!editedProduct) {
+            // Award XP for creating a new product
             const createProductActionId = "create_product";
             xpMutation.mutate(createProductActionId);
-
-            // Set the product in the selectedProductAtom
-            setSelectedProduct(updatedProduct);
 
             // Also add the product to the productsAtom
             addProduct(updatedProduct);
 
-            // Fallback to default navigation
+            // Navigate to the product page
             router.push("/myproducts/product");
 
             toast({
@@ -218,13 +270,13 @@ export default function Wizard() {
           }
         }
       } else {
-        setFormError(
-          result.error || "Failed to save product. Please try again."
-        );
+        const errorMessage =
+          result?.error || "Failed to save product. Please try again.";
+        console.error("[Wizard] Product save failed:", errorMessage);
+        setFormError(errorMessage);
         toast({
           title: "Error saving product",
-          description:
-            result.error || "Failed to save product. Please try again.",
+          description: errorMessage,
           duration: TOAST_DEFAULT_DURATION,
           variant: "destructive",
         });

@@ -23,7 +23,7 @@ import {
   isEditModeAtom,
   selectedFeatureAtom,
 } from "@/lib/store/feature-store";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { Feature, FeatureInput } from "@/lib/firebase/schema";
 import { createFeature, updateFeature } from "@/lib/firebase/features";
 import { ArrowRight } from "lucide-react";
@@ -36,6 +36,7 @@ import { ReviewStep } from "./components/steps/review-step";
 
 // Import our step indicator component
 import { StepIndicator } from "./components/step-indicator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FeatureWizard() {
   const [currentStep, setCurrentStep] = useAtom(currentFeatureWizardStepAtom);
@@ -49,13 +50,13 @@ export default function FeatureWizard() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
 
   // Use the common XP mutation hook
   const xpMutation = useXpMutation();
 
   // Get the product ID from Jotai atoms
-  const productId = wizardState.productId || selectedProductId;
+  const productId = wizardState.productId || selectedProduct?.id;
 
   // Get the selected feature from the atom (set by parent page)
   const [selectedFeature] = useAtom(selectedFeatureAtom);
@@ -335,8 +336,33 @@ export default function FeatureWizard() {
   return (
     <Main>
       {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="space-y-6 p-6">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-8 w-28" />
+              ))}
+            </div>
+            <Card className="p-6 space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-1/3" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-10 w-1/3" />
+              </div>
+              <div className="flex justify-center gap-2 pt-4">
+                <Skeleton className="h-10 w-20" />
+                <Skeleton className="h-10 w-24" />
+              </div>
+            </Card>
+          </div>
         </div>
       ) : (
         <>

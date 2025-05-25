@@ -39,7 +39,7 @@ export interface UserProfile {
   isEmailVerified?: boolean;
   createdAt?: number;
   userType?: "user" | "admin" | "superadmin";
-  subscription?: "free" | "explorer" | "builder" | "enterprise";
+  subscription?: "free" | "explorer" | "builder" | "accelerator";
   xp?: number;
   level?: number;
   hasAnsweredTimelineQuestion?: boolean;
@@ -61,7 +61,7 @@ export interface Subscription {
   stripeSubscriptionId: string;
   createdAt: number;
   paymentIntentId: string;
-  planType: "free" | "explorer" | "builder" | "enterprise";
+  planType: "free" | "explorer" | "builder" | "accelerator";
 }
 
 // Schema for user subscription data
@@ -573,7 +573,7 @@ export function getPromptCreditsByPlan(planType: string): {
       return { daily: 0, monthly: 300 };
     case "builder":
       return { daily: 0, monthly: 600 };
-    case "enterprise":
+    case "accelerator":
       return { daily: 0, monthly: 900 };
     default:
       return { daily: 10, monthly: 0 };
@@ -668,3 +668,120 @@ export type DocumentInput = z.infer<typeof documentInputSchema>;
 // START: MCP ENDPOINTS
 export * from "./schema/mcp-endpoints";
 // END: MCP ENDPOINTS
+
+// START: AGENTS
+// Agent status type
+export type AgentStatus = "enabled" | "disabled" | "configuring";
+
+// Agent schema
+export interface Agent {
+  id: string;
+  userId: string;
+  productId: string; // Required product ID
+  name: string;
+  description: string;
+  systemPrompt?: string; // System prompt for the agent
+  phases: Phases[];
+  tags: string[];
+  collections: string[]; // IDs of collections used as knowledge base
+  tools: string[]; // IDs of enabled tools
+  mcpEndpoints: string[]; // IDs of MCP endpoints
+  a2aEndpoints: string[]; // IDs of Agent2Agent endpoints
+  configuration: {
+    url: string;
+    apiKey: string;
+    rateLimitPerMinute: number;
+    allowedIps: string[];
+    isEnabled: boolean;
+  };
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+// Agent input schema (for validation)
+export const agentInputSchema = z.object({
+  productId: z.string().min(1, "Product ID is required"),
+  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+  description: z.string(),
+  systemPrompt: z.string().optional(),
+  phases: z.array(z.nativeEnum(Phases)).default([]),
+  tags: z.array(z.string()).default([]),
+  collections: z.array(z.string()).default([]),
+  tools: z.array(z.string()).default([]),
+  mcpEndpoints: z.array(z.string()).default([]),
+  a2aEndpoints: z.array(z.string()).default([]),
+  configuration: z.object({
+    url: z.string().optional(),
+    apiKey: z.string().optional(),
+    rateLimitPerMinute: z.number().min(1).max(1000).default(60),
+    allowedIps: z.array(z.string()).default([]),
+    isEnabled: z.boolean().default(false),
+  }),
+});
+
+export type AgentInput = z.infer<typeof agentInputSchema>;
+
+// Tool schema for agent tools
+export interface AgentTool {
+  id: string;
+  name: string;
+  description: string;
+  provider: string;
+  apiKeyRequired: boolean;
+  isEnabled: boolean;
+  apiKey?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export const agentToolSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string(),
+  provider: z.string(),
+  apiKeyRequired: z.boolean().default(true),
+  isEnabled: z.boolean().default(false),
+  apiKey: z.string().optional(),
+});
+
+export type AgentToolInput = z.infer<typeof agentToolSchema>;
+
+// START: ERROR LOGGING
+export interface ErrorLog {
+  id: string;
+  userId?: string;
+  url: string;
+  userAgent: string;
+  errorCode: string;
+  errorMessage: string;
+  errorStack?: string;
+  errorType: "javascript" | "firebase" | "network" | "validation" | "unknown";
+  severity: "low" | "medium" | "high" | "critical";
+  component?: string; // Component where error occurred
+  action?: string; // Action being performed when error occurred
+  metadata?: Record<string, any>; // Additional context data
+  createdAt: number;
+  resolved?: boolean;
+  resolvedAt?: number;
+  resolvedBy?: string;
+}
+
+// Schema for error input validation
+export const errorLogInputSchema = z.object({
+  userId: z.string().optional(),
+  url: z.string(),
+  userAgent: z.string(),
+  errorCode: z.string(),
+  errorMessage: z.string(),
+  errorStack: z.string().optional(),
+  errorType: z
+    .enum(["javascript", "firebase", "network", "validation", "unknown"])
+    .default("unknown"),
+  severity: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  component: z.string().optional(),
+  action: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+export type ErrorLogInput = z.infer<typeof errorLogInputSchema>;
+// END: ERROR LOGGING
+// END: AGENTS

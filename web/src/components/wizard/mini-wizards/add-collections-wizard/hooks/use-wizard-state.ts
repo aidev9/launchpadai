@@ -2,7 +2,11 @@ import { useState, useEffect } from "react";
 import { useAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { useToast } from "@/hooks/use-toast";
-import { productAtom, collectionsAtom, Collection } from "@/lib/atoms/product";
+import {
+  productAtom,
+  collectionsAtom,
+  Collection,
+} from "@/lib/store/product-store";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
 import {
   createCollectionAction,

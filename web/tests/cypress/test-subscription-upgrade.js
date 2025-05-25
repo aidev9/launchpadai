@@ -72,7 +72,7 @@ function getPlanPrice(planType) {
       return 29;
     case "builder":
       return 59;
-    case "enterprise":
+    case "accelerator":
       return 99;
     default:
       return 0;

@@ -42,21 +42,31 @@ export async function getAllUsers() {
  */
 export async function getUserById(userId: string) {
   try {
+    console.log("[getUserById] Fetching user with ID:", userId);
     const userDoc = await adminDb.collection("users").doc(userId).get();
+    console.log("[getUserById] User document exists:", userDoc.exists);
 
     if (!userDoc.exists) {
+      console.log("[getUserById] User not found");
       return { success: false, error: "User not found" };
     }
 
+    const userData = {
+      uid: userDoc.id,
+      ...userDoc.data(),
+    } as UserProfile;
+
+    console.log(
+      "[getUserById] User data retrieved successfully:",
+      userData.email
+    );
+
     return {
       success: true,
-      user: {
-        uid: userDoc.id,
-        ...userDoc.data(),
-      } as UserProfile,
+      user: userData,
     };
   } catch (error) {
-    console.error(`Error fetching user ${userId}:`, error);
+    console.error(`[getUserById] Error fetching user ${userId}:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

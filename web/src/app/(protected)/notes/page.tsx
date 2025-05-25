@@ -6,8 +6,7 @@ import { selectedProductAtom } from "@/lib/store/product-store";
 import { NoteTable } from "./components/note-table";
 import { NotesPrimaryButtons } from "./components/notes-primary-buttons";
 import { NotesDialogs } from "./components/notes-dialogs";
-import { AlertCircle, PlusIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PlusIcon } from "lucide-react";
 import {
   Note,
   rowSelectionAtom,
@@ -35,6 +34,7 @@ import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { useCollectionData } from "react-firebase-hooks/firestore";
 import { firebaseNotes } from "@/lib/firebase/client/FirebaseNotes";
 import { FilterBar } from "@/components/ui/components/filter-bar";
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { Phases } from "@/lib/firebase/schema";
 import { NoteCard } from "./components/note-card";
 
@@ -182,6 +182,28 @@ export default function NotesPage() {
 
   const breadcrumbItems = [{ label: "Notes" }];
 
+  // Handle Firebase errors
+  if (firestoreError) {
+    return (
+      <Main>
+        <ErrorDisplay
+          error={firestoreError}
+          title="Note rockets are offline!"
+          message="Our note loading system hit some space debris. Mission control is working on it!"
+          onRetry={() => window.location.reload()}
+          retryText="Retry Launch"
+          component="Notes"
+          action="loading_notes"
+          metadata={{
+            productId: selectedProduct?.id,
+            phaseFilter,
+            searchQuery,
+          }}
+        />
+      </Main>
+    );
+  }
+
   return (
     <>
       <Main>
@@ -209,14 +231,6 @@ export default function NotesPage() {
             data-testid="notes-filter-bar"
           />
         </div>
-
-        {firestoreError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{firestoreError.message}</AlertDescription>
-          </Alert>
-        )}
 
         {isLoading ? (
           <div className="flex justify-center items-center h-64">

@@ -7,7 +7,7 @@ import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Collection paths
 const getCollectionPath = (userId: string) =>
-  `collections/${userId}/collections`;
+  `mycollections/${userId}/mycollections`;
 const getCollectionDoc = (userId: string, collectionId: string) =>
   `${getCollectionPath(userId)}/${collectionId}`;
 

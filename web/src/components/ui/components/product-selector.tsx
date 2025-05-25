@@ -21,24 +21,68 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { selectedProductAtom } from "@/lib/store/product-store";
+import {
+  selectedProductAtom,
+  selectedProductIdAtom,
+  productsAtom,
+} from "@/lib/store/product-store";
 import { Product } from "@/lib/firebase/schema";
-import { useProducts } from "@/hooks/useProducts";
+import { useCollectionData } from "react-firebase-hooks/firestore";
+import { firebaseProducts } from "@/lib/firebase/client/FirebaseProducts";
 import { useAtom } from "jotai";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { clientAuth } from "@/lib/firebase/client";
+import { ErrorDisplay } from "@/components/ui/error-display";
 
 interface ProductSelectorProps extends PopoverProps {}
 
 export function ProductSelector({ ...props }: ProductSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = useAtom(selectedProductAtom);
-  const { products, selectProduct, clearProductSelection } = useProducts();
+  const [selectedProductId, setSelectedProductId] = useAtom(
+    selectedProductIdAtom
+  );
+  const [products, setProducts] = useAtom(productsAtom);
+  const [user, authLoading] = useAuthState(clientAuth);
   const router = useRouter();
+
+  // Only create the query if user is authenticated
+  const productsQuery = user ? firebaseProducts.getProducts() : null;
+
+  const [firebaseProductsData, isLoading, error] = useCollectionData(
+    productsQuery,
+    {
+      snapshotListenOptions: { includeMetadataChanges: true },
+    }
+  );
+
+  // Sync Firebase data to products atom
+  React.useEffect(() => {
+    if (firebaseProductsData) {
+      const typedProducts = firebaseProductsData.map((p) => p as Product);
+      setProducts(typedProducts);
+    }
+  }, [firebaseProductsData, setProducts]);
+
+  // Helper functions
+  const selectProduct = React.useCallback(
+    async (productId: string) => {
+      setSelectedProductId(productId);
+      const product = products?.find((p) => p.id === productId) as Product;
+      if (product) {
+        setSelectedProduct(product);
+      }
+    },
+    [products, setSelectedProductId, setSelectedProduct]
+  );
+
+  const clearProductSelection = React.useCallback(() => {
+    setSelectedProductId(null);
+    setSelectedProduct(null);
+  }, [setSelectedProductId, setSelectedProduct]);
 
   // Track whether product selection is in progress
   const [selectionInProgress, setSelectionInProgress] = React.useState(false);
-  const [selectedProductId, setSelectedProductId] = React.useState<
-    string | null
-  >(null);
 
   // Use effect to monitor selection completion
   React.useEffect(() => {
@@ -54,15 +98,7 @@ export function ProductSelector({ ...props }: ProductSelectorProps) {
     setSelectedProductId(product.id);
 
     // Call the selectProduct function to store in localStorage and update the atom
-    const result = await selectProduct(product.id);
-
-    // Direct update to ensure the product is immediately available
-    if (result.success && result.product) {
-      setSelectedProduct(result.product);
-    } else {
-      // Clear selection in progress if failed
-      setSelectionInProgress(false);
-    }
+    await selectProduct(product.id);
   };
 
   const handleDeselectProduct = () => {
@@ -74,6 +110,40 @@ export function ProductSelector({ ...props }: ProductSelectorProps) {
     router.push("/welcome");
     setOpen(false);
   };
+
+  // Handle Firebase errors
+  if (error) {
+    return (
+      <div className="flex-1 md:max-w-[200px] lg:max-w-[300px]">
+        <ErrorDisplay
+          error={error}
+          title="Product rockets are offline!"
+          message="Our product loading system hit some space debris. Mission control is working on it!"
+          onRetry={() => window.location.reload()}
+          retryText="Retry Launch"
+          component="ProductSelector"
+          action="loading_products"
+          className="border rounded-lg p-4"
+        />
+      </div>
+    );
+  }
+
+  // Show loading state
+  if ((isLoading || authLoading) && products.length === 0) {
+    return (
+      <Button
+        variant="outline"
+        role="combobox"
+        aria-label="Loading products..."
+        className="flex-1 justify-between md:max-w-[200px] lg:max-w-[300px] opacity-50"
+        disabled
+      >
+        Loading products...
+        <ChevronsUpDown className="opacity-50" />
+      </Button>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen} {...props}>
@@ -95,22 +165,24 @@ export function ProductSelector({ ...props }: ProductSelectorProps) {
           <CommandList>
             <CommandEmpty>No products found.</CommandEmpty>
             <CommandGroup heading="Products">
-              {products.map((product) => (
-                <CommandItem
-                  key={product.id}
-                  onSelect={() => handleSelectProduct(product)}
-                >
-                  {product.name}
-                  <Check
-                    className={cn(
-                      "ml-auto",
-                      selectedProduct?.id === product.id
-                        ? "opacity-100"
-                        : "opacity-0"
-                    )}
-                  />
-                </CommandItem>
-              ))}
+              {products?.map((product) => {
+                return (
+                  <CommandItem
+                    key={product.id}
+                    onSelect={() => handleSelectProduct(product)}
+                  >
+                    {product.name}
+                    <Check
+                      className={cn(
+                        "ml-auto",
+                        selectedProduct?.id === product.id
+                          ? "opacity-100"
+                          : "opacity-0"
+                      )}
+                    />
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
             <CommandSeparator />
             <CommandGroup>

@@ -9,13 +9,13 @@ import {
 // Define types for user status and filters
 export type UserStatus = "active" | "inactive" | "invited" | "suspended";
 export type UserType = "user" | "admin" | "superadmin";
-export type SubscriptionLevel = "free" | "pro" | "enterprise";
+export type SubscriptionLevel = "free" | "explorer" | "builder" | "accelerator";
 
 // Table state atoms
 export const rowSelectionAtom = atom<Record<string, boolean>>({});
 export const columnVisibilityAtom = atom<VisibilityState>({});
 export const columnFiltersAtom = atom<ColumnFiltersState>([]);
-export const sortingAtom = atom<SortingState>([]);
+export const sortingAtom = atom<SortingState>([{ id: "createdAt", desc: true }]);
 export const usersAtom = atom<UserProfile[]>([]);
 export const isLoadingAtom = atom<boolean>(true);
 

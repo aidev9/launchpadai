@@ -10,6 +10,8 @@ import { useEffect, useState } from "react";
 import { getProduct } from "@/lib/firebase/products";
 import { Product } from "@/lib/firebase/schema";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
 
 interface ReviewStepProps {
   onSubmit: () => void;
@@ -61,9 +63,34 @@ export function ReviewStep({ onSubmit }: ReviewStepProps) {
   return (
     <div className="space-y-6">
       {isLoading ? (
-        <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        <Card className="p-6 border-t border-t-slate-200">
+          <div className="space-y-4">
+            <div>
+              <Skeleton className="h-5 w-20 mb-2" />
+              <Skeleton className="h-5 w-40" />
+            </div>
+            <div>
+              <Skeleton className="h-5 w-28 mb-2" />
+              <Skeleton className="h-5 w-48" />
+            </div>
+            <div>
+              <Skeleton className="h-5 w-24 mb-2" />
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-3/4 mt-1" />
+            </div>
+            <div>
+              <Skeleton className="h-5 w-16 mb-2" />
+              <Skeleton className="h-7 w-24" />
+            </div>
+            <div>
+              <Skeleton className="h-5 w-12 mb-2" />
+              <div className="flex gap-2">
+                <Skeleton className="h-7 w-20" />
+                <Skeleton className="h-7 w-24" />
+              </div>
+            </div>
+          </div>
+        </Card>
       ) : (
         <div className="space-y-4 border-t border-t-slate-200 pt-4">
           {/* Product */}

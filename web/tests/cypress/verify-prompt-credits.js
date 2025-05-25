@@ -76,7 +76,7 @@ function getExpectedCreditsByPlan(planType) {
       return { daily: 0, monthly: 300 };
     case "builder":
       return { daily: 0, monthly: 600 };
-    case "enterprise":
+    case "accelerator":
       return { daily: 0, monthly: 900 };
     default:
       return { daily: 10, monthly: 0 };

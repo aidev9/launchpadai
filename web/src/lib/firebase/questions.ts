@@ -7,7 +7,10 @@ import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 // Get the questionsRef for a specific user
 export function getUserQuestionsRef(userId: string) {
-  return adminDb.collection("questions").doc(userId).collection("questions");
+  return adminDb
+    .collection("myquestions")
+    .doc(userId)
+    .collection("myquestions");
 }
 
 // Schema for question creation/update

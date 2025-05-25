@@ -15,7 +15,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { rulesAtom, productAtom, selectedRulesAtom } from "@/lib/atoms/product";
+import {
+  rulesAtom,
+  productAtom,
+  selectedRulesAtom,
+} from "@/lib/store/product-store";
 import { firebaseRules } from "@/lib/firebase/client/FirebaseRules";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { clientAuth } from "@/lib/firebase/client";

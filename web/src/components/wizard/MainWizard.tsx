@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { MiniWizardId } from "@/lib/firebase/schema/enums";
@@ -16,7 +16,9 @@ import {
   selectedProductAtom,
   selectedBusinessStackAtom,
   selectedTechStackAtom,
-} from "@/lib/atoms/product";
+  autoSyncProductAtom,
+  initializeSelectedProductAtom,
+} from "@/lib/store/product-store";
 import WizardLayout from "./WizardLayout";
 import WizardIntroduction from "./WizardIntroduction";
 import WizardCelebration from "./WizardCelebration";
@@ -61,6 +63,14 @@ export default function MainWizard() {
   const [selectedProduct] = useAtom(selectedProductAtom);
   const [selectedBusinessStack] = useAtom(selectedBusinessStackAtom);
   const [selectedTechStack] = useAtom(selectedTechStackAtom);
+
+  // Initialize selected product from storage
+  const [, setInitialize] = useAtom(initializeSelectedProductAtom);
+
+  // Initialize the selected product on component mount
+  useEffect(() => {
+    setInitialize();
+  }, [setInitialize]);
 
   // Legacy state for celebration and completion tracking
   const [completedMiniWizards, setCompletedMiniWizards] = useAtom(

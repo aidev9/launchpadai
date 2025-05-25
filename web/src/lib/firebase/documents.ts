@@ -14,7 +14,7 @@ const bucket = adminStorage.bucket(
 );
 
 // Document paths
-const getDocumentPath = (userId: string) => `documents/${userId}/documents`;
+const getDocumentPath = (userId: string) => `mydocuments/${userId}/mydocuments`;
 const getDocumentDoc = (userId: string, documentId: string) =>
   `${getDocumentPath(userId)}/${documentId}`;
 

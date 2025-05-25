@@ -1,10 +1,6 @@
 "use client";
 
-import { useAtom } from "jotai";
 import { Coins, LucideCoins, ShoppingCart } from "lucide-react";
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { promptCreditsQueryAtom } from "@/stores/promptCreditStore";
 import {
   Tooltip,
   TooltipContent,
@@ -12,17 +8,24 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
+import { firebasePromptCredits } from "@/lib/firebase/client/FirebasePromptCredits";
+import { useDocumentData } from "react-firebase-hooks/firestore";
+import { clientAuth } from "@/lib/firebase/client";
 
 interface MiniCreditDisplayProps {
   className?: string;
 }
 
 export function MiniCreditDisplay({ className }: MiniCreditDisplayProps) {
-  // Fetch credits using the query atom (will update promptCreditsAtom)
-  const [{ data, isLoading }] = useAtom(promptCreditsQueryAtom);
   const router = useRouter();
+  
+  // Get the prompt credits reference using the FirebasePromptCredits class
+  const creditsRef = clientAuth.currentUser ? firebasePromptCredits.getPromptCreditsRef() : null;
+  
+  // Use React Firebase Hooks to get real-time data
+  const [credits, loading, error] = useDocumentData(creditsRef);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div
         className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-muted/30 ${className}`}
@@ -33,10 +36,14 @@ export function MiniCreditDisplay({ className }: MiniCreditDisplayProps) {
       </div>
     );
   }
+  
+  if (error) {
+    console.error("Error loading prompt credits:", error);
+  }
 
-  if (data) {
+  if (credits) {
     // Content to show based on credit status (zero credits shows "Buy Credits")
-    const remainingCredits = data.remainingCredits || 0;
+    const remainingCredits = credits.remainingCredits || 0;
     const isOutOfCredits = remainingCredits <= 0;
     const isLowCredits = remainingCredits <= 50;
     const creditDisplay = isOutOfCredits ? (
@@ -75,34 +82,7 @@ export function MiniCreditDisplay({ className }: MiniCreditDisplayProps) {
         </TooltipContent>
       </Tooltip>
 
-      // <Tooltip>
-      //  <TooltipTrigger asChild>
-      //     <Link href="/settings/prompt-credits/purchase">
-      //       <motion.div
-      //         className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:ring-1 hover:ring-amber-400 hover:brightness-105 transition-all ${
-      //           isOutOfCredits
-      //             ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
-      //             : isLowCredits
-      //               ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
-      //               : "bg-muted/50"
-      //         } ${className}`}
-      //         transition={{ duration: 0.3 }}
-      //         data-testid="credit-balance"
-      //       >
-      //         <span data-testid="credit-display">{creditDisplay}</span>
-      //       </motion.div>
-      //     </Link>
-      //   </TooltipTrigger>
-      //   <TooltipContent>
-      //     <p data-testid="credit-tooltip">
-      //       {isOutOfCredits
-      //         ? "You're out of credits! Click to purchase more."
-      //         : isLowCredits
-      //           ? "Low prompt credits! Click to purchase more."
-      //           : `${remainingCredits} prompt credits remaining. Click to buy more.`}
-      //     </p>
-      //   </TooltipContent>
-      // </Tooltip>
+
     );
   }
 }

@@ -28,6 +28,7 @@ import {
   IconCreditCard,
   IconStack,
   IconStackPush,
+  IconRobot,
 } from "@tabler/icons-react";
 import {
   AudioWaveform,
@@ -97,6 +98,11 @@ export const sidebarData: SidebarData = {
               title: "My Collections",
               url: "/mycollections",
               icon: IconBook,
+            },
+            {
+              title: "My Agents",
+              url: "/myagents",
+              icon: IconRobot,
             },
           ],
         },
@@ -199,6 +205,15 @@ export const sidebarData: SidebarData = {
           url: "/admin/analytics",
           icon: IconReportAnalytics,
         },
+        ...(isDev
+          ? [
+              {
+                title: "Test Questions",
+                url: "/test-questions",
+                icon: IconBug,
+              },
+            ]
+          : []),
       ],
     },
     {

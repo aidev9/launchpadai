@@ -2,6 +2,20 @@ import { atom } from "jotai";
 import { Phases, TechStack, TechStackAsset } from "@/lib/firebase/schema";
 import { Table, ColumnFiltersState, SortingState } from "@tanstack/react-table";
 
+/**
+ * TECH STACK MANAGEMENT STORE ATOMS
+ *
+ * These atoms are for managing collections of tech stacks in the stack management
+ * UI (like /mystacks pages). They handle CRUD operations, table state, filtering, etc.
+ *
+ * DO NOT USE THESE FOR WIZARD FLOW - use /lib/atoms/product.ts instead.
+ *
+ * Used by:
+ * - /mystacks pages and components
+ * - Tech stack table and management UI
+ * - Tech stack selection dropdowns in management pages
+ */
+
 // Layout view type
 export type LayoutViewType = "card" | "table";
 export const techStackLayoutViewAtom = atom<LayoutViewType>("card");

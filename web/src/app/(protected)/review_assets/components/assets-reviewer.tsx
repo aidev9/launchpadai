@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useCompletion } from "ai/react";
 import { useAtom } from "jotai";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import InsufficientCreditsAlert from "@/components/prompt-credits/insufficient-credits-alert";
@@ -80,7 +80,7 @@ interface AssetsReviewerContentProps {
 
 // Main component
 function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
   const [selectedPhases] = useAtom(selectedAssetPhasesAtom);
   const [selectedAssetId, setSelectedAssetId] = useState<string>("");
   const [assetContent, setAssetContent] = useState<string>("");
@@ -140,7 +140,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
 
     onFinish: async (prompt, completionText) => {
       const assetIdToPreserve = selectedAssetId;
-      if (!assetIdToPreserve || !selectedProductId) return;
+      if (!assetIdToPreserve || !selectedProduct) return;
 
       setAssetContent(completionText);
       setIsEditing(true);
@@ -157,7 +157,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         const { saveAsset } = await import("@/lib/firebase/assets");
         const assetToUpdate = firestoreAssets[assetIdToPreserve];
         if (assetToUpdate) {
-          await saveAsset(selectedProductId, {
+          await saveAsset(selectedProduct.id, {
             ...assetToUpdate,
             content: completionText,
           });
@@ -270,14 +270,14 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   // Load Firestore assets when product changes
   useEffect(() => {
     async function loadFirestoreAssets() {
-      if (!selectedProductId) return;
+      if (!selectedProduct) return;
 
       setIsLoading(true);
       try {
         const { getProductAssetsAction } = await import(
           "../actions/get-product-assets-action"
         );
-        const response = await getProductAssetsAction(selectedProductId);
+        const response = await getProductAssetsAction(selectedProduct.id);
 
         if (
           response.success &&
@@ -302,7 +302,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         const { getProjectNotesAction } = await import(
           "../actions/get-project-notes-action"
         );
-        const notesResponse = await getProjectNotesAction(selectedProductId);
+        const notesResponse = await getProjectNotesAction(selectedProduct.id);
 
         if (notesResponse.success && notesResponse.notes) {
           setNotes(notesResponse.notes as Note[]);
@@ -321,21 +321,21 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
     }
 
     loadFirestoreAssets();
-  }, [selectedProductId, onShowToast]);
+  }, [selectedProduct, onShowToast]);
 
   // Use the newly created asset ID to trigger immediate refresh and selection
   useEffect(() => {
     if (!newlyCreatedAssetId) return;
 
     const refreshAssets = async () => {
-      if (!selectedProductId) return;
+      if (!selectedProduct) return;
       setIsLoading(true);
       try {
         setSelectedAssetId(newlyCreatedAssetId);
         const { getProductAssetsAction } = await import(
           "../actions/get-product-assets-action"
         );
-        const response = await getProductAssetsAction(selectedProductId);
+        const response = await getProductAssetsAction(selectedProduct.id);
 
         if (
           response.success &&
@@ -395,7 +395,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
     refreshAssets();
   }, [
     newlyCreatedAssetId,
-    selectedProductId,
+    selectedProduct,
     setNewlyCreatedAssetId,
     selectedPhases,
     onShowToast,
@@ -421,7 +421,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   }, [selectedAssetId, firestoreAssets]);
 
   const handleSave = async () => {
-    if (!selectedAssetId || !selectedProductId) return;
+    if (!selectedAssetId || !selectedProduct) return;
 
     const selectedAsset = firestoreAssets[selectedAssetId];
     if (!selectedAsset) {
@@ -438,7 +438,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
     try {
       const { saveAssetAction } = await import("../actions/asset-actions");
       const response = await saveAssetAction({
-        productId: selectedProductId,
+        productId: selectedProduct.id,
         asset: {
           ...selectedAsset,
           content: assetContent,
@@ -481,28 +481,28 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   };
 
   const handleGenerate = useCallback(async () => {
-    if (!selectedAssetId || !selectedProductId) return;
+    if (!selectedAssetId || !selectedProduct) return;
 
     // Reset the insufficient credits state before attempting to generate
     setHasInsufficientCredits(false);
 
     await complete("", {
       body: {
-        productId: selectedProductId,
+        productId: selectedProduct.id,
         assetId: selectedAssetId,
       },
     });
-  }, [complete, selectedAssetId, selectedProductId]);
+  }, [complete, selectedAssetId, selectedProduct]);
 
   const handleDownload = async () => {
-    if (!selectedAssetId || !selectedProductId) return;
+    if (!selectedAssetId || !selectedProduct) return;
 
     try {
       const { downloadSingleAssetAction } = await import(
         "../actions/asset-actions"
       );
       const response = await downloadSingleAssetAction({
-        productId: selectedProductId,
+        productId: selectedProduct.id,
         assetId: selectedAssetId,
       });
 
@@ -548,7 +548,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   };
 
   const handleSaveNote = async () => {
-    if (!selectedProductId || !noteContent.trim()) {
+    if (!selectedProduct || !noteContent.trim()) {
       onShowToast({
         title: "Save Error",
         description: "Cannot save note without product selected or content.",
@@ -574,7 +574,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
 
       const { saveNoteAction } = await import("../actions/notes-actions");
       const response = await saveNoteAction({
-        productId: selectedProductId,
+        productId: selectedProduct.id,
         note: {
           id: noteId,
           note_body: note.note_body,
@@ -627,7 +627,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
   };
 
   const handleDelete = async () => {
-    if (!selectedAssetId || !selectedProductId) return;
+    if (!selectedAssetId || !selectedProduct) return;
 
     setIsDeleting(true);
     const assetIdToDelete = selectedAssetId;
@@ -649,7 +649,7 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
 
       const { deleteAssetAction } = await import("../actions/asset-actions");
       const response = await deleteAssetAction({
-        productId: selectedProductId,
+        productId: selectedProduct.id,
         assetId: assetIdToDelete,
       });
 
@@ -676,7 +676,9 @@ function AssetsReviewerContent({ onShowToast }: AssetsReviewerContentProps) {
         const { getProductAssetsAction } = await import(
           "../actions/get-product-assets-action"
         );
-        const refreshResponse = await getProductAssetsAction(selectedProductId);
+        const refreshResponse = await getProductAssetsAction(
+          selectedProduct.id
+        );
         if (
           refreshResponse.success &&
           "assets" in refreshResponse &&

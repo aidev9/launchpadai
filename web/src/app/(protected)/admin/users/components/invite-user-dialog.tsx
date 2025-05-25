@@ -203,7 +203,7 @@ export function InviteUserDialog({
                           <SelectItem value="free">Free</SelectItem>
                           <SelectItem value="explorer">Explorer</SelectItem>
                           <SelectItem value="builder">Builder</SelectItem>
-                          <SelectItem value="enterprise">Enterprise</SelectItem>
+                          <SelectItem value="accelerator">Accelerator</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

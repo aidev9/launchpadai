@@ -5,25 +5,26 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
 
 /**
- * Delete a user from Firebase Auth and Firestore
+ * Delete a user from Firebase Auth and mark as deleted in Firestore
  */
 export async function deleteUser(userId: string) {
   try {
     // Start a transaction-like operation
     let authDeleted = false;
-    let firestoreDeleted = false;
+    let firestoreUpdated = false;
     let error = null;
 
     // Step 1: Delete user auth record
     try {
       await adminAuth.deleteUser(userId);
       authDeleted = true;
+      console.log(`Successfully deleted user auth record for ${userId}`);
     } catch (err) {
       error = err;
       console.error(`Error deleting user auth record for ${userId}:`, err);
     }
 
-    // Step 2: Delete user data from Firestore
+    // Step 2: Mark user as deleted in Firestore
     try {
       // Instead of deleting the document, update it to mark as deleted
       await adminDb.collection("users").doc(userId).update({
@@ -31,32 +32,37 @@ export async function deleteUser(userId: string) {
         deletedAt: getCurrentUnixTimestamp(),
         updatedAt: getCurrentUnixTimestamp(),
       });
-      firestoreDeleted = true;
+      firestoreUpdated = true;
+      console.log(`Successfully marked user ${userId} as deleted in Firestore`);
     } catch (err) {
       error = err;
       console.error(
-        `Error deleting user data from Firestore for ${userId}:`,
+        `Error marking user as deleted in Firestore for ${userId}:`,
         err
       );
     }
 
     // Check results
-    if (firestoreDeleted) {
-      // Consider the operation successful if Firestore data is deleted
-      // Even if auth record deletion failed, we'll just log it but consider the operation successful
+    if (firestoreUpdated || authDeleted) {
+      // Consider the operation successful if either operation succeeded
       revalidatePath("/admin/users");
 
       if (!authDeleted) {
-        // Log the auth deletion failure but don't fail the operation
         console.warn(
           `Warning: User auth record for ${userId} was not deleted, but Firestore data was marked as deleted.`
+        );
+      }
+      
+      if (!firestoreUpdated) {
+        console.warn(
+          `Warning: User ${userId} was deleted from Auth but not marked as deleted in Firestore.`
         );
       }
 
       return { success: true };
     } else {
-      // Failed to delete Firestore data
-      const errorMessage = "Failed to delete user data from Firestore. ";
+      // Failed both operations
+      const errorMessage = "Failed to delete user from Auth and mark as deleted in Firestore.";
 
       return {
         success: false,

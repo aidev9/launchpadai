@@ -68,7 +68,7 @@ class FirebaseRules {
       this.auth = clientAuth;
       this.db = clientDb;
       this.storage = getStorage(clientApp);
-      this.collectionName = "my_rules_stacks";
+      this.collectionName = "myrulesstacks";
     } catch (error) {
       console.error("[FirebaseRules][constructor] Error initializing:", error);
       throw error;

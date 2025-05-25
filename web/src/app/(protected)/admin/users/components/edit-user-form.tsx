@@ -43,7 +43,7 @@ const formSchema = z.object({
   isEmailVerified: z.boolean().optional(),
   userType: z.enum(["user", "admin", "superadmin"]).optional(),
   subscription: z
-    .enum(["free", "explorer", "builder", "enterprise"])
+    .enum(["free", "explorer", "builder", "accelerator"])
     .optional(),
   xp: z.number().int().nonnegative().optional(),
   level: z.number().int().nonnegative().optional(),
@@ -211,7 +211,7 @@ export function EditUserForm({
                         <SelectItem value="free">Free</SelectItem>
                         <SelectItem value="explorer">Explorer</SelectItem>
                         <SelectItem value="builder">Builder</SelectItem>
-                        <SelectItem value="enterprise">Enterprise</SelectItem>
+                        <SelectItem value="accelerator">Accelerator</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

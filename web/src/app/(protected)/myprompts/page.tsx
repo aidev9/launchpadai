@@ -43,6 +43,7 @@ import {
 } from "@/lib/store/prompt-store";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { FilterBar } from "@/components/ui/components/filter-bar";
+import { ErrorDisplay } from "@/components/ui/error-display";
 import { useCollectionData } from "react-firebase-hooks/firestore";
 import { firebasePrompts } from "@/lib/firebase/client/FirebasePrompts";
 import { NotesPrimaryButtons } from "../notes/components/notes-primary-buttons";
@@ -308,6 +309,24 @@ export default function MyPrompts() {
     }
   };
 
+  // Handle Firebase errors
+  if (firestoreError) {
+    return (
+      <Main>
+        <ErrorDisplay
+          error={firestoreError}
+          title="Prompt rockets are offline!"
+          message="Our prompt loading system hit some space debris. Mission control is working on it!"
+          onRetry={() => window.location.reload()}
+          retryText="Retry Launch"
+          component="MyPrompts"
+          action="loading_prompts"
+          metadata={{ phaseFilter, searchQuery }}
+        />
+      </Main>
+    );
+  }
+
   return (
     <Main>
       <Breadcrumbs
@@ -370,7 +389,7 @@ export default function MyPrompts() {
       )}
 
       {/* Empty state */}
-      {!isLoading && !firestoreError && prompts.length === 0 && (
+      {!isLoading && prompts.length === 0 && (
         <div className="text-center py-12">
           <h2 className="text-xl font-semibold">No personal prompts found</h2>
           <p className="text-muted-foreground mt-2">
@@ -387,46 +406,40 @@ export default function MyPrompts() {
       )}
 
       {/* Prompt cards grid */}
-      {!isLoading &&
-        !firestoreError &&
-        prompts.length > 0 &&
-        layoutView === "card" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sortedPrompts.map((prompt) => (
-              <div
-                key={prompt.id}
-                ref={
-                  prompt.id === highlightedPromptId
-                    ? highlightedCardRef
-                    : undefined
-                }
-                className={`transition-all duration-300 ${prompt.id === highlightedPromptId ? "scale-[1.02]" : ""}`}
-              >
-                <PromptCard
-                  prompt={prompt}
-                  onClick={handlePromptClick}
-                  onEdit={handleEditPrompt}
-                  onDelete={handleDeletePrompt}
-                  onTagClick={handleTagClick}
-                />
-              </div>
-            ))}
-          </div>
-        )}
+      {!isLoading && prompts.length > 0 && layoutView === "card" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sortedPrompts.map((prompt) => (
+            <div
+              key={prompt.id}
+              ref={
+                prompt.id === highlightedPromptId
+                  ? highlightedCardRef
+                  : undefined
+              }
+              className={`transition-all duration-300 ${prompt.id === highlightedPromptId ? "scale-[1.02]" : ""}`}
+            >
+              <PromptCard
+                prompt={prompt}
+                onClick={handlePromptClick}
+                onEdit={handleEditPrompt}
+                onDelete={handleDeletePrompt}
+                onTagClick={handleTagClick}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Table view */}
-      {!isLoading &&
-        !firestoreError &&
-        prompts.length > 0 &&
-        layoutView === "table" && (
-          <PromptTable
-            data={sortedPrompts}
-            onEdit={handleEditPrompt}
-            onDelete={handleDeletePrompt}
-            onTagClick={handleTagClick}
-            onClick={handlePromptClick}
-          />
-        )}
+      {!isLoading && prompts.length > 0 && layoutView === "table" && (
+        <PromptTable
+          data={sortedPrompts}
+          onEdit={handleEditPrompt}
+          onDelete={handleDeletePrompt}
+          onTagClick={handleTagClick}
+          onClick={handlePromptClick}
+        />
+      )}
 
       {/* Prompt edit/create modal */}
       <PromptForm

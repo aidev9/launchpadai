@@ -23,7 +23,10 @@ function getUserProductsRef(userId: string) {
 
 // Get the questionsRef for a specific user
 function getUserQuestionsRef(userId: string) {
-  return adminDb.collection("questions").doc(userId).collection("questions");
+  return adminDb
+    .collection("myquestions")
+    .doc(userId)
+    .collection("myquestions");
 }
 
 // Schema for product creation/update
@@ -122,7 +125,7 @@ export async function createProduct(data: ProductInput) {
 async function createProductQuestions(userId: string, productId: string) {
   try {
     console.log(
-      `Creating questions for product ${productId} (user ${userId}) in questions collection`
+      `Creating questions for product ${productId} (user ${userId}) in myquestions collection`
     );
 
     // Prepare the questions data from static questions
@@ -144,7 +147,7 @@ async function createProductQuestions(userId: string, productId: string) {
 
     if (result.success) {
       console.log(
-        `Successfully created ${result.count} questions for product ${productId} in questions collection`
+        `Successfully created ${result.count} questions for product ${productId} in myquestions collection`
       );
       return result;
     } else {
@@ -176,7 +179,7 @@ async function createBulkQuestionsServerWrapper(
   }>
 ) {
   // We're going to use the Firebase Admin SDK to create the questions
-  // using the path questions/{userId}/questions with productId in each question
+  // using the path myquestions/{userId}/myquestions with productId in each question
 
   try {
     const userId = await getCurrentUserId();
@@ -188,11 +191,11 @@ async function createBulkQuestionsServerWrapper(
       };
     }
 
-    // Get a reference to the questions collection (UPDATED PATH)
+    // Get a reference to the questions collection (UPDATED PATH to match FirebaseQA)
     const questionsRef = adminDb
-      .collection("questions")
+      .collection("myquestions")
       .doc(userId)
-      .collection("questions");
+      .collection("myquestions");
 
     // Create a batch write
     const batch = adminDb.batch();

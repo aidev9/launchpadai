@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { notesAtom, productAtom, Note } from "@/lib/atoms/product";
+import { notesAtom, productAtom, Note } from "@/lib/store/product-store";
 import { PlusCircle, Save, Edit, Trash2 } from "lucide-react";
 import {
   Card,

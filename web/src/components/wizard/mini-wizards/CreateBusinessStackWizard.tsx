@@ -21,7 +21,7 @@ import {
   businessStackAtom,
   productAtom,
   selectedBusinessStackAtom,
-} from "@/lib/atoms/product";
+} from "@/lib/store/product-store";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Circle, X, ArrowRight } from "lucide-react";
 import { firebaseBusinessStacks } from "@/lib/firebase/client/FirebaseBusinessStacks";

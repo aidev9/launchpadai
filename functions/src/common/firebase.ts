@@ -88,9 +88,9 @@ export async function getCollectionData(
   collectionId: string
 ): Promise<CollectionMetadata> {
   const collectionRef = firestore
-    .collection("collections")
+    .collection("mycollections")
     .doc(userId)
-    .collection("collections")
+    .collection("mycollections")
     .doc(collectionId);
 
   try {
@@ -131,9 +131,9 @@ export async function getDocumentData(
   documentId: string
 ): Promise<DocumentData> {
   const documentRef = firestore
-    .collection("documents")
+    .collection("mydocuments")
     .doc(userId)
-    .collection("documents")
+    .collection("mydocuments")
     .doc(documentId);
 
   try {
@@ -180,9 +180,9 @@ export async function updateDocumentStatus(
   try {
     // Update document status
     const documentRef = firestore
-      .collection("documents")
+      .collection("mydocuments")
       .doc(userId)
-      .collection("documents")
+      .collection("mydocuments")
       .doc(documentId);
 
     // Check if document exists first
@@ -208,9 +208,9 @@ export async function updateCollectionStatus(
   try {
     // Update document status
     const documentRef = firestore
-      .collection("collections")
+      .collection("mycollections")
       .doc(userId)
-      .collection("collections")
+      .collection("mycollections")
       .doc(collectionId);
 
     // Check if document exists first

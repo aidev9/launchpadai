@@ -3,11 +3,13 @@
 import "@/app/globals.css";
 import Providers from "@/app/providers";
 import { useRouter } from "next/navigation";
-import { clientAuth } from "@/lib/firebase/client";
+import { clientAuth, clientDb } from "@/lib/firebase/client";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { useAtom, useSetAtom } from "jotai";
-import { setUserProfileAtom } from "@/lib/store/user-store";
+import { setUserProfileAtom, userProfileQueryAtom } from "@/lib/store/user-store";
+import { doc, getDoc } from "firebase/firestore";
+import { fetchUserProfile } from "@/lib/firebase/actions/profile";
 import { Header } from "@/components/layout/header";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
@@ -111,21 +113,74 @@ export default function RootLayout({
   const defaultOpen = Cookies.get("sidebar:state") !== "false";
 
   useEffect(() => {
+    // Set loading state while we initialize
+    setIsLoading(true);
+    
     // Initialize auth state
     const unsubscribe = onAuthStateChanged(clientAuth, async (user) => {
+      console.log("Auth state changed:", user ? `User: ${user.email}` : "No user");
+      
       if (!user) {
+        // User is signed out
         console.log("User is signed out");
-        await fetch("/api/auth/session", {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-        setUserProfile(null);
-        setIsLoading(false); // No user, not loading
-        setAuthError(null); // Clear any previous auth errors
-        router.push("/auth/signin");
-        router.refresh();
+        try {
+          await fetch("/api/auth/session", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+          // Clear user profile
+          setUserProfile(null);
+          setIsLoading(false);
+          setAuthError(null);
+          router.push("/auth/signin");
+          router.refresh();
+        } catch (error) {
+          console.error("Error during sign out:", error);
+          setIsLoading(false);
+        }
+      } else {
+        // User is signed in - refresh all user data
+        console.log("User is signed in, refreshing user data");
+        try {
+          // First, clear any previous user data from localStorage
+          // This is important to prevent data leakage between users
+          if (typeof window !== 'undefined') {
+            console.log("Clearing previous user data from localStorage");
+            // The actual clearing happens in the setUserProfile atom
+            // But we'll set to null first to ensure a clean slate
+            setUserProfile(null);
+          }
+          
+          // Fetch fresh user profile data
+          const result = await fetchUserProfile();
+          
+          if (result.success && result.profile) {
+            console.log("User profile refreshed successfully");
+            // Set the new user profile
+            setUserProfile(result.profile);
+          } else {
+            console.warn("Failed to fetch user profile");
+            // Try to get user data directly from Firestore as fallback
+            const userDoc = await getDoc(doc(clientDb, "users", user.uid));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              setUserProfile({
+                uid: user.uid,
+                ...userData,
+              });
+              console.log("User profile fetched from Firestore directly");
+            } else {
+              console.error("User document not found in Firestore");
+            }
+          }
+        } catch (error) {
+          console.error("Error refreshing user data:", error);
+          setAuthError("Failed to load user data. Please refresh the page.");
+        } finally {
+          setIsLoading(false);
+        }
       }
     });
 

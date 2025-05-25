@@ -14,14 +14,6 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   paceWizardStateAtom,
   updatePaceFieldAtom,
 } from "@/lib/store/pace-store";

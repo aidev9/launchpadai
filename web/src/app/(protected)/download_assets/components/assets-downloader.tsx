@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAtom } from "jotai";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,7 @@ import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { FirestoreAsset } from "@/lib/firebase/schema";
 
 export function AssetsDownloader() {
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
   const [selectedPhases] = useAtom(selectedPhasesAtom);
   const [selectedAssets, setSelectedAssets] = useAtom(selectedAssetsAtom);
   const [displayedAssets, setDisplayedAssets] = useState<FirestoreAsset[]>([]);
@@ -26,11 +26,11 @@ export function AssetsDownloader() {
   // Fetch assets from Firebase
   useEffect(() => {
     async function fetchAssets() {
-      if (!selectedProductId) return;
+      if (!selectedProduct?.id) return;
 
       setIsLoading(true);
       try {
-        const result = await getProductAssets(selectedProductId);
+        const result = await getProductAssets(selectedProduct.id);
         if (result.success && result.assets) {
           // Log the assets for debugging
           setAllAssets(result.assets as FirestoreAsset[]);
@@ -56,7 +56,7 @@ export function AssetsDownloader() {
     }
 
     fetchAssets();
-  }, [selectedProductId]);
+  }, [selectedProduct?.id]);
 
   // Filter assets based on selected phases
   useEffect(() => {

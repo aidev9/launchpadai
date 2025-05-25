@@ -206,7 +206,7 @@ export default function UpgradeForm({ currentSubscription }: UpgradeFormProps) {
           | "free"
           | "explorer"
           | "builder"
-          | "enterprise",
+          | "accelerator",
         status: "active",
         createdAt: getCurrentUnixTimestamp(),
       });

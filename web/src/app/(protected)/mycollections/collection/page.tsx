@@ -35,6 +35,7 @@ import FirebaseDocuments, {
   firebaseDocuments,
 } from "@/lib/firebase/client/FirebaseDocuments";
 import { ChatPanel } from "./components/chat-panel";
+import { ErrorDisplay } from "@/components/ui/error-display";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -315,13 +316,22 @@ export default function CollectionDetail() {
     }
   };
 
-  if (documentsError)
+  if (documentsError) {
     return (
-      <>
-        <strong>Connection error!</strong>
-        <p>{documentsError.message}</p>
-      </>
+      <Main>
+        <ErrorDisplay
+          error={documentsError}
+          title="Houston, we have a problem!"
+          message="Our data rockets are having trouble connecting to the mothership. Let's try launching again!"
+          onRetry={() => window.location.reload()}
+          retryText="Retry Launch"
+          component="CollectionDetail"
+          action="loading_documents"
+          metadata={{ collectionId: selectedCollection?.id }}
+        />
+      </Main>
     );
+  }
 
   if (documents) {
     const typedDocuments: Document[] = (documents as Document[]) || [];
@@ -444,16 +454,17 @@ export default function CollectionDetail() {
 
           <TabsContent value="documents" className="space-y-4">
             {documentsError && (
-              <div className="bg-destructive/15 text-destructive p-4 rounded-md">
-                <p>Error: {documentsError as string}</p>
-                <Button
-                  variant="outline"
-                  className="mt-2"
-                  onClick={() => router.refresh()}
-                >
-                  Try Again
-                </Button>
-              </div>
+              <ErrorDisplay
+                error={documentsError}
+                title="Document rockets are offline!"
+                message="Our document loading system hit some space debris. Mission control is working on it!"
+                onRetry={() => router.refresh()}
+                retryText="Reload Documents"
+                className="border rounded-lg"
+                component="CollectionDetail"
+                action="loading_documents_tab"
+                metadata={{ collectionId: selectedCollection?.id }}
+              />
             )}
 
             {documentsLoading ? (

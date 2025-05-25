@@ -108,6 +108,30 @@ export const xpActions: XpAction[] = [
     description: "Created a new collection with documents for a product",
     points: 50,
   },
+  {
+    id: "create_document",
+    name: "Create Document",
+    description: "Created a new document for a collection",
+    points: 50,
+  },
+  {
+    id: "create_a2a_endpoint",
+    name: "Create A2A Endpoint",
+    description: "Created a new A2A endpoint for a product",
+    points: 100,
+  },
+  {
+    id: "create_mcp_endpoint",
+    name: "Create MCP Endpoint",
+    description: "Created a new MCP endpoint for a product",
+    points: 100,
+  },
+  {
+    id: "create_agent",
+    name: "Create Agent",
+    description: "Created a new agent for a product",
+    points: 100,
+  },
 ];
 
 export default xpActions;

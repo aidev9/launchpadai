@@ -45,6 +45,7 @@ import { AppDetailsStep } from "./components/steps/app-details-step";
 import { PromptStep } from "./components/steps/prompt-step";
 import { DocumentationLinksStep } from "./components/steps/documentation-links-step";
 import { ReviewStep } from "./components/steps/review-step";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Import our step indicator component
 import { StepIndicator } from "./components/step-indicator";
@@ -278,8 +279,27 @@ export default function TechStackWizard() {
   return (
     <Main>
       {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="space-y-6 p-6">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+          <div className="space-y-4">
+            <div className="flex gap-2 flex-wrap">
+              {[...Array(11)].map((_, i) => (
+                <Skeleton key={i} className="h-8 w-20" />
+              ))}
+            </div>
+            <div className="border rounded-lg p-6 space-y-4">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64" />
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-10 w-1/3" />
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <>

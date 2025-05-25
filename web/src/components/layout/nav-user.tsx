@@ -28,15 +28,26 @@ import {
 import { User } from "firebase/auth";
 import { SignOutHelper } from "@/lib/firebase/client";
 import { useRouter } from "next/navigation";
-import { useAtom } from "jotai";
-import { isAdminAtom, userProfileAtom } from "@/lib/store/user-store";
+import { useDocumentData } from "react-firebase-hooks/firestore";
+import { firebaseUsers } from "@/lib/firebase/client/FirebaseUsers";
 
 export function NavUser({ user }: { user: User | null }) {
   const { isMobile } = useSidebar();
   const router = useRouter();
   const signOutAndClearProfile = SignOutHelper();
-  const [isAdmin] = useAtom(isAdminAtom);
-  const [userProfile] = useAtom(userProfileAtom);
+  
+  // Get the user reference using the FirebaseUsers class
+  const userRef = user ? firebaseUsers.getRefUser() : null;
+  
+  // Use React Firebase Hooks to get real-time user profile data
+  const [userProfile, loading, error] = useDocumentData(userRef);
+  
+  // Check if user is admin based on the profile data
+  const isAdmin = userProfile?.userType === "admin" || userProfile?.userType === "superadmin";
+  
+  if (error) {
+    console.error("Error loading user profile for nav user:", error);
+  }
 
   function getInitials(displayName: string | null): import("react").ReactNode {
     // If displayName is null or empty, return a fallback

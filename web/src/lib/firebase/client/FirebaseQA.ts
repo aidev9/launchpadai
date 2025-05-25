@@ -65,7 +65,7 @@ class FirebaseQA {
       this.auth = clientAuth;
       this.db = clientDb;
       this.storage = getStorage(clientApp);
-      this.collectionName = "questions";
+      this.collectionName = "myquestions";
     } catch (error) {
       console.error("[FirebaseQA][constructor] Error initializing:", error);
       throw error;
@@ -177,6 +177,98 @@ class FirebaseQA {
     } catch (error) {
       console.error("[FirebaseQA][createQuestion] Error:", error);
       return null;
+    }
+  }
+
+  /**
+   * Create multiple questions in batch (alternative interface)
+   * @param questionsData Array of question data objects with productId included
+   * @returns Promise with success status and count of created questions
+   */
+  async bulkCreateQuestions(
+    questionsData: Array<
+      Omit<Question, "id" | "createdAt" | "updatedAt"> & { productId: string }
+    >
+  ): Promise<{ success: boolean; count: number; error?: string }> {
+    try {
+      if (!this.auth.currentUser) {
+        console.log("[FirebaseQA][bulkCreateQuestions] No authenticated user");
+        return {
+          success: false,
+          count: 0,
+          error: "User not authenticated",
+        };
+      }
+
+      if (!questionsData || questionsData.length === 0) {
+        console.log(
+          "[FirebaseQA][bulkCreateQuestions] No questions data provided"
+        );
+        return {
+          success: false,
+          count: 0,
+          error: "Questions data is required",
+        };
+      }
+
+      // Get the reference to the questions collection
+      const questionsRef = this.getRefCollection();
+
+      // Create a batch
+      const batch = writeBatch(this.db);
+      let count = 0;
+
+      // Current timestamp
+      const timestamp = getCurrentUnixTimestamp();
+
+      // Add each question to the batch
+      for (const questionData of questionsData) {
+        try {
+          // Generate a unique document ID and get reference
+          const questionRef = doc(questionsRef);
+
+          // Create a complete question with ID field to satisfy the converter
+          const question: Question = {
+            id: questionRef.id, // Add id field to work with the converter
+            ...questionData,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          };
+
+          // Set in batch using the converter
+          batch.set(questionRef, question);
+          count++;
+        } catch (error) {
+          console.error(
+            "[FirebaseQA][bulkCreateQuestions] Error adding question to batch:",
+            error
+          );
+          // Continue with other questions
+        }
+      }
+
+      if (count === 0) {
+        return {
+          success: false,
+          count: 0,
+          error: "Failed to prepare any questions for creation",
+        };
+      }
+
+      // Commit the batch
+      await batch.commit();
+
+      return {
+        success: true,
+        count,
+      };
+    } catch (error) {
+      console.error("[FirebaseQA][bulkCreateQuestions] Error:", error);
+      return {
+        success: false,
+        count: 0,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   }
 

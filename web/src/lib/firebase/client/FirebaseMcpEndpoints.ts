@@ -60,7 +60,7 @@ class FirebaseMcpEndpoints {
       );
 
       this.storage = getStorage(clientApp);
-      this.collectionName = "mcp_endpoints";
+      this.collectionName = "mcpendpoints";
     } catch (error) {
       console.error(
         "[FirebaseMcpEndpoints][constructor] Error initializing:",

@@ -26,8 +26,9 @@ const userTypes = [
 // Subscription levels
 const subscriptionLevels = [
   { label: "Free", value: "free" },
-  { label: "Pro", value: "pro" },
-  { label: "Enterprise", value: "enterprise" },
+  { label: "Explorer", value: "explorer" },
+  { label: "Builder", value: "builder" },
+  { label: "Accelerator", value: "accelerator" },
 ];
 
 interface UsersTableToolbarProps {

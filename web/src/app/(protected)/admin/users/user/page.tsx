@@ -417,7 +417,7 @@ export default function UserDetailPage() {
                 </div>
                 <Badge
                   variant={
-                    userData.subscription === "enterprise"
+                    userData.subscription === "accelerator"
                       ? "default"
                       : "outline"
                   }

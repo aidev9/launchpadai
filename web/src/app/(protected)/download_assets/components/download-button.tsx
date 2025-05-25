@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAtom } from "jotai";
-import { selectedProductIdAtom } from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { Button } from "@/components/ui/button";
 import { PackageOpen, AlertCircle, Download, Check } from "lucide-react";
 import { selectedPromptsAtom } from "./prompts-column";
@@ -19,7 +19,7 @@ interface DownloadButtonProps {
 }
 
 export function DownloadButton({ onShowToast }: DownloadButtonProps) {
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
+  const [selectedProduct] = useAtom(selectedProductAtom);
   const [selectedAssets] = useAtom(selectedAssetsAtom);
   const [selectedPrompts] = useAtom(selectedPromptsAtom);
   const [downloadStatus, setDownloadStatus] = useState<
@@ -30,7 +30,7 @@ export function DownloadButton({ onShowToast }: DownloadButtonProps) {
   const xpMutation = useXpMutation();
 
   const handleDownload = async () => {
-    if (!selectedProductId) {
+    if (!selectedProduct?.id) {
       onShowToast({
         title: "Error",
         description: "No product selected",
@@ -58,7 +58,7 @@ export function DownloadButton({ onShowToast }: DownloadButtonProps) {
     try {
       // Call the server action
       const result = await downloadAssets({
-        productId: selectedProductId,
+        productId: selectedProduct?.id,
         assetIds,
         promptIds: selectedPrompts,
       });

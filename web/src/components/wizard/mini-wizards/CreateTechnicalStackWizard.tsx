@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { firebaseStacks } from "@/lib/firebase/client/FirebaseStacks";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { clientAuth } from "@/lib/firebase/client";
-import { productAtom, selectedTechStackAtom } from "@/lib/atoms/product";
+import { productAtom, selectedTechStackAtom } from "@/lib/store/product-store";
 import { globalWizardStepAtom } from "@/lib/atoms/wizard";
 import { techStackWizardStateAtom } from "@/lib/store/techstack-store";
 import { CheckCircle2, Circle, ArrowRight } from "lucide-react";

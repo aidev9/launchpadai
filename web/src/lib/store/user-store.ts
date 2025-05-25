@@ -1,15 +1,28 @@
 "use client";
 
 import { atom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
+import { atomWithStorage, RESET } from "jotai/utils";
 import { UserProfile } from "../firebase/schema";
 import { atomWithQuery } from "jotai-tanstack-query";
 import { fetchUserProfile } from "@/lib/firebase/actions/profile";
 import { launchpadAiStore } from "./general-store";
 
+// Storage key for user profile
+const USER_PROFILE_STORAGE_KEY = "userProfile";
+
+// Function to clear all user-related data from localStorage
+const clearUserDataFromStorage = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(USER_PROFILE_STORAGE_KEY);
+    // Clear any other user-related data from localStorage
+    localStorage.removeItem("accountSettings");
+    // Add any other user-related storage keys that need to be cleared
+  }
+};
+
 // Create a persistent storage atom for user profile
 export const userProfileAtom = atomWithStorage<UserProfile | null>(
-  "userProfile",
+  USER_PROFILE_STORAGE_KEY,
   null
 );
 
@@ -21,6 +34,9 @@ export const userProfileQueryAtom = atomWithQuery<UserProfile | null>(
       try {
         const result = await fetchUserProfile();
         if (result.success && result.profile) {
+          // Clear any previous user data first
+          clearUserDataFromStorage();
+          // Then set the new user profile
           launchpadAiStore.set(userProfileAtom, result.profile);
           return result.profile;
         }
@@ -52,7 +68,18 @@ export const getCurrentUserProfileAtom = atom((get) => get(userProfileAtom));
 // Action atoms for updating user profile
 export const setUserProfileAtom = atom(
   null,
-  (_, set, userProfile: UserProfile | null) => {
+  (get, set, userProfile: UserProfile | null) => {
+    // If setting to null (logout), clear storage
+    if (userProfile === null) {
+      clearUserDataFromStorage();
+    } else if (userProfile) {
+      // If setting a new user profile, ensure we're not mixing data with previous user
+      const currentUserId = get(userProfileAtom)?.uid;
+      if (currentUserId && currentUserId !== userProfile.uid) {
+        // Different user, clear previous data first
+        clearUserDataFromStorage();
+      }
+    }
     set(userProfileAtom, userProfile);
   }
 );
@@ -70,6 +97,9 @@ export const updateUserProfileAtom = atom(
 
 // Atom to clear user profile (for logout)
 export const clearUserProfileAtom = atom(null, (_, set) => {
+  // Clear from localStorage
+  clearUserDataFromStorage();
+  // Reset the atom
   set(userProfileAtom, null);
 });
 

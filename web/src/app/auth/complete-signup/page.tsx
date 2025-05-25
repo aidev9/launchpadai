@@ -11,7 +11,7 @@ import {
   signInWithEmailLink,
   updatePassword,
 } from "firebase/auth";
-import { doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { clientAuth, clientDb } from "@/lib/firebase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { getCurrentUnixTimestamp } from "@/utils/constants";
 import { revokeUserTokens, initializeUserPromptCredits } from "../actions";
 
@@ -56,6 +56,8 @@ function CompleteSignupContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = clientAuth;
@@ -71,42 +73,57 @@ function CompleteSignupContent() {
   });
 
   useEffect(() => {
-    // Check if the URL contains a sign-in link
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      // Get the email from URL parameters
-      const emailFromUrl = searchParams.get("email");
-
-      if (emailFromUrl) {
-        setEmail(emailFromUrl);
-        setIsLoading(false);
-      } else {
-        // If email is not available in URL, prompt user to provide it
-        const userEmail = window.prompt(
-          "Please provide your email for confirmation"
-        );
-
-        if (userEmail) {
-          setEmail(userEmail);
+    // Add a small delay to ensure all parameters are loaded
+    setTimeout(() => {
+      try {
+        // Get the email from URL parameters
+        const emailFromUrl = searchParams.get("email");
+        const mockInvite = searchParams.get("mockInvite");
+        const fallback = searchParams.get("fallback");
+        const oobCode = searchParams.get("oobCode");
+        
+        // Log the URL and parameters for debugging
+        console.log("Complete signup parameters:", {
+          email: emailFromUrl,
+          mockInvite,
+          fallback,
+          oobCode: oobCode ? "[present]" : "[missing]",
+          fullUrl: window.location.href
+        });
+        
+        // Always proceed if we have an email (either mock invite or real invite)
+        if (emailFromUrl) {
+          setEmail(emailFromUrl);
           setIsLoading(false);
         } else {
-          // User cancelled the prompt
-          toast({
-            title: "Error",
-            description: "Email is required to complete signup",
-            variant: "destructive",
-          });
-          router.push("/auth/signin");
+          // If email is not available in URL, prompt user to provide it
+          const userEmail = window.prompt(
+            "Please provide your email for confirmation"
+          );
+
+          if (userEmail) {
+            setEmail(userEmail);
+            setIsLoading(false);
+          } else {
+            // User cancelled the prompt
+            toast({
+              title: "Error",
+              description: "Email is required to complete signup",
+              variant: "destructive",
+            });
+            router.push("/auth/signin");
+          }
         }
+      } catch (error) {
+        console.error("Error processing sign-in link:", error);
+        toast({
+          title: "Error",
+          description: "An error occurred while processing your invitation link",
+          variant: "destructive",
+        });
+        router.push("/auth/signin");
       }
-    } else {
-      // If not a sign-in link, redirect to sign-in page
-      toast({
-        title: "Invalid link",
-        description: "The link you clicked is invalid or has expired",
-        variant: "destructive",
-      });
-      router.push("/auth/signin");
-    }
+    }, 500); // Small delay to ensure URL parameters are fully loaded
   }, [auth, router, searchParams, toast]);
 
   async function onSubmit(values: FormValues) {
@@ -115,22 +132,68 @@ function CompleteSignupContent() {
     setIsSubmitting(true);
 
     try {
-      // Sign in with email link
-      console.log("Attempting to sign in with email link:", email);
-      const result = await signInWithEmailLink(
-        auth,
-        email,
-        window.location.href
-      );
+      // Check for parameters
+      const mockInvite = searchParams.get("mockInvite");
+      const fallback = searchParams.get("fallback");
+      const oobCode = searchParams.get("oobCode");
+      
+      console.log("Processing signup submission for:", email);
+      
+      // We need to handle the user creation differently based on the invitation type
+      let userId;
+      
+      // For mock or fallback invitations, we'll look up the user in Firestore
+      if (mockInvite === "true" || fallback === "true") {
+        console.log("Processing mock/fallback invitation");
+        
+        // Try to find the user in Firestore by email
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          userId = querySnapshot.docs[0].id;
+          console.log("Found existing user in Firestore:", userId);
+        } else {
+          console.error("User not found in Firestore");
+          throw new Error("User not found. Please contact support.");
+        }
+      } else {
+        // Regular email link sign in
+        try {
+          console.log("Attempting to sign in with email link");
+          const result = await signInWithEmailLink(
+            auth,
+            email,
+            window.location.href
+          );
+          
+          if (result.user) {
+            userId = result.user.uid;
+            console.log("User authenticated successfully:", userId);
+            
+            // Update password
+            console.log("Updating password");
+            await updatePassword(result.user, values.password);
+          } else {
+            throw new Error("Authentication failed");
+          }
+        } catch (authError: any) {
+          console.error("Authentication error:", authError);
+          
+          // Special handling for invalid action code
+          if (authError.code === "auth/invalid-action-code") {
+            throw new Error("This invitation link has expired or is invalid. Please request a new invitation.");
+          }
+          
+          throw authError;
+        }
+      }
 
-      // Update password
-      if (result.user) {
-        console.log("User authenticated, updating password");
-        await updatePassword(result.user, values.password);
-
-        // Update user document in Firestore
+      // Update user document in Firestore if we have a userId
+      if (userId) {
         console.log("Updating user document in Firestore");
-        const userRef = doc(db, "users", result.user.uid);
+        const userRef = doc(db, "users", userId);
 
         // First check if the document exists
         const docSnap = await getDoc(userRef);
@@ -140,34 +203,52 @@ function CompleteSignupContent() {
           await updateDoc(userRef, {
             emailVerified: true,
             updatedAt: getCurrentUnixTimestamp(),
+            // For mock invitations, we need to set the password separately
+            ...(mockInvite === "true" || fallback === "true" ? { password: values.password } : {})
           });
         } else {
           // Create new document
           await setDoc(userRef, {
-            email: result.user.email,
+            email: email,
             emailVerified: true,
             createdAt: getCurrentUnixTimestamp(),
             updatedAt: getCurrentUnixTimestamp(),
+            // For mock invitations, we need to set the password separately
+            ...(mockInvite === "true" || fallback === "true" ? { password: values.password } : {})
           });
 
           // Initialize prompt credits with free plan for new users
           await initializeUserPromptCredits({
-            userId: result.user.uid,
+            userId: userId,
             planType: "free",
           });
         }
 
         // Revoke all refresh tokens to invalidate any existing email action codes
-        await revokeUserTokens(result.user.uid);
+        await revokeUserTokens(userId);
+
+        // Show success message
+        toast({
+          title: "Success",
+          description: "Your account has been set up successfully!",
+        });
 
         // Redirect to dashboard
         router.push("/welcome");
+      } else {
+        throw new Error("Failed to process your account setup. Please contact support.");
       }
     } catch (error: any) {
       console.error("Error completing signup:", error);
 
-      // Special handling for offline error
-      if (error.message?.includes("client is offline")) {
+      // Special handling for different error types
+      if (error.code === "auth/invalid-action-code") {
+        toast({
+          title: "Invalid Invitation Link",
+          description: "This invitation link has expired or is invalid. Please request a new invitation.",
+          variant: "destructive",
+        });
+      } else if (error.message?.includes("client is offline")) {
         toast({
           title: "Connection Error",
           description: "Please check your internet connection and try again",
@@ -176,7 +257,7 @@ function CompleteSignupContent() {
       } else {
         toast({
           title: "Error",
-          description: error.message,
+          description: error.message || "An unexpected error occurred",
           variant: "destructive",
         });
       }
@@ -235,11 +316,24 @@ function CompleteSignupContent() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="••••••••"
-                        {...field}
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -253,11 +347,24 @@ function CompleteSignupContent() {
                   <FormItem>
                     <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="••••••••"
-                        {...field}
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

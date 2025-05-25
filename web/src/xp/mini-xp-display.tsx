@@ -1,23 +1,28 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import { useAtom } from "jotai";
-import { userProfileQueryAtom } from "@/lib/store/user-store";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { firebaseUsers } from "@/lib/firebase/client/FirebaseUsers";
+import { useDocumentData } from "react-firebase-hooks/firestore";
+import { clientAuth } from "@/lib/firebase/client";
 
 interface XpDisplayProps {
   className?: string;
 }
 
 export function XpDisplay({ className }: XpDisplayProps) {
-  const [{ data, isLoading }] = useAtom(userProfileQueryAtom);
+  // Get the user reference using the FirebaseUsers class
+  const userRef = clientAuth.currentUser ? firebaseUsers.getRefUser() : null;
+  
+  // Use React Firebase Hooks to get real-time data
+  const [profile, loading, error] = useDocumentData(userRef);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div
         className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-muted/30 ${className}`}
@@ -28,8 +33,12 @@ export function XpDisplay({ className }: XpDisplayProps) {
     );
   }
 
-  if (data) {
-    const xp = data.xp || 0;
+  if (error) {
+    console.error("Error loading XP:", error);
+  }
+
+  if (profile) {
+    const xp = profile.xp || 0;
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -37,6 +46,7 @@ export function XpDisplay({ className }: XpDisplayProps) {
             variant="outline"
             size="sm"
             className="h-7 px-2 rounded-full hover:border-amber-400"
+            data-testid="xp-display"
           >
             <Sparkles className="h-4 w-4 mr-0 fill-amber-500 stroke-0" />
             <span className="text-xs font-medium">{xp} XP</span>
@@ -52,6 +62,9 @@ export function XpDisplay({ className }: XpDisplayProps) {
       </Tooltip>
     );
   }
+  
+  // Fallback if no profile is available
+  return null;
 }
 
 export default XpDisplay;

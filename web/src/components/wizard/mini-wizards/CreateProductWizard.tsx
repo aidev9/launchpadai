@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { productAtom, selectedProductAtom } from "@/lib/atoms/product";
+import { productAtom, selectedProductAtom } from "@/lib/store/product-store";
 import { useToast } from "@/components/ui/use-toast";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PHASES } from "@/app/(protected)/myproducts/components/phase-filter";
@@ -93,6 +93,9 @@ export default function CreateProductWizard({
 }) {
   const [user, loading, error] = useAuthState(clientAuth);
   const { toast } = useToast();
+  const lastToastRef = React.useRef<{ step: number; type: string } | null>(
+    null
+  );
   const [product, setProduct] = useAtom(productAtom);
   const [selectedProduct, setSelectedProduct] = useAtom(selectedProductAtom);
   const [globalStep] = useAtom(globalWizardStepAtom);
@@ -186,31 +189,46 @@ export default function CreateProductWizard({
             const hasName = !!form.getValues().name;
             const hasDescription = !!form.getValues().description;
             if (!hasName || !hasDescription) {
-              toast({
-                title: "Validation Error",
-                description:
-                  "Product name and description are required to continue.",
-                variant: "destructive",
-              });
+              // if (!lastToastRef.current || lastToastRef.current.step !== 1 || lastToastRef.current.type !== "missing-basics") {
+              //   toast({
+              //     title: "Validation Error",
+              //     description: "Product name and description are required to continue.",
+              //     variant: "destructive",
+              //   });
+              //   lastToastRef.current = { step: 1, type: "missing-basics" };
+              // }
               return false;
+            } else {
+              lastToastRef.current = null;
             }
             return true;
           }
           if (validatedStep === 2) {
+            lastToastRef.current = null;
             return true; // Step 2 is optional
           }
           if (validatedStep === 3) {
             const isValid = form.formState.isValid;
             if (!isValid) {
-              toast({
-                title: "Validation Error",
-                description: "Please fix the form errors before continuing.",
-                variant: "destructive",
-              });
+              if (
+                !lastToastRef.current ||
+                lastToastRef.current.step !== 3 ||
+                lastToastRef.current.type !== "invalid-form"
+              ) {
+                toast({
+                  title: "Validation Error",
+                  description: "Please fix the form errors before continuing.",
+                  variant: "destructive",
+                });
+                lastToastRef.current = { step: 3, type: "invalid-form" };
+              }
               return false;
+            } else {
+              lastToastRef.current = null;
             }
             return true;
           }
+          lastToastRef.current = null;
           return false;
         },
         canGoBack: () => validatedStep > 1,
@@ -402,11 +420,17 @@ export default function CreateProductWizard({
         error instanceof Error ? error.message : "An error occurred"
       );
       const isUpdate = selectedProduct && selectedProduct.id;
-      toast({
-        title: "Error",
-        description: `Failed to ${isUpdate ? "update" : "create"} product. Please try again.`,
-        variant: "destructive",
-      });
+      if (
+        !lastToastRef.current ||
+        lastToastRef.current.type !== "submit-error"
+      ) {
+        toast({
+          title: "Error",
+          description: `Failed to ${isUpdate ? "update" : "create"} product. Please try again.`,
+          variant: "destructive",
+        });
+        lastToastRef.current = { step: validatedStep, type: "submit-error" };
+      }
       setIsSubmitting(false);
     }
   }

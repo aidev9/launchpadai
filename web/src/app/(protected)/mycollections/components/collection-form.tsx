@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAtom } from "jotai";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useAuthState } from "react-firebase-hooks/auth";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,6 @@ import {
   collectionInputSchema,
   CollectionStatus,
 } from "@/lib/firebase/schema";
-import { createCollectionAction, updateCollectionAction } from "../actions";
 import {
   collectionModalOpenAtom,
   isEditingCollectionAtom,
@@ -41,9 +41,9 @@ import {
 } from "@/lib/store/collection-store";
 import { TOAST_DEFAULT_DURATION } from "@/utils/constants";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { getCurrentUnixTimestamp } from "@/utils/constants";
-import { useCollections } from "@/hooks/useCollections";
 import { selectedProductAtom } from "@/lib/store/product-store";
+import { firebaseCollections } from "@/lib/firebase/client/FirebaseCollections";
+import { clientAuth } from "@/lib/firebase/client";
 
 export function CollectionForm() {
   const [isOpen, setIsOpen] = useAtom(collectionModalOpenAtom);
@@ -56,8 +56,10 @@ export function CollectionForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const { toast } = useToast();
-  const { fetchAllCollections } = useCollections();
   const [selectedProduct, setSelectedProduct] = useAtom(selectedProductAtom);
+
+  // Use React Firebase Hooks for authentication
+  const [user, loading, error] = useAuthState(clientAuth);
 
   // Initialize form with default values or selected collection data
   const form = useForm({
@@ -95,6 +97,17 @@ export function CollectionForm() {
   // Handle form submission
   async function onSubmit(data: CollectionInput) {
     console.log("Submitted data:", data);
+
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create or update collections",
+        variant: "destructive",
+        duration: TOAST_DEFAULT_DURATION,
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       console.log("Submitting form with data:", data);
@@ -103,21 +116,16 @@ export function CollectionForm() {
       setIsOpen(false);
 
       if (isEditing && selectedCollection) {
-        // Update existing collection
+        // Update existing collection using FirebaseCollections directly
         console.log("Updating collection:", selectedCollection.id);
-        const result = await updateCollectionAction(
+
+        const updatedCollection = await firebaseCollections.updateCollection(
           selectedCollection.id,
           data
         );
-        console.log("Update result:", result);
 
-        if (result.success) {
+        if (updatedCollection) {
           // Update the collection in the store directly
-          const updatedCollection: Collection = {
-            ...selectedCollection,
-            ...data,
-            updatedAt: getCurrentUnixTimestamp(),
-          };
           updateCollectionAtom(updatedCollection);
 
           toast({
@@ -126,30 +134,26 @@ export function CollectionForm() {
             duration: TOAST_DEFAULT_DURATION,
           });
         } else {
-          throw new Error(result.error || "Failed to update collection");
+          throw new Error("Failed to update collection");
         }
       } else {
-        // Create new collection
+        // Create new collection using FirebaseCollections directly
         console.log("Creating new collection");
 
-        const result = await createCollectionAction({
+        const newCollection = await firebaseCollections.createCollection({
           ...data,
           productId: selectedProduct?.id || "",
           // Initialize with empty arrays if not provided
           phaseTags: data.phaseTags || [],
           tags: data.tags || [],
         });
-        console.log("Create result:", result);
 
-        if (result.success && result.collection) {
+        if (newCollection) {
           // Add the collection to the store directly
-          addCollectionAtom(result.collection);
-
-          // Force a refresh of the collections from the server without showing loading spinner
-          fetchAllCollections(true, false);
+          addCollectionAtom(newCollection);
 
           // Set the newly created collection as selected
-          setSelectedCollection(result.collection);
+          setSelectedCollection(newCollection);
 
           toast({
             title: "Collection created",
@@ -157,7 +161,7 @@ export function CollectionForm() {
             duration: TOAST_DEFAULT_DURATION,
           });
         } else {
-          throw new Error(result.error || "Failed to create collection");
+          throw new Error("Failed to create collection");
         }
       }
     } catch (error) {
@@ -201,6 +205,17 @@ export function CollectionForm() {
     if (!isEditing) {
       form.reset();
     }
+  }
+
+  // Show loading state if authentication is still loading
+  if (loading) {
+    return null;
+  }
+
+  // Show error if authentication failed
+  if (error) {
+    console.error("Authentication error:", error);
+    return null;
   }
 
   return (

@@ -26,6 +26,11 @@ import {
   techStackLayoutViewAtom,
 } from "@/lib/store/techstack-store";
 import {
+  agentLayoutViewAtom,
+  agentPhaseFilterAtom,
+  agentSearchQueryAtom,
+} from "@/lib/store/agent-store";
+import {
   viewModeAtom as notesViewModeAtom,
   phaseFilterAtom as notesPhaseFilterAtom,
   searchQueryAtom as notesSearchQueryAtom,
@@ -49,7 +54,8 @@ type FilterMode =
   | "products"
   | "questions"
   | "techstack"
-  | "collections";
+  | "collections"
+  | "agents";
 
 interface FilterBarProps extends React.HTMLAttributes<HTMLDivElement> {
   mode: FilterMode;
@@ -76,6 +82,7 @@ export function FilterBar({ mode, placeholderText, ...props }: FilterBarProps) {
   const [collectionPhases, setCollectionPhases] = useAtom(
     collectionPhaseFilterAtom
   );
+  const [agentPhases, setAgentPhases] = useAtom(agentPhaseFilterAtom);
 
   // Use the appropriate search query atom based on mode
   let searchQueryAtom;
@@ -94,6 +101,9 @@ export function FilterBar({ mode, placeholderText, ...props }: FilterBarProps) {
       break;
     case "collections":
       searchQueryAtom = collectionSearchQueryAtom;
+      break;
+    case "agents":
+      searchQueryAtom = agentSearchQueryAtom;
       break;
     default:
       searchQueryAtom = techStackSearchQueryAtom;
@@ -119,13 +129,16 @@ export function FilterBar({ mode, placeholderText, ...props }: FilterBarProps) {
     case "collections":
       phaseFilterAtom = collectionPhaseFilterAtom;
       break;
+    case "agents":
+      phaseFilterAtom = agentPhaseFilterAtom;
+      break;
     default:
       phaseFilterAtom = techStackPhaseFilterAtom;
   }
 
   const [phaseFilter, setPhaseFilter] = useAtom(phaseFilterAtom);
 
-  // Handle view mode for prompts, products, tech stacks, notes, and collections
+  // Handle view mode for prompts, products, tech stacks, notes, collections, and agents
   const [promptViewMode, setPromptViewMode] = useAtom(layoutViewAtom);
   const [productViewMode, setProductViewMode] = useAtom(productViewModeAtom);
   const [techStackViewMode, setTechStackViewMode] = useAtom(
@@ -138,15 +151,17 @@ export function FilterBar({ mode, placeholderText, ...props }: FilterBarProps) {
   const [questionsViewMode, setQuestionsViewMode] = useAtom(
     questionsViewModeAtom
   );
+  const [agentViewMode, setAgentViewMode] = useAtom(agentLayoutViewAtom);
 
-  // Handle phase filter for prompts, products, tech stacks, notes, and collections
+  // Handle phase filter for prompts, products, tech stacks, notes, collections, and agents
   const showPhaseFilter =
     mode === "prompts" ||
     mode === "products" ||
     mode === "techstack" ||
     mode === "notes" ||
     mode === "questions" ||
-    mode === "collections";
+    mode === "collections" ||
+    mode === "agents";
 
   const handleTagClick = (phase: string) => {
     if (phase === "All") {
@@ -156,6 +171,7 @@ export function FilterBar({ mode, placeholderText, ...props }: FilterBarProps) {
       else if (mode === "notes") setNotesPhases([]);
       else if (mode === "questions") setQuestionsPhases([]);
       else if (mode === "collections") setCollectionPhases([]);
+      else if (mode === "agents") setAgentPhases([]);
       else setTechStackPhases([]);
       return;
     }
@@ -176,6 +192,7 @@ export function FilterBar({ mode, placeholderText, ...props }: FilterBarProps) {
     else if (mode === "notes") setNotesPhases(newSelectedPhases);
     else if (mode === "questions") setQuestionsPhases(newSelectedPhases as any);
     else if (mode === "collections") setCollectionPhases(newSelectedPhases);
+    else if (mode === "agents") setAgentPhases(newSelectedPhases);
     else setTechStackPhases(newSelectedPhases as any);
   };
 
@@ -194,6 +211,8 @@ export function FilterBar({ mode, placeholderText, ...props }: FilterBarProps) {
       setQuestionsViewMode("grid");
     } else if (mode === "collections") {
       setCollectionViewMode("grid");
+    } else if (mode === "agents") {
+      setAgentViewMode("card");
     } else {
       setTechStackViewMode("card");
     }
@@ -210,6 +229,8 @@ export function FilterBar({ mode, placeholderText, ...props }: FilterBarProps) {
       setQuestionsViewMode("table");
     } else if (mode === "collections") {
       setCollectionViewMode("table");
+    } else if (mode === "agents") {
+      setAgentViewMode("table");
     } else {
       setTechStackViewMode("table");
     }
@@ -290,6 +311,7 @@ export function FilterBar({ mode, placeholderText, ...props }: FilterBarProps) {
               (mode === "notes" && notesViewMode === "grid") ||
               (mode === "questions" && questionsViewMode === "grid") ||
               (mode === "collections" && collectionViewMode === "grid") ||
+              (mode === "agents" && agentViewMode === "card") ||
               (mode === "techstack" && techStackViewMode === "card")
                 ? "default"
                 : "ghost"
@@ -309,6 +331,7 @@ export function FilterBar({ mode, placeholderText, ...props }: FilterBarProps) {
               (mode === "notes" && notesViewMode === "list") ||
               (mode === "questions" && questionsViewMode === "table") ||
               (mode === "collections" && collectionViewMode === "table") ||
+              (mode === "agents" && agentViewMode === "table") ||
               (mode === "techstack" && techStackViewMode === "table")
                 ? "default"
                 : "ghost"

@@ -97,9 +97,9 @@ async function processDocumentHandler(event: StorageEvent): Promise<void> {
 
     // Get the document reference to retrieve user and product IDs
     const docRef = firestore
-      .collection("documents")
+      .collection("mydocuments")
       .doc(userId)
-      .collection("documents")
+      .collection("mydocuments")
       .doc(documentId);
 
     const docSnapshot = await docRef.get();
@@ -214,9 +214,9 @@ async function processDocumentHandler(event: StorageEvent): Promise<void> {
 
     // Update the document in Firestore with the combined keywords
     await firestore
-      .collection("documents")
+      .collection("mydocuments")
       .doc(metadata.userId)
-      .collection("documents")
+      .collection("mydocuments")
       .doc(metadata.documentId)
       .update({
         keywords: combinedKeywords,

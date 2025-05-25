@@ -19,6 +19,7 @@ import { useAtom } from "jotai";
 import { TechStack } from "@/lib/firebase/schema";
 import { deleteTechStack } from "@/lib/firebase/techstacks";
 import { FilterBar } from "@/components/ui/components/filter-bar";
+import { ErrorDisplay } from "@/components/ui/error-display";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -195,9 +196,23 @@ export default function MyTechStacks() {
     setIsDeleteSelectedDialogOpen(false);
   };
 
-  const errorMessage = firestoreError
-    ? firestoreError.message
-    : "An error occurred";
+  // Handle Firebase errors
+  if (firestoreError) {
+    return (
+      <Main>
+        <ErrorDisplay
+          error={firestoreError}
+          title="Tech stack rockets are offline!"
+          message="Our tech stack loading system hit some space debris. Mission control is working on it!"
+          onRetry={() => window.location.reload()}
+          retryText="Retry Launch"
+          component="MyTechStacks"
+          action="loading_techstacks"
+          metadata={{ phaseFilter, searchQuery }}
+        />
+      </Main>
+    );
+  }
 
   return (
     <>
@@ -261,7 +276,7 @@ export default function MyTechStacks() {
         )}
 
         {/* Empty state */}
-        {!isLoading && !firestoreError && filteredStacks.length === 0 && (
+        {!isLoading && filteredStacks.length === 0 && (
           <div className="text-center py-12">
             <h2 className="text-xl font-semibold">No tech stacks found</h2>
             <p className="text-muted-foreground mt-2">
@@ -278,107 +293,100 @@ export default function MyTechStacks() {
         )}
 
         {/* Tech stack cards grid */}
-        {!isLoading &&
-          !firestoreError &&
-          filteredStacks.length > 0 &&
-          layoutView === "card" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredStacks.map((techStack) => (
-                <div
-                  key={techStack.id}
-                  className="border border-primary/20 rounded-md overflow-hidden hover:shadow-md transition-shadow flex flex-col cursor-pointer hover:bg-accent min-h-48"
-                  onClick={() => handleViewStack(techStack)}
-                >
-                  <div className="p-4 relative flex-grow">
-                    <div className="absolute top-2 right-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handleViewStack(techStack);
-                            }}
-                            className="cursor-pointer"
-                          >
-                            <Eye className="mr-2 h-4 w-4 text-muted-foreground/70" />
-                            View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handleEditStack(techStack);
-                            }}
-                            className="cursor-pointer"
-                          >
-                            <Pencil className="mr-2 h-4 w-4 text-muted-foreground/70" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              setStackToDelete(techStack);
-                              // handleDeleteStack(techStack);
-                              // Close the dropdown menu
-                              const dropdownTrigger = e.currentTarget.closest(
-                                '[data-state="open"]'
-                              );
-                              if (dropdownTrigger) {
-                                const closeEvent = new Event("keydown");
-                                Object.defineProperty(closeEvent, "keyCode", {
-                                  value: 27,
-                                });
-                                dropdownTrigger.dispatchEvent(closeEvent);
-                              }
-                            }}
-                            className="text-red-600 hover:!text-red-600 hover:!bg-red-50 cursor-pointer"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <div className="flex items-start mb-2 pr-10">
-                      <Layers className="h-4 w-4 mr-2 mt-1 flex-shrink-0" />
-                      <h3 className="font-semibold text-md leading-tight">
-                        {techStack.name}
-                      </h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-4 mt-1 mb-2">
-                      {techStack.description || "No description"}
-                    </p>
-                    <div className="flex flex-wrap gap-1 mt-auto pt-2 border-t">
-                      {techStack.phases?.map((phase) => (
-                        <span
-                          key={phase}
-                          className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full"
+        {!isLoading && filteredStacks.length > 0 && layoutView === "card" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredStacks.map((techStack) => (
+              <div
+                key={techStack.id}
+                className="border border-primary/20 rounded-md overflow-hidden hover:shadow-md transition-shadow flex flex-col cursor-pointer hover:bg-accent min-h-48"
+                onClick={() => handleViewStack(techStack)}
+              >
+                <div className="p-4 relative flex-grow">
+                  <div className="absolute top-2 right-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleViewStack(techStack);
+                          }}
+                          className="cursor-pointer"
                         >
-                          {phase}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="mt-2 flex justify-between items-center text-xs text-muted-foreground">
-                      <div>{techStack.appType}</div>
-                      <div>{techStack.frontEndStack}</div>
-                    </div>
+                          <Eye className="mr-2 h-4 w-4 text-muted-foreground/70" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleEditStack(techStack);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <Pencil className="mr-2 h-4 w-4 text-muted-foreground/70" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setStackToDelete(techStack);
+                            // handleDeleteStack(techStack);
+                            // Close the dropdown menu
+                            const dropdownTrigger = e.currentTarget.closest(
+                              '[data-state="open"]'
+                            );
+                            if (dropdownTrigger) {
+                              const closeEvent = new Event("keydown");
+                              Object.defineProperty(closeEvent, "keyCode", {
+                                value: 27,
+                              });
+                              dropdownTrigger.dispatchEvent(closeEvent);
+                            }
+                          }}
+                          className="text-red-600 hover:!text-red-600 hover:!bg-red-50 cursor-pointer"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="flex items-start mb-2 pr-10">
+                    <Layers className="h-4 w-4 mr-2 mt-1 flex-shrink-0" />
+                    <h3 className="font-semibold text-md leading-tight">
+                      {techStack.name}
+                    </h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground line-clamp-4 mt-1 mb-2">
+                    {techStack.description || "No description"}
+                  </p>
+                  <div className="flex flex-wrap gap-1 mt-auto pt-2 border-t">
+                    {techStack.phases?.map((phase) => (
+                      <span
+                        key={phase}
+                        className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full"
+                      >
+                        {phase}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex justify-between items-center text-xs text-muted-foreground">
+                    <div>{techStack.appType}</div>
+                    <div>{techStack.frontEndStack}</div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Tanstack Table view */}
         {!isLoading &&

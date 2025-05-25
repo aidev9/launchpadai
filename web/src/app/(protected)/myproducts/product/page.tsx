@@ -6,6 +6,8 @@ import { Main } from "@/components/layout/main";
 import { ProductDashboard } from "@/app/(protected)/product/product";
 import { useAtom } from "jotai";
 import { selectedProductAtom } from "@/lib/store/product-store";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ProductGridSkeleton } from "../components/product-skeleton";
 
 // Force dynamic rendering
 export const dynamic = "force-dynamic";
@@ -25,8 +27,12 @@ export default function ProductPage() {
   if (!selectedProduct) {
     return (
       <Main>
-        <div className="flex flex-col items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="space-y-6 p-6">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+          <ProductGridSkeleton />
         </div>
       </Main>
     );

@@ -20,16 +20,14 @@ import {
   selectedFeatureAtom,
   featureWizardStateAtom,
 } from "@/lib/store/feature-store";
-import {
-  selectedProductIdAtom,
-  selectedProductAtom,
-} from "@/lib/store/product-store";
+import { selectedProductAtom } from "@/lib/store/product-store";
 import { getProduct } from "@/lib/firebase/products";
 import { Feature, Product } from "@/lib/firebase/schema";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PrdDownload } from "./components/prd-download";
 import { AiPlayground } from "./components/ai-playground";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FeatureDetailPage() {
   const [feature, setFeature] = useAtom(selectedFeatureAtom);
@@ -37,14 +35,13 @@ export default function FeatureDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
-  const [selectedProductId] = useAtom(selectedProductIdAtom);
   const [selectedProduct] = useAtom(selectedProductAtom);
   const [featureWizardState, setFeatureWizardState] = useAtom(
     featureWizardStateAtom
   );
 
   // Get the product ID from Jotai atoms
-  const productId = featureWizardState.productId || selectedProductId;
+  const productId = featureWizardState.productId || selectedProduct?.id;
 
   // Load product details when the component mounts
   useEffect(() => {
@@ -120,8 +117,57 @@ export default function FeatureDetailPage() {
   return (
     <Main>
       {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="space-y-6 p-6">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Feature details skeleton */}
+            <div className="lg:col-span-1">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Skeleton className="h-4 w-16 mb-1" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-1" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full mt-1" />
+                    <Skeleton className="h-4 w-2/3 mt-1" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-12 mb-1" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-6 w-16" />
+                      <Skeleton className="h-6 w-20" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* PRD and AI Playground skeleton */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-64" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-8 w-24" />
+                  </div>
+                  <Skeleton className="h-32 w-full" />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       ) : (
         <>

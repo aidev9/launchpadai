@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { productAtom } from "@/lib/atoms/product";
+import { productAtom } from "@/lib/store/product-store";
 import { globalWizardStepAtom } from "@/lib/atoms/wizard";
 import { questions } from "@/app/(protected)/answer_questions/data/questions";
 import { Phases } from "@/lib/firebase/schema";

@@ -35,7 +35,6 @@ import {
 import { UserProfile } from "@/lib/firebase/schema";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getAllUsers } from "../actions/users";
 import { deleteUser } from "../actions/delete";
 import { Badge } from "@/components/ui/badge";
 import { UsersTableToolbar } from "./users-table-toolbar";
@@ -53,6 +52,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Eye, Pencil, Trash } from "lucide-react";
+import { useCollectionData } from "react-firebase-hooks/firestore";
+import { firebaseAdminUsers } from "@/lib/firebase/client/FirebaseAdminUsers";
+import { ErrorDisplay } from "@/components/ui/error-display";
 
 export const columns: ColumnDef<UserProfile>[] = [
   // Selection column
@@ -146,7 +148,7 @@ export const columns: ColumnDef<UserProfile>[] = [
       }
 
       switch (subscriptionValue) {
-        case "enterprise":
+        case "accelerator":
           variant = "default";
           break;
         case "builder":
@@ -271,45 +273,28 @@ export function UsersTable() {
   const [columnFilters, setColumnFilters] = useAtom(columnFiltersAtom);
   const [sorting, setSorting] = useAtom(sortingAtom);
   const [columnVisibility, setColumnVisibility] = useAtom(columnVisibilityAtom);
-  const [, setSelectedUsers] = useAtom(selectedUsersAtom);
+  const [selectedUsers, setSelectedUsers] = useAtom(selectedUsersAtom);
   const [searchFilter, setSearchFilter] = useAtom(searchFilterAtom);
   const [, setTableInstance] = useAtom(tableInstanceAtom);
   const [, setCurrentUser] = useAtom(currentUserAtom);
   const router = useRouter();
   const { toast } = useToast();
 
+  // Use React Firebase Hooks for real-time data
+  const [firebaseUsers, loading, error] = useCollectionData(
+    firebaseAdminUsers.getUsersQuery(1000)
+  );
+
   // Delete dialog state
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  // Function to load users
-  const loadUsers = async () => {
-    try {
-      const result = await getAllUsers();
-      if (result.success) {
-        setUsers(result.users || []);
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to load users",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Failed to load users:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Fetch users on component mount
+  // Update users atom when Firebase data changes
   useEffect(() => {
-    loadUsers();
-  }, []);
+    if (firebaseUsers) {
+      setUsers(firebaseUsers as UserProfile[]);
+    }
+  }, [firebaseUsers, setUsers]);
 
   // Update selectedUsers atom when row selection changes
   useEffect(() => {
@@ -376,6 +361,21 @@ export function UsersTable() {
     setTableInstance(table);
   }, [table, setTableInstance]);
 
+  // Handle Firebase errors
+  if (error) {
+    return (
+      <ErrorDisplay
+        error={error}
+        title="User data rockets are offline!"
+        message="Our user data loading system hit some space debris. Mission control is working on it!"
+        onRetry={() => window.location.reload()}
+        retryText="Retry Launch"
+        component="AdminUsersTable"
+        action="loading_users_data"
+      />
+    );
+  }
+
   // Handle deleting selected users
   const handleDeleteSelected = async () => {
     setIsDeleting(true);
@@ -384,17 +384,28 @@ export function UsersTable() {
       let failedCount = 0;
       let successCount = 0;
 
-      // Get selected user IDs
-      const selectedUserIds = Object.keys(rowSelection).map(
-        (index) => users[parseInt(index)].uid
-      );
+      console.log("Attempting to delete users:", selectedUsers);
+
+      if (selectedUsers.length === 0) {
+        console.warn("No users selected for deletion");
+        toast({
+          title: "No users selected",
+          description: "Please select at least one user to delete",
+          variant: "destructive",
+        });
+        setIsDeleting(false);
+        setDeleteDialogOpen(false);
+        return;
+      }
 
       // Delete users one by one
-      for (const uid of selectedUserIds) {
+      for (const uid of selectedUsers) {
         try {
+          console.log(`Deleting user ${uid}...`);
           const result = await deleteUser(uid);
           if (result.success) {
             successCount++;
+            console.log(`Successfully deleted user ${uid}`);
           } else {
             failedCount++;
             console.error(`Failed to delete user ${uid}: ${result.error}`);
@@ -407,12 +418,7 @@ export function UsersTable() {
 
       // Update UI based on results
       if (successCount > 0) {
-        // Refresh users list
-        const result = await getAllUsers();
-        if (result.success) {
-          setUsers(result.users || []);
-        }
-
+        // Data will be automatically updated by Firebase hooks
         // Clear row selection
         setRowSelection({});
 
@@ -456,7 +462,7 @@ export function UsersTable() {
 
   return (
     <div className="space-y-4">
-      <UsersTableToolbar table={table} onRefresh={loadUsers} />
+      <UsersTableToolbar table={table} />
       <div className="rounded-md border">
         <Table>
           <TableHeader>

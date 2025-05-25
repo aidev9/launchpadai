@@ -82,7 +82,7 @@ test.describe("Prompt Credits Verification", () => {
   verifyPromptCredits("free");
   verifyPromptCredits("explorer");
   verifyPromptCredits("builder");
-  verifyPromptCredits("enterprise");
+  verifyPromptCredits("accelerator");
 
   // Test credits display in various UI locations
   test("should display credits in header and dashboard", async ({ page }) => {

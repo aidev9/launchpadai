@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { featuresAtom, productAtom, Feature } from "@/lib/atoms/product";
+import { featuresAtom, productAtom, Feature } from "@/lib/store/product-store";
 import { Badge } from "@/components/ui/badge";
 import { X, PlusCircle, Save, Edit, Trash2, AlertCircle } from "lucide-react";
 import {

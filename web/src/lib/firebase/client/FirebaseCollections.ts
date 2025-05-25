@@ -68,7 +68,7 @@ class FirebaseCollections {
       this.auth = clientAuth;
       this.db = clientDb;
       this.storage = getStorage(clientApp);
-      this.collectionName = "collections";
+      this.collectionName = "mycollections";
     } catch (error) {
       console.error(
         "[FirebaseCollections][constructor] Error initializing:",

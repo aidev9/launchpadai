@@ -110,16 +110,16 @@ Random string: ${Math.random().toString(36).substring(2, 15)}
     const db = admin.firestore();
 
     const docRef = db
-      .collection("documents")
+      .collection("mydocuments")
       .doc(userId)
-      .collection("documents")
+      .collection("mydocuments")
       .doc(documentId);
 
     // Initialize Firestore references for the collection
     const collectionRef = db
-      .collection("collections")
+      .collection("mycollections")
       .doc(userId)
-      .collection("collections")
+      .collection("mycollections")
       .doc(collectionId);
 
     // Create initial document to track BEFORE uploading file
