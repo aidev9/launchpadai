@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LaunchpadAI Agent Chat</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f5f5f5;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      header {
+        background-color: #ffffff;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #333;
+      }
+
+      main {
+        flex: 1;
+        padding: 2rem;
+        max-width: 800px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      .instructions {
+        background-color: #ffffff;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .chat-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-top: 2rem;
+      }
+
+      code {
+        background-color: #f0f0f0;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-family:
+          "Monaco", "Menlo", "Ubuntu Mono", "Consolas", "source-code-pro",
+          monospace;
+        font-size: 0.9rem;
+      }
+
+      .note {
+        margin-top: 2rem;
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      footer {
+        background-color: #ffffff;
+        padding: 1rem;
+        text-align: center;
+        font-size: 0.8rem;
+        color: #666;
+        border-top: 1px solid #eaeaea;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>LaunchpadAI Agent Chat Demo</h1>
+    </header>
+
+    <main>
+      <div class="instructions">
+        <h2>Welcome to your LaunchpadAI Agent!</h2>
+        <p>
+          This is a sample page demonstrating how your AI agent can be embedded
+          into any website using an iframe. The chat interface below is fully
+          functional and connected to your agent.
+        </p>
+        <p>
+          You can customize this page or integrate the iframe code into your own
+          website.
+        </p>
+      </div>
+
+      <div class="chat-container">
+        <!-- AGENT_IFRAME_PLACEHOLDER -->
+        <!-- This placeholder will be replaced with the actual iframe code -->
+      </div>
+
+      <div class="note">
+        <p>
+          <strong>Note:</strong> You can customize the iframe's appearance by
+          modifying the width, height, and style attributes. The
+          <code>theme</code> parameter can be set to <code>light</code> or
+          <code>dark</code>.
+        </p>
+      </div>
+    </main>
+
+    <footer>
+      <p>
+        Powered by
+        <a href="https://launchpadai.io" target="_blank">LaunchpadAI</a> |
+        &copy; 2025 LaunchpadAI
+      </p>
+    </footer>
+  </body>
+</html>

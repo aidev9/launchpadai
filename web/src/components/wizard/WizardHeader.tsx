@@ -23,7 +23,7 @@ export default function WizardHeader({
 }: WizardHeaderProps) {
   return (
     <CardHeader className="pb-1 py-6 px-8 space-y-1">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between w-full">
         <h2 className="text-xl font-bold">{title}</h2>
         <Badge
           variant="outline"

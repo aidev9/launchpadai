@@ -113,32 +113,34 @@ export default function WizardCelebration({
   return (
     <div
       data-testid="wizard-celebration"
-      className={`flex items-center justify-center ${theme.bgColor} rounded-lg p-6`}
+      className={`flex items-center justify-center h-full w-full ${theme.bgColor}`}
     >
-      {showConfetti && <Confetti recycle={false} numberOfPieces={300} />}
+      {showConfetti && (
+        <Confetti recycle={false} numberOfPieces={400} gravity={0.3} />
+      )}
 
-      <div className="max-w-md w-full mx-auto p-6 rounded-lg bg-white shadow-lg text-center space-y-5">
-        <div className="flex justify-center">{theme.icon}</div>
+      <div className="max-w-2xl w-full mx-auto p-10 rounded-lg bg-white shadow-lg text-center space-y-8">
+        <div className="flex justify-center scale-125">{theme.icon}</div>
 
         <h1
           data-testid="celebration-title"
-          className={`text-2xl font-bold ${theme.textColor}`}
+          className={`text-3xl font-bold ${theme.textColor}`}
         >
           {theme.title}
         </h1>
 
-        <p data-testid="celebration-message" className="text-gray-600">
+        <p data-testid="celebration-message" className="text-gray-600 text-lg">
           {message}
         </p>
 
         <div
           data-testid="celebration-xp-container"
-          className="p-3 bg-amber-50 rounded-lg flex items-center justify-center gap-2"
+          className="p-5 bg-amber-50 rounded-xl flex items-center justify-center gap-3 shadow-sm"
         >
-          <TrophyIcon className="h-5 w-5 text-amber-500" />
+          <TrophyIcon className="h-6 w-6 text-amber-500" />
           <span
             data-testid="celebration-xp-earned"
-            className="text-lg font-bold text-amber-700"
+            className="text-xl font-bold text-amber-700"
           >
             +{xpEarned} XP
           </span>
@@ -146,11 +148,13 @@ export default function WizardCelebration({
 
         <Button
           onClick={onComplete || onContinue}
-          className="w-full gap-2"
+          className="w-full gap-2 mt-4"
           size="lg"
           data-testid="celebration-continue-button"
         >
-          Continue to Next Step
+          {miniWizardId === MiniWizardId.ADD_NOTES
+            ? "Complete Wizard"
+            : "Continue to Next Step"}
           <ChevronRightIcon className="h-4 w-4" />
         </Button>
       </div>

@@ -76,7 +76,6 @@ async function processDocumentHandler(event: StorageEvent): Promise<void> {
     // Extract file metadata from the path
     // Example path: collections/{collectionId}/documents/{documentId}
     const pathParts = processedFilePath.split("/");
-    console.log("pathParts:::", pathParts);
     const userId = pathParts[1];
     const collectionId = pathParts[3];
     const documentId = pathParts[5];
@@ -119,13 +118,7 @@ async function processDocumentHandler(event: StorageEvent): Promise<void> {
         );
       } else {
         // Update metadata with user and product IDs from Firestore
-        // metadata.userId = docData.userId || "";
-        console.info(
-          `[METADATA] Setting metadata productId to: ${docData.productId}`
-        );
-
         metadata.productId = docData.productId || Math.random().toString();
-        console.info(`[METADATA] metadata::: ${metadata}`);
       }
     }
 
@@ -141,7 +134,6 @@ async function processDocumentHandler(event: StorageEvent): Promise<void> {
       metadata.collectionId
     );
 
-    console.log("collectionData:::", collectionData);
     metadata.productId = collectionData.productId;
 
     const documentData = await getDocumentData(
@@ -198,8 +190,6 @@ async function processDocumentHandler(event: StorageEvent): Promise<void> {
       contentType || ""
     );
 
-    console.log("extractedText:::", extractedText);
-
     // Extract keywords from the entire document content
     console.log("Extracting keywords from the full document content");
     const extractedDocumentKeywords = extractKeywords(extractedText);
@@ -237,9 +227,6 @@ async function processDocumentHandler(event: StorageEvent): Promise<void> {
 
     // Chunk the text for processing with custom settings
     const chunks = chunkText(extractedText, chunkSize, overlap);
-    console.log(`Created ${chunks.length} chunks from the document`);
-
-    console.log("chunks:::", chunks);
 
     // Ensure metadata is defined before proceeding
     if (!metadata) {
@@ -248,11 +235,6 @@ async function processDocumentHandler(event: StorageEvent): Promise<void> {
 
     // Create a local non-nullable copy of metadata
     const safeMetadata = metadata;
-
-    // Process all chunks to create embeddings and keywords
-    console.log(
-      `Processing ${chunks.length} chunks to prepare for batch insert`
-    );
 
     // Prepare an array to hold all processed chunk data
     const processedChunks = [];
@@ -263,12 +245,8 @@ async function processDocumentHandler(event: StorageEvent): Promise<void> {
       try {
         // Extract keywords using NLP
         const chunkKeywords = extractKeywords(chunk);
-        console.log("chunkKeywords:::", chunkKeywords);
-
         // Create embeddings for the chunk
         const embedding = await embeddingModel.createEmbeddings(chunk);
-        console.log("embedding:::", embedding);
-
         // Store the processed chunk data for batch insert
         processedChunks.push({
           embedding,
@@ -328,7 +306,6 @@ async function processDocumentHandler(event: StorageEvent): Promise<void> {
       throw error;
     }
 
-    console.log("metadata:::", safeMetadata);
     console.log(
       `Successfully processed document ${safeMetadata.documentId} in collection ${safeMetadata.collectionId}`
     );

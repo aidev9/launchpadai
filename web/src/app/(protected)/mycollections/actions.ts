@@ -410,7 +410,7 @@ function extractKeywords(text: string): string[] {
       .toLowerCase()
       .replace(/[^\w\s]/g, "") // Remove punctuation
       .split(/\s+/)
-      .filter((word) => word.length > 2);
+      .filter((word) => word.length > 1);
 
     // Common stop words to filter out
     const stopWords = new Set([
@@ -480,7 +480,7 @@ function extractKeywords(text: string): string[] {
     const allTerms = [...nlpTerms, ...simpleWords];
 
     return [...new Set(allTerms)]
-      .filter((term) => term.length > 2 && !stopWords.has(term.toLowerCase()))
+      .filter((term) => term.length > 1 && !stopWords.has(term.toLowerCase()))
       .map((term) => term.toLowerCase());
   } catch (error) {
     console.error("Error extracting keywords:", error);
@@ -503,7 +503,7 @@ function extractKeywords(text: string): string[] {
       .toLowerCase()
       .replace(/[^\w\s]/g, "")
       .split(/\s+/)
-      .filter((word) => word.length > 2 && !stopWords.has(word));
+      .filter((word) => word.length > 1 && !stopWords.has(word));
   }
 }
 
@@ -535,43 +535,48 @@ export async function searchDocumentChunks(
   query: string,
   collectionId: string,
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  userId?: string
 ): Promise<SearchResponse> {
   console.log(
     `[DEBUG] Search initiated - Query: "${query}", Collection: ${collectionId}, Page: ${page}, PageSize: ${pageSize}`
   );
 
-  // Verify that necessary environment variables are set
-  const neonDbConnectionString = process.env.NEON_DB_CONNECTION_STRING;
-  if (!neonDbConnectionString) {
-    console.error("[DEBUG] Missing NeonDB connection string");
+  if (!query || query.trim().length === 0) {
+    console.error("[DEBUG] Empty query provided");
     return {
       success: false,
-      error: "Database connection string not configured",
+      error: "Search query cannot be empty",
     };
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    console.error("[DEBUG] Missing OpenAI API key");
+  if (!collectionId || collectionId.trim().length === 0) {
+    console.error("[DEBUG] Empty collection ID provided");
     return {
       success: false,
-      error: "OpenAI API key not configured",
+      error: "Collection ID cannot be empty",
     };
   }
 
   let client: Client | null = null;
 
   try {
-    // Get current authenticated user ID
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      console.error("[DEBUG] User not authenticated");
-      return {
-        success: false,
-        error: "User not authenticated",
-      };
+    // Get current authenticated user ID or use provided userId
+    let currentUserId: string;
+    if (userId) {
+      currentUserId = userId;
+      console.log(`[DEBUG] Using provided user ID: ${currentUserId}`);
+    } else {
+      currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        console.error("[DEBUG] User not authenticated");
+        return {
+          success: false,
+          error: "User not authenticated",
+        };
+      }
+      console.log(`[DEBUG] Authenticated user ID: ${currentUserId}`);
     }
-    console.log(`[DEBUG] Authenticated user ID: ${userId}`);
 
     // Extract keywords from the query
     const keywords = extractKeywords(query);
@@ -587,7 +592,7 @@ export async function searchDocumentChunks(
     // Connect to NeonDB
     console.log("[DEBUG] Connecting to NeonDB...");
     client = new Client({
-      connectionString: neonDbConnectionString,
+      connectionString: process.env.NEON_DB_CONNECTION_STRING,
     });
     await client.connect();
     console.log("[DEBUG] Connected to NeonDB");
@@ -628,7 +633,7 @@ export async function searchDocumentChunks(
 
     const simpleCountResult = await client.query(simpleCountQuery, [
       collectionId,
-      userId,
+      currentUserId,
     ]);
     console.log(
       `[DEBUG] Documents in this collection for user: ${simpleCountResult.rows[0].total}`
@@ -647,7 +652,7 @@ export async function searchDocumentChunks(
 
     const sampleResult = await client.query(sampleQuery, [
       collectionId,
-      userId,
+      currentUserId,
     ]);
     console.log(`[DEBUG] Sample documents:`, sampleResult.rows);
 
@@ -706,7 +711,11 @@ export async function searchDocumentChunks(
     console.log(`[DEBUG] Count query: ${countQuery}`);
 
     // Build parameters array
-    const countParams: any[] = [collectionId, userId, embeddingFormatted];
+    const countParams: any[] = [
+      collectionId,
+      currentUserId,
+      embeddingFormatted,
+    ];
 
     // Add keyword parameters for each field
     keywords.forEach((keyword) => {
@@ -845,19 +854,23 @@ export async function searchDocumentChunks(
         FROM document_chunks c
         WHERE c.collection_id = $1
           AND c.user_id = $2
-          AND (
+          ${
+            keywords.length > 0
+              ? `AND (
             ${keywords
               .map(
                 (_, i) =>
                   `(c.chunk_content ILIKE $${3 + i} OR c.document_title ILIKE $${3 + i} OR c.filename ILIKE $${3 + i})`
               )
               .join(" OR ")}
-          )
+          )`
+              : ""
+          }
         ORDER BY c.document_id, c.chunk_index
         LIMIT $${3 + keywords.length} OFFSET $${4 + keywords.length}
       `;
 
-      const permissiveParams: any[] = [collectionId, userId];
+      const permissiveParams: any[] = [collectionId, currentUserId];
       keywords.forEach((keyword) => {
         permissiveParams.push(`%${keyword}%`);
       });
@@ -911,7 +924,7 @@ export async function searchDocumentChunks(
           AND c.user_id = $2
       `;
 
-      const fallbackParams: any[] = [collectionId, userId];
+      const fallbackParams: any[] = [collectionId, currentUserId];
       let paramCounter = 3;
 
       if (keywords.length > 0) {

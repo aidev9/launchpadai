@@ -8,6 +8,7 @@ import {
   PaletteIcon,
   UserIcon,
   WrenchIcon,
+  SettingsIcon,
 } from "lucide-react";
 import { Main } from "@/components/layout/main";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -32,6 +33,11 @@ const sidebarNavItems = [
     title: "Prompt Credits",
     href: "/settings/prompt-credits",
     icon: <CoinsIcon className="h-4 w-4" />,
+  },
+  {
+    title: "Tools",
+    href: "/settings/tools",
+    icon: <SettingsIcon className="h-4 w-4" />,
   },
   // Empty placeholder for future settings
   {

@@ -10,7 +10,7 @@ import {
 } from "./notes-store";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
@@ -159,11 +159,23 @@ export const columns: ColumnDef<Note>[] = [
   {
     accessorKey: "updatedAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Updated" />
+      <DataTableColumnHeader column={column} title="Updated" />
     ),
     cell: ({ row }) => {
-      const timestamp = row.getValue<number>("updatedAt");
-      return <div>{formatTimestamp(timestamp)}</div>;
+      const note = row.original;
+      // Use the timestamp directly if available, otherwise fallback to current time
+      const timestamp = note.updatedAt || Date.now();
+
+      // Check if timestamp is in seconds (Firebase often stores in seconds)
+      // and convert to milliseconds if needed
+      const timeInMs = timestamp > 1e10 ? timestamp : timestamp * 1000;
+      const date = new Date(timeInMs);
+
+      return (
+        <div className="text-sm text-muted-foreground">
+          {formatDistance(date, new Date(), { addSuffix: true })}
+        </div>
+      );
     },
     enableSorting: true,
     enableHiding: true,

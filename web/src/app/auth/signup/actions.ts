@@ -35,7 +35,9 @@ const signupSchema = z.object({
     .enum(["email", "google", "facebook", "twitter", "github"])
     .optional(),
   userType: z.enum(["user", "admin", "superadmin"]).optional(),
-  subscription: z.enum(["free", "explorer", "builder", "accelerator"]).optional(),
+  subscription: z
+    .enum(["free", "explorer", "builder", "accelerator"])
+    .optional(),
 });
 
 export type SignupFormData = z.infer<typeof signupSchema>;
@@ -106,9 +108,6 @@ export const signupAction = actionClient
 
           // Initialize prompt credits based on subscription plan
           await initializePromptCredits(uid, userSubscription);
-          console.log(
-            `:::Initialized prompt credits for user ${uid} with plan ${userSubscription}`
-          );
 
           // Send notification email to admin
           try {

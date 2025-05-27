@@ -64,6 +64,68 @@ export class ServerAgentsService {
   }
 
   /**
+   * Get an agent by ID for public access (searches across all users)
+   */
+  async getPublicAgentById(agentId: string): Promise<Agent | null> {
+    try {
+      console.log(
+        `[ServerAgentsService][getPublicAgentById] Searching for agent: ${agentId}`
+      );
+
+      // Use collection group query to search across all user subcollections
+      const agentsQuery = adminDb.collectionGroup(this.collectionName);
+      const snapshot = await agentsQuery.get();
+
+      console.log(
+        `[ServerAgentsService][getPublicAgentById] Found ${snapshot.docs.length} total agents`
+      );
+
+      // Find the agent with matching ID
+      const agentDoc = snapshot.docs.find((doc) => doc.id === agentId);
+
+      if (!agentDoc) {
+        console.log(
+          `[ServerAgentsService][getPublicAgentById] Agent not found: ${agentId}`
+        );
+        return null;
+      }
+
+      const data = agentDoc.data();
+
+      // Extract userId from the document path
+      // Path format: myagents/{userId}/myagents/{agentId}
+      const pathSegments = agentDoc.ref.path.split("/");
+      const userId = pathSegments[1]; // The userId is the second segment
+
+      const agent = {
+        ...data,
+        id: agentDoc.id,
+        userId: userId, // Ensure userId is set
+      } as Agent;
+
+      console.log(
+        `[ServerAgentsService][getPublicAgentById] Found agent: ${agent.name}, userId: ${agent.userId}`
+      );
+      console.log(
+        `[ServerAgentsService][getPublicAgentById] Agent enabled: ${agent.configuration?.isEnabled}`
+      );
+
+      // Only return if the agent is enabled
+      if (agent.configuration?.isEnabled) {
+        return agent;
+      } else {
+        console.log(
+          `[ServerAgentsService][getPublicAgentById] Agent found but not enabled`
+        );
+        return null;
+      }
+    } catch (error) {
+      console.error("[ServerAgentsService][getPublicAgentById] Error:", error);
+      return null;
+    }
+  }
+
+  /**
    * Update an agent
    */
   async updateAgent(userId: string, agent: Agent): Promise<Agent | null> {

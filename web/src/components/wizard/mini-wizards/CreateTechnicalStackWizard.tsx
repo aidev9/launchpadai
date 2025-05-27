@@ -10,7 +10,6 @@ import { globalWizardStepAtom } from "@/lib/atoms/wizard";
 import { techStackWizardStateAtom } from "@/lib/store/techstack-store";
 import { CheckCircle2, Circle, ArrowRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
 import MiniWizardBase, { MiniWizardProps } from "./MiniWizardBase";
 import { MiniWizardId } from "@/lib/firebase/schema/enums";
 
@@ -134,14 +133,23 @@ export default function CreateTechnicalStackWizard({
     if (currentStepInfo.required) {
       // Only step 1 (App Details) is required
       if (validatedStep === 1) {
-        const hasName = !!wizardState.name;
-        const hasDescription = !!wizardState.description;
-        if (!hasName || !hasDescription) {
-          toast({
-            title: "Validation Error",
-            description: "Name and description are required for App Details.",
-            variant: "destructive",
-          });
+        // Get the validation function from the AppDetailsStep component
+        const appDetailsStep = (window as any).currentAppDetailsStep;
+        if (appDetailsStep && appDetailsStep.validateFields) {
+          return appDetailsStep.validateFields();
+        }
+
+        // Fallback validation in case the component hasn't mounted or its validateFields isn't available.
+        // AppDetailsStep's internal useEffect should have already set its own error states based on wizardState.
+        const hasName = !!wizardState.name?.trim();
+        const hasDescription = !!wizardState.description?.trim();
+        const hasPhases = wizardState.phases && wizardState.phases.length > 0;
+
+        if (!hasName || !hasDescription || !hasPhases) {
+          // Toast removed. AppDetailsStep is responsible for displaying inline errors.
+          // console.warn(
+          //   "Fallback validation triggered for AppDetailsStep. Inline errors should be shown by AppDetailsStep itself."
+          // );
           return false;
         }
       }
@@ -291,14 +299,8 @@ export default function CreateTechnicalStackWizard({
   // Handle final submit
   const handleFinalSubmit = useCallback(async () => {
     // Validate required fields
-    if (!wizardState.name || !wizardState.description) {
-      setFormError("Name and description are required");
-      toast({
-        title: "Validation Error",
-        description:
-          "Please provide both name and description before submitting.",
-        variant: "destructive",
-      });
+    if (!wizardState.name || wizardState.name.trim() === "") {
+      setFormError("Stack Name is required");
       return;
     }
 
@@ -398,25 +400,22 @@ export default function CreateTechnicalStackWizard({
     if (currentStepInfo.required) {
       // Only step 1 (App Details) is required
       if (validatedStep === 1) {
-        const hasName = !!wizardState.name;
-        const hasDescription = !!wizardState.description;
-        if (!hasName || !hasDescription) {
-          toast({
-            title: "Validation Error",
-            description: "Name and description are required for App Details.",
-            variant: "destructive",
-          });
-          return false;
+        // Get the validation function from the AppDetailsStep component
+        const appDetailsStep = (window as any).currentAppDetailsStep;
+        if (appDetailsStep && appDetailsStep.validateFields) {
+          // AppDetailsStep will show its own inline errors
+          return appDetailsStep.validateFields();
         }
+        // If AppDetailsStep or its validation function isn't available for some reason,
+        // consider it a validation failure, but AppDetailsStep should handle showing errors.
+        // No toast here.
+        return false;
       }
     }
     return true; // All other steps are optional
   }, [
     currentStepInfo.required,
     validatedStep,
-    wizardState.name,
-    wizardState.description,
-    toast,
   ]);
 
   React.useEffect(() => {
@@ -638,7 +637,7 @@ export default function CreateTechnicalStackWizard({
         </div>
 
         {/* Final submission button for last step */}
-        {validatedStep === 10 && (
+        {/* {validatedStep === 10 && (
           <div className="pt-4 border-t">
             <Button
               onClick={handleFinalSubmit}
@@ -657,7 +656,7 @@ export default function CreateTechnicalStackWizard({
               Complete the tech stack wizard and continue to the next step.
             </p>
           </div>
-        )}
+        )} */}
       </div>
     </MiniWizardBase>
   );

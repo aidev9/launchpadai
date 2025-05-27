@@ -16,7 +16,9 @@ export { refillPromptCredits };
 
 export { processDocumentEmbeddings };
 
-// export { deleteThisLaterStorage } from "./deleteThisLaterStorage.js";
+// Import and export the new A2A endpoint
+import { a2aEndpoint } from "./a2a.js";
+export { a2aEndpoint };
 
 // --- FIRESTORE TEST FUNCTION ---
 // export const firestoreTestFunction = onDocumentCreated(

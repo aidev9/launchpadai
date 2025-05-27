@@ -85,7 +85,7 @@ export default function SubscriptionConfirmation({
           If you have any questions or need assistance, please contact us at:
         </p>
         <p>
-          <a href="mailto:support@launchpadai.com">support@launchpadai.com</a>
+          <a href="mailto:support@launchpadai.io">support@launchpadai.io</a>
         </p>
       </div>
       <hr style={{ marginTop: "40px", marginBottom: "20px" }} />

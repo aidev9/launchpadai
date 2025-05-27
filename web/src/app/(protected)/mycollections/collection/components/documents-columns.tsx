@@ -246,15 +246,21 @@ export const getColumns = ({
   {
     accessorKey: "updatedAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Modified" />
+      <DataTableColumnHeader column={column} title="Updated" />
     ),
     cell: ({ row }) => {
-      const updatedAt = row.getValue("updatedAt") as number;
-      if (!updatedAt) return <div>Invalid Date</div>;
+      const document = row.original;
+      // Use the timestamp directly if available, otherwise fallback to current time
+      const timestamp = document.updatedAt || Date.now();
+
+      // Check if timestamp is in seconds (Firebase often stores in seconds)
+      // and convert to milliseconds if needed
+      const timeInMs = timestamp > 1e10 ? timestamp : timestamp * 1000;
+      const date = new Date(timeInMs);
 
       return (
-        <div>
-          {formatDistanceToNow(new Date(updatedAt * 1000), { addSuffix: true })}
+        <div className="text-sm text-muted-foreground">
+          {formatDistanceToNow(date, { addSuffix: true })}
         </div>
       );
     },

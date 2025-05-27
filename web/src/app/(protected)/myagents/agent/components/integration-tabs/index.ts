@@ -1,0 +1,9 @@
+export { GeneralTab } from "./general-tab";
+export { IFrameTab } from "./iframe-tab";
+export { ReactTab } from "./react-tab";
+export { HtmlTab } from "./html-tab";
+export { ApiTab } from "./api-tab";
+export { McpTab } from "./mcp-tab";
+export { A2aTab } from "./a2a-tab";
+export { SlackTab } from "./slack-tab";
+export { WorkflowPlatformsTab } from "./workflow-platforms-tab";

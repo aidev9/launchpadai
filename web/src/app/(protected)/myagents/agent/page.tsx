@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Main } from "@/components/layout/main";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -18,16 +18,29 @@ import { Agent } from "@/lib/firebase/schema";
 import { firebaseAgents } from "@/lib/firebase/client/FirebaseAgents";
 import { useDocumentData } from "react-firebase-hooks/firestore";
 import {
-  Pencil,
-  Trash2,
   Bot,
+  Edit,
+  Trash2,
+  ExternalLink,
+  Copy,
   Check,
-  X,
   ChevronDown,
   ChevronUp,
+  TestTube,
+  AlertCircle,
+  Send,
+  User,
+  Loader2,
+  Pencil,
+  X,
 } from "lucide-react";
 import { AgentChatPanel } from "./components/agent-chat-panel";
 import { IntegrationTab } from "./components/integration-tab";
+import { ToolsAccordion, ToolCall } from "./components/tools-accordion";
+import {
+  CollectionsAccordion,
+  KnowledgeSearchResult,
+} from "./components/collections-accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -44,6 +57,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ErrorDisplay } from "@/components/ui/error-display";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function AgentDetailPage() {
   const router = useRouter();
@@ -67,9 +81,20 @@ export default function AgentDetailPage() {
   const [testMessage, setTestMessage] = useState("");
   const [testResponse, setTestResponse] = useState("");
   const [isTesting, setIsTesting] = useState(false);
+  const [testToolCalls, setTestToolCalls] = useState<ToolCall[]>([]);
+  const [testKnowledgeSearchResults, setTestKnowledgeSearchResults] = useState<
+    KnowledgeSearchResult[]
+  >([]);
 
   // System prompt accordion state
   const [isSystemPromptExpanded, setIsSystemPromptExpanded] = useState(false);
+
+  // Handle navigation when no agent is selected
+  useEffect(() => {
+    if (!selectedAgent?.id) {
+      router.push("/myagents");
+    }
+  }, [selectedAgent?.id, router]);
 
   // Handle Firebase errors
   if (error) {
@@ -90,7 +115,6 @@ export default function AgentDetailPage() {
   }
 
   if (!selectedAgent?.id) {
-    router.push("/myagents");
     return null;
   }
 
@@ -180,59 +204,70 @@ export default function AgentDetailPage() {
 
   // Handle test agent
   const handleTestAgent = async () => {
-    if (!testMessage.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a test message",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!agent?.id) {
-      toast({
-        title: "Error",
-        description: "No agent selected",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!testMessage.trim()) return;
+    if (!agent) return;
 
     setIsTesting(true);
     setTestResponse("");
+    setTestToolCalls([]);
+    setTestKnowledgeSearchResults([]);
 
     try {
-      const response = await fetch("/api/agents/test", {
+      const response = await fetch("/api/agents/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          messages: [{ role: "user", content: testMessage }],
           agentId: agent.id,
-          message: testMessage,
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || "Failed to test agent");
+        throw new Error("Failed to test agent");
       }
 
-      setTestResponse(data.response);
+      const data = await response.json();
 
-      toast({
-        title: "Success",
-        description: "Test completed successfully",
-      });
+      // Handle tool calls if present
+      if (data.toolCalls && data.toolCalls.length > 0) {
+        const toolCallsForDisplay: ToolCall[] = data.toolCalls.map(
+          (toolCall: any) => ({
+            id: toolCall.toolCallId || `tool-${Date.now()}-${Math.random()}`,
+            toolName: toolCall.toolName,
+            parameters: toolCall.args || {},
+            result: toolCall.result,
+            status: "success",
+            timestamp: new Date(),
+            duration: 0,
+          })
+        );
+        setTestToolCalls(toolCallsForDisplay);
+
+        // Extract knowledge search results
+        const knowledgeSearchCalls = data.toolCalls.filter(
+          (toolCall: any) => toolCall.toolName === "search_knowledge"
+        );
+
+        if (knowledgeSearchCalls.length > 0) {
+          const newKnowledgeResults: KnowledgeSearchResult[] =
+            knowledgeSearchCalls.map((toolCall: any) => ({
+              id: `knowledge-${Date.now()}-${Math.random()}`,
+              query: toolCall.args?.query || "Unknown query",
+              results: toolCall.result?.results || [],
+              timestamp: new Date(),
+            }));
+          setTestKnowledgeSearchResults(newKnowledgeResults);
+        }
+      }
+
+      setTestResponse(data.text || data.response || "No response");
     } catch (error) {
-      console.error("Error testing agent:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to test agent",
-        variant: "destructive",
-      });
+      console.error("Test error:", error);
+      setTestResponse(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     } finally {
       setIsTesting(false);
     }
@@ -269,17 +304,14 @@ export default function AgentDetailPage() {
 
   if (!agent) {
     return (
-      <Main>
-        <div className="text-center py-12">
-          <h2 className="text-xl font-semibold">Agent not found</h2>
-          <p className="text-muted-foreground mt-2">
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold mb-2">Agent not found</h2>
+          <p className="text-muted-foreground">
             The agent you're looking for doesn't exist or has been deleted.
           </p>
-          <Button onClick={() => router.push("/myagents")} className="mt-4">
-            Back to My Agents
-          </Button>
         </div>
-      </Main>
+      </div>
     );
   }
 
@@ -698,63 +730,222 @@ Authorization: Bearer ${agent.configuration.apiKey || "[your-api-key]"}
 
         {/* Test Tab */}
         <TabsContent value="test" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Test Your Agent</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* System Prompt Preview */}
-              {agent.systemPrompt && (
-                <div className="space-y-2">
-                  <Label>System Prompt (Preview)</Label>
-                  <div className="p-3 border rounded-md bg-muted/50 text-sm">
-                    <p className="text-muted-foreground line-clamp-3">
-                      {agent.systemPrompt}
+          <div className="space-y-6">
+            {/* Agent Info Header */}
+            <Card>
+              <CardHeader className="py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+                    <Bot className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 w-48">
+                      <CardTitle className="text-base truncate">
+                        Test {agent.name}
+                      </CardTitle>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Test your agent's capabilities and responses
                     </p>
                   </div>
+                  {/* System Prompt in the middle */}
+                  {agent.systemPrompt && (
+                    <div className="text-xs text-muted-foreground p-2 rounded w-[75%]">
+                      <strong className="text-sm text-black">
+                        System Prompt:
+                      </strong>{" "}
+                      <div className="truncate">{agent.systemPrompt}</div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </CardHeader>
+            </Card>
 
-              <div className="space-y-2">
-                <Label htmlFor="test-message">Message</Label>
-                <textarea
-                  id="test-message"
-                  className="w-full min-h-[100px] p-2 border rounded-md"
-                  placeholder="Enter a message to test your agent..."
-                  value={testMessage}
-                  onChange={(e) => setTestMessage(e.target.value)}
-                  disabled={isTesting}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column: Tools and Collections */}
+              <div className="space-y-6">
+                {/* Tools Accordion */}
+                <ToolsAccordion toolCalls={testToolCalls} />
+
+                {/* Collections Accordion */}
+                <CollectionsAccordion
+                  agent={agent}
+                  searchResults={testKnowledgeSearchResults}
                 />
               </div>
 
-              <Button
-                onClick={handleTestAgent}
-                disabled={isTesting || !agent.configuration.isEnabled}
-                className="w-full"
-              >
-                {isTesting ? "Testing..." : "Test Agent"}
-              </Button>
+              {/* Right Column: Test Interface */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex flex-row gap-2 justify-between">
+                      <span className="flex items-center gap-2">
+                        <Bot className="h-5 w-5" />
+                        {agent.name}
+                      </span>
+                      <div>
+                        {isTesting && (
+                          <Badge
+                            variant="secondary"
+                            className="bg-blue-100 text-blue-800 text-xs w-24 h-8 justify-center"
+                          >
+                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                            <span>Testing...</span>
+                          </Badge>
+                        )}
 
-              {!agent.configuration.isEnabled && (
-                <p className="text-sm text-amber-600">
-                  You need to enable the agent before testing it.
-                </p>
-              )}
+                        {!isTesting && (
+                          <Badge
+                            variant={
+                              agent.configuration.isEnabled
+                                ? "default"
+                                : "secondary"
+                            }
+                            className={
+                              agent.configuration.isEnabled
+                                ? "bg-green-100 text-green-800 text-xs w-24 h-8 justify-center"
+                                : "text-xs w-24 h-6 justify-center"
+                            }
+                          >
+                            {agent.configuration.isEnabled
+                              ? "Online"
+                              : "Offline"}
+                          </Badge>
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {!agent.configuration.isEnabled && (
+                      <Alert>
+                        <div className="flex items-center gap-2 pb-2">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Agent Disabled</AlertTitle>
+                        </div>
+                        <AlertDescription>
+                          This agent is currently disabled. Enable it in the
+                          General tab to start testing.
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
-              {testResponse && (
-                <div className="mt-4 space-y-2">
-                  <h3 className="text-sm font-medium">Response:</h3>
-                  <div className="p-4 border rounded-md bg-muted">
-                    <p className="whitespace-pre-wrap">{testResponse}</p>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    <p>✓ Response generated using agent's system prompt</p>
-                    <p>✓ Model: GPT-4o Mini</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    {/* Test messages area */}
+                    <div className="border rounded-lg p-4 min-h-[400px] max-h-[500px] overflow-y-auto bg-muted/20">
+                      {!testResponse ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center">
+                          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                            <TestTube className="w-8 h-8 text-primary" />
+                          </div>
+                          <h3 className="text-lg font-medium mb-2">
+                            Test your agent
+                          </h3>
+                          <p className="text-muted-foreground mb-4 max-w-md">
+                            Send a test message to {agent.name} to see how it
+                            responds. The agent will use its configured system
+                            prompt
+                            {agent.collections &&
+                              agent.collections.length > 0 &&
+                              ` and has access to ${agent.collections.length} knowledge collection${agent.collections.length !== 1 ? "s" : ""}`}
+                            .
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* User Message */}
+                          <div className="flex justify-end">
+                            <div className="flex items-start gap-2 max-w-[80%] flex-row-reverse">
+                              {/* Avatar */}
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground">
+                                <User className="h-4 w-4" />
+                              </div>
+                              {/* Message Bubble */}
+                              <div className="relative group rounded-lg p-3 bg-primary text-primary-foreground">
+                                <div className="text-sm whitespace-pre-wrap">
+                                  {testMessage}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Agent Response */}
+                          <div className="flex justify-start">
+                            <div className="flex items-start gap-2 max-w-[80%] flex-row">
+                              {/* Avatar */}
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-muted text-muted-foreground">
+                                <Bot className="h-4 w-4" />
+                              </div>
+                              {/* Message Bubble */}
+                              <div className="relative group rounded-lg p-3 bg-background border">
+                                <div className="text-sm whitespace-pre-wrap">
+                                  {testResponse}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Test Info */}
+                          <div className="text-xs text-muted-foreground border-t pt-2">
+                            <p>
+                              ✓ Response generated using agent's system prompt
+                            </p>
+                            <p>✓ Model: GPT-4o Mini</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Input form */}
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <textarea
+                          value={testMessage}
+                          onChange={(e) => setTestMessage(e.target.value)}
+                          placeholder={
+                            agent.configuration.isEnabled
+                              ? `Test message for ${agent.name}...`
+                              : "Agent is disabled"
+                          }
+                          disabled={isTesting || !agent.configuration.isEnabled}
+                          className="flex-1 px-3 pt-2 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          rows={3}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              if (
+                                !isTesting &&
+                                agent.configuration.isEnabled &&
+                                testMessage.trim()
+                              ) {
+                                handleTestAgent();
+                              }
+                            }
+                          }}
+                        />
+                        <Button
+                          onClick={handleTestAgent}
+                          disabled={
+                            isTesting ||
+                            !testMessage.trim() ||
+                            !agent.configuration.isEnabled
+                          }
+                          className="self-end"
+                        >
+                          {isTesting ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Press Enter to send, Shift+Enter for new line
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

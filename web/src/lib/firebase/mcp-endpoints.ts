@@ -16,7 +16,7 @@ class AdminMcpEndpoints {
   constructor() {
     try {
       this.db = adminDb;
-      this.collectionName = "mcp_endpoints";
+      this.collectionName = "mcpendpoints";
     } catch (error) {
       console.error(
         "[AdminMcpEndpoints][constructor] Error initializing:",

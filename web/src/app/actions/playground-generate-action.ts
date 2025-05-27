@@ -11,7 +11,7 @@ import { Message } from "ai";
 export async function generatePlaygroundContent({
   promptTemplate,
   userInstructions,
-  modelId = "gpt-4o",
+  modelId = "gpt-4o-mini",
   temperature = 0.8,
   maxTokens = 4096,
   topP = 0.95,

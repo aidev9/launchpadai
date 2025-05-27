@@ -73,7 +73,7 @@ We'll create a new collection in Firebase to store MCP endpoint configurations:
 ```typescript
 // Path for MCP endpoint configurations
 const getMcpEndpointConfigPath = (userId: string) =>
-  `mcp_endpoints/${userId}/endpoints`;
+  `mcpendpoints/${userId}/endpoints`;
 const getMcpEndpointConfigDoc = (userId: string, endpointId: string) =>
   `${getMcpEndpointConfigPath(userId)}/${endpointId}`;
 

@@ -9,6 +9,7 @@ import { firebaseCollections } from "@/lib/firebase/client/FirebaseCollections";
 import { Collection } from "@/lib/firebase/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
+import { ErrorDisplay } from "@/components/ui/error-display";
 
 export function CollectionsStep() {
   const [wizardState, setWizardState] = useAtom(agentWizardStateAtom);
@@ -77,28 +78,24 @@ export function CollectionsStep() {
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Label>Knowledge Collections</Label>
-          <p className="text-sm text-muted-foreground">
-            Select collections to use as a knowledge base for your agent.
-          </p>
-        </div>
-        <div className="p-4 border border-red-300 bg-red-50 text-red-800 rounded-md">
-          Error loading collections: {error.message}
-        </div>
-      </div>
+      <ErrorDisplay
+        error={error}
+        title="Failed to load collections"
+        message="We couldn't retrieve your collections. Please try again."
+        component="collections-step"
+        action="load-collections"
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
+      {/* <div className="space-y-2">
         <Label>Knowledge Collections</Label>
         <p className="text-sm text-muted-foreground">
           Select collections to use as a knowledge base for your agent.
         </p>
-      </div>
+      </div> */}
 
       <div className="space-y-2">
         <Label htmlFor="collections-select">Collections</Label>

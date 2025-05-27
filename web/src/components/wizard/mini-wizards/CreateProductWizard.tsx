@@ -51,21 +51,51 @@ const PRODUCT_STEPS = [
 
 // Step 1 Schema: Basic Information
 const stepOneSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().min(1, "Description is required"),
+  name: z
+    .string()
+    .min(1, "Product name is required")
+    .min(3, "Product name must be at least 3 characters"),
+  description: z
+    .string()
+    .min(1, "Product description is required")
+    .min(10, "Description should be at least 10 characters long"),
   phases: z.array(z.string()).optional(),
 });
 
 // Step 2 Schema: Problem Statement
 const stepTwoSchema = z.object({
-  problem: z.string().optional(),
+  problem: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length >= 10, {
+      message:
+        "Problem statement should be at least 10 characters long if provided",
+    }),
 });
 
 // Step 3 Schema: Additional Details
 const stepThreeSchema = z.object({
-  team: z.string().optional(),
-  website: z.string().optional(),
-  country: z.string().optional(),
+  team: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length >= 2, {
+      message: "Team name should be at least 2 characters long if provided",
+    }),
+  website: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || val.startsWith("http://") || val.startsWith("https://"),
+      {
+        message: "Website must start with http:// or https://",
+      }
+    ),
+  country: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length >= 2, {
+      message: "Country name should be at least 2 characters long if provided",
+    }),
 });
 
 // Combined Schema for all steps
@@ -181,6 +211,33 @@ export default function CreateProductWizard({
     if (externalCurrentStep !== undefined || mainStep === 1) {
       // Parent is controlling the steps, expose our navigation functions
       const wizard = {
+        submitForm: async () => {
+          console.log(
+            "[CreateProductWizard] submitForm called externally (e.g., by MainWizard's Next button)."
+          );
+          // Trigger validation for ALL fields in the productFormSchema
+          const isEntireFormValid = await form.trigger();
+
+          if (isEntireFormValid) {
+            console.log(
+              "[CreateProductWizard] Entire form is valid. Proceeding with submission."
+            );
+            // If the entire form is valid, call the main onSubmit handler
+            // which will save the product and call onComplete.
+            await onSubmit(form.getValues());
+            return { success: true };
+          } else {
+            console.log(
+              "[CreateProductWizard] Form validation failed. Errors should be displayed by react-hook-form."
+            );
+            // react-hook-form will display specific field errors via <FormMessage />
+            // MainWizard will show a generic toast.
+            return {
+              success: false,
+              message: "Please correct the errors shown on the form.",
+            };
+          }
+        },
         goToNextStep,
         goToPreviousStep,
         handleFinalSubmit,
@@ -728,7 +785,7 @@ export default function CreateProductWizard({
         )}
 
         {/* Final submission button for last step */}
-        {showStepIndicator && validatedStep === 3 && (
+        {/* {showStepIndicator && validatedStep === 3 && (
           <div className="pt-4 border-t">
             <Button
               onClick={handleFinalSubmit}
@@ -743,7 +800,7 @@ export default function CreateProductWizard({
               Complete the product wizard and continue to the next step.
             </p>
           </div>
-        )}
+        )} */}
       </div>
     </MiniWizardBase>
   );

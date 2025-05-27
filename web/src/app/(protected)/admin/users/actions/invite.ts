@@ -62,7 +62,7 @@ async function sendInvitationEmail(
 
     // Send email using Resend
     await resend.emails.send({
-      from: process.env.EMAIL_FROM || "invitations@launchpadai.com",
+      from: process.env.EMAIL_FROM || "info@launchpadai.io",
       to: email,
       subject: subject,
       html: html,
@@ -143,12 +143,22 @@ export async function inviteUser(
     const invitationUrl = await generateInvitationUrl(email);
 
     // Store subscription in the subscriptions collection
-    console.log(`Storing subscription for user ${userRecord.uid} in subscriptions collection`);
-    await adminDb.collection("subscriptions").doc(userRecord.uid).set(subscriptionData);
+    console.log(
+      `Storing subscription for user ${userRecord.uid} in subscriptions collection`
+    );
+    await adminDb
+      .collection("subscriptions")
+      .doc(userRecord.uid)
+      .set(subscriptionData);
 
     // Initialize prompt credits based on subscription level
-    console.log(`Initializing prompt credits for user ${userRecord.uid} with plan ${subscriptionLevel.toLowerCase()}`);
-    await initializePromptCredits(userRecord.uid, subscriptionLevel.toLowerCase());
+    console.log(
+      `Initializing prompt credits for user ${userRecord.uid} with plan ${subscriptionLevel.toLowerCase()}`
+    );
+    await initializePromptCredits(
+      userRecord.uid,
+      subscriptionLevel.toLowerCase()
+    );
 
     if (isExistingUser) {
       // For existing users, only update the invitation fields

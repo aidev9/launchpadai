@@ -20,18 +20,13 @@ import {
   featuresAtom,
   notesAtom,
   collectionsAtom,
-  productContextAtom,
-  autoSyncProductAtom,
-  initializeSelectedProductAtom,
 } from "@/lib/store/product-store";
 import { globalWizardStepAtom } from "@/lib/atoms/wizard";
 import MDEditor from "@uiw/react-md-editor";
 import { generatePlaygroundContent } from "@/app/actions/playground-generate-action";
-import {
-  PLAYGROUND_CATEGORIES,
-  PlaygroundCategory,
-  PlaygroundPromptTemplate,
-} from "./playground-data";
+import { PLAYGROUND_CATEGORIES } from "./data";
+import { firebaseQA } from "@/lib/firebase/client/FirebaseQA";
+import { useCollectionData } from "react-firebase-hooks/firestore";
 
 type CategoryBadge = {
   id: string;
@@ -70,14 +65,27 @@ function flatten(obj: any, prefix = ""): Record<string, string> {
 }
 
 export default function PlaygroundCard() {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedSubBadge, setSelectedSubBadge] = useState<string | null>(null);
+  // Initialize with first category and subcategory
+  const firstCategory =
+    PLAYGROUND_CATEGORIES.length > 0 ? PLAYGROUND_CATEGORIES[0] : null;
+  const firstSubCategory =
+    firstCategory &&
+    firstCategory.subcategories &&
+    firstCategory.subcategories.length > 0
+      ? firstCategory.subcategories[0]
+      : null;
+
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(
+    firstCategory?.id || null
+  );
+  const [selectedSubBadge, setSelectedSubBadge] = useState<string | null>(
+    firstSubCategory?.id || null
+  );
   const [instructions, setInstructions] = useState<string>("");
   const [injectedPrompt, setInjectedPrompt] = useState<string>(""); // The template with variables injected
   const [resultsContent, setResultsContent] = useState<string>(""); // Final LLM output
-  const [activeTab, setActiveTab] = useState<"prompt" | "results">("prompt");
+  const [activeTab, setActiveTab] = useState<"prompt" | "results">("results"); // Start with results tab
   const [isEnhancing, setIsEnhancing] = useState(false);
-  const [isResultsLoading, setIsResultsLoading] = useState(false);
 
   // Retrieve all wizard step values from atoms
   const [selectedProduct] = useAtom(selectedProductAtom);
@@ -89,13 +97,32 @@ export default function PlaygroundCard() {
   const [collections] = useAtom(collectionsAtom);
   const [globalStep] = useAtom(globalWizardStepAtom);
 
+  // For 360 questions
+  // Use react-firebase-hooks to get questions for the current product
+  const [questionData, isQuestionsLoading] = useCollectionData(
+    selectedProduct?.id
+      ? firebaseQA.getQuestionsByProduct(selectedProduct.id)
+      : null,
+    {
+      snapshotListenOptions: { includeMetadataChanges: true },
+    }
+  );
+
+  // Format the questions data when it loads
+  const questionsData = React.useMemo(() => {
+    if (!questionData) return [];
+
+    return questionData.map((doc: any) => ({
+      id: doc.id,
+      question: doc.question || "",
+      answer: doc.answer || "",
+      // Include other properties as needed
+      ...doc,
+    }));
+  }, [questionData]);
+
   // Initialize selected product from storage
   // const [, setInitialize] = useAtom(initializeSelectedProductAtom);
-
-  // // Initialize the selected product on component mount
-  // useEffect(() => {
-  //   setInitialize();
-  // }, [setInitialize]);
 
   // Real-time prompt update - inject variables into template
   useEffect(() => {
@@ -120,6 +147,7 @@ export default function PlaygroundCard() {
     console.log("[PlaygroundCard] Debug - features:", features);
     console.log("[PlaygroundCard] Debug - notes:", notes);
     console.log("[PlaygroundCard] Debug - collections:", collections);
+    console.log("[PlaygroundCard] Debug - 360 questions:", questionsData);
 
     // Helper function to check if an object has meaningful data
     const hasData = (obj: any): boolean => {
@@ -156,6 +184,34 @@ export default function PlaygroundCard() {
       productPhases: selectedProduct?.phases?.length
         ? selectedProduct.phases.join(", ")
         : "Discover, Validate, Design, Build, Secure, Launch, Grow",
+
+      // Include 360 questions and business rules with product description for wider template compatibility
+      productDetailedDescription: `${
+        selectedProduct?.description ||
+        selectedProduct?.problem ||
+        "Product Description"
+      }\n\nBusiness Rules:\n${
+        hasData(selectedRules)
+          ? Object.entries(selectedRules || {})
+              .filter(
+                ([key, value]) =>
+                  value &&
+                  key !== "id" &&
+                  key !== "productId" &&
+                  key !== "userId" &&
+                  key !== "createdAt" &&
+                  key !== "updatedAt"
+              )
+              .map(([key, value]) => {
+                // Format the key to be more readable (e.g., "designPrinciples" -> "Design Principles")
+                const formattedKey = key
+                  .replace(/([A-Z])/g, " $1")
+                  .replace(/^./, (str) => str.toUpperCase());
+                return `${formattedKey}: ${value}`;
+              })
+              .join("\n") || ""
+          : ""
+      }`,
 
       // Additional product details
       productProblem:
@@ -235,7 +291,7 @@ export default function PlaygroundCard() {
             .join("; ")
         : "Document collections to be created",
 
-      // Rules context
+      // Rules context - formatted in a structured way
       rules: hasData(selectedRules)
         ? Object.entries(selectedRules || {})
             .filter(
@@ -247,9 +303,45 @@ export default function PlaygroundCard() {
                 key !== "createdAt" &&
                 key !== "updatedAt"
             )
-            .map(([key, value]) => `${key}: ${value}`)
-            .join("; ")
+            .map(([key, value]) => {
+              // Format the key to be more readable (e.g., "designPrinciples" -> "Design Principles")
+              const formattedKey = key
+                .replace(/([A-Z])/g, " $1")
+                .replace(/^./, (str) => str.toUpperCase());
+              return `${formattedKey}: ${value}`;
+            })
+            .join("\n")
         : "Business rules and constraints to be defined",
+
+      // Structured formatted business rules
+      productRules: hasData(selectedRules)
+        ? Object.entries(selectedRules || {})
+            .filter(
+              ([key, value]) =>
+                value &&
+                key !== "id" &&
+                key !== "productId" &&
+                key !== "userId" &&
+                key !== "createdAt" &&
+                key !== "updatedAt"
+            )
+            .map(([key, value]) => {
+              // Format the key to be more readable (e.g., "designPrinciples" -> "Design Principles")
+              const formattedKey = key
+                .replace(/([A-Z])/g, " $1")
+                .replace(/^./, (str) => str.toUpperCase());
+              return `${formattedKey}: ${value}`;
+            })
+            .join("\n")
+        : "No business rules defined.",
+
+      // 360 Questions and Answers - include only answered questions
+      questions360: questionsData?.length
+        ? questionsData
+            .filter((q) => q.answer && q.answer.trim().length > 0)
+            .map((q) => `Q: ${q.question}\nA: ${q.answer}`)
+            .join("\n\n") || "No answered 360° questions yet for this product"
+        : "360° product questions to be answered in the Questions wizard step",
     };
 
     // Inject variables into the prompt template
@@ -277,7 +369,38 @@ export default function PlaygroundCard() {
     features,
     notes,
     collections,
+    questionsData,
   ]);
+
+  // Initialize with first category and subcategory on component mount
+  useEffect(() => {
+    if (PLAYGROUND_CATEGORIES.length > 0) {
+      const firstCategory = PLAYGROUND_CATEGORIES[0];
+      setSelectedCategory(firstCategory.id);
+
+      if (firstCategory.subcategories?.length > 0) {
+        const firstSubcategory = firstCategory.subcategories[0];
+        setSelectedSubBadge(firstSubcategory.id);
+
+        // Auto-start enhancement after a brief delay to ensure state is updated
+        setTimeout(() => {
+          handleEnhance();
+        }, 300);
+      }
+    }
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  // Auto-generate content on initial mount if category and subcategory are set
+  useEffect(() => {
+    if (selectedCategory && selectedSubBadge && !resultsContent) {
+      // Set a small delay to ensure all data is loaded
+      const timer = setTimeout(() => {
+        handleEnhance();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [selectedCategory, selectedSubBadge, resultsContent]);
 
   // Handle category selection
   const handleCategorySelect = (categoryId: string) => {
@@ -317,7 +440,7 @@ export default function PlaygroundCard() {
       const stream = await generatePlaygroundContent({
         promptTemplate: injectedPrompt,
         userInstructions: instructions,
-        modelId: "gpt-4o", // Use the more capable model
+        modelId: "gpt-4o-mini", // Use the more capable model
         temperature: 0.8, // Higher creativity for better results
         maxTokens: 4096, // More tokens for comprehensive output
         topP: 0.95, // Higher diversity
@@ -357,14 +480,19 @@ export default function PlaygroundCard() {
   };
 
   return (
-    <Card className="flex flex-col h-full border-2 border-primary/20">
+    <Card className="flex flex-col h-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Playground</CardTitle>
+        <CardTitle className="text-lg">
+          Prompt Playground{" "}
+          <span className="text-sm text-muted-foreground font-normal">
+            (Select a category to begin)
+          </span>
+        </CardTitle>
       </CardHeader>
 
       <CardContent
         className="flex-1 overflow-y-auto p-4 flex flex-col gap-0"
-        style={{ minHeight: 0, maxHeight: "calc(90vh - 200px)" }}
+        // style={{ minHeight: 0, maxHeight: "calc(90vh - 200px)" }}
       >
         {/* Main Categories - robust horizontal scroll, 80% width */}
         <div className="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent mx-auto">
@@ -397,7 +525,10 @@ export default function PlaygroundCard() {
                     selectedSubBadge === sub.id ? "default" : "secondary"
                   }
                   className="cursor-pointer px-3 py-1 text-sm flex items-center gap-1"
-                  onClick={() => handleSubBadgeSelect(sub.id)}
+                  onClick={() => {
+                    handleSubBadgeSelect(sub.id);
+                    handleEnhance();
+                  }}
                   style={{ minWidth: 140 }}
                 >
                   {selectedSubBadge === sub.id && <CheckIcon size={12} />}
@@ -437,8 +568,8 @@ export default function PlaygroundCard() {
                   <MDEditor
                     value={injectedPrompt}
                     onChange={() => {}} // Read-only
-                    height={400}
-                    style={{ maxHeight: "400px" }}
+                    height={320}
+                    // style={{ maxHeight: "400px" }}
                     preview="edit"
                   />
                 </div>
@@ -457,11 +588,11 @@ export default function PlaygroundCard() {
                     <MDEditor
                       value={
                         resultsContent ||
-                        "No results generated yet. Click 'Enhance Results' to generate content."
+                        "Click 'Enhance Results' to generate contextual context for your product."
                       }
                       onChange={() => {}} // Read-only
-                      height={400}
-                      style={{ maxHeight: "400px" }}
+                      height={320}
+                      // style={{ maxHeight: "400px" }}
                       preview="edit"
                     />
                   )}

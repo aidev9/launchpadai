@@ -65,37 +65,55 @@ export default function WizardCompletion({ totalXp }: WizardCompletionProps) {
   }, []);
 
   return (
-    <div
-      data-testid="wizard-completion"
-      className="min-h-[50vh] flex items-center justify-center bg-gradient-to-b from-green-50 to-emerald-100 px-12"
-    >
+    <div className="flex items-center justify-center h-full w-full bg-gradient-to-b from-green-50 to-emerald-100">
       {showConfetti && (
-        <Confetti recycle={false} numberOfPieces={400} gravity={0.3} />
+        <Confetti
+          recycle={false}
+          numberOfPieces={400}
+          gravity={0.3}
+          style={{
+            position: "fixed",
+            pointerEvents: "none",
+            width: "100%",
+            height: "100%",
+            top: 0,
+            left: 0,
+          }}
+        />
       )}
 
-      <div className="max-w-6xl w-full mx-auto space-y-8">
+      <div className="max-w-4xl w-full mx-auto space-y-8 px-8">
         {/* Header */}
         <div className="text-center space-y-4">
-          <h1
-            data-testid="completion-title"
+          <motion.h1
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", duration: 0.8 }}
             className="text-4xl font-bold text-gray-900"
+            data-testid="completion-title"
           >
             🎉 Amazing Work!
-          </h1>
-          <p
-            data-testid="completion-message"
+          </motion.h1>
+          <motion.p
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
             className="text-xl text-gray-600 max-w-3xl mx-auto"
+            data-testid="completion-message"
           >
             You've successfully completed the wizard and created your product
             blueprint!
-          </p>
-          <div
+          </motion.p>
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.4, type: "spring" }}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-amber-100 rounded-full text-amber-800 font-semibold"
             data-testid="completion-xp"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 rounded-full text-amber-800 font-semibold"
           >
             <span className="text-2xl">🏆</span>
             <span>Total XP Earned: {totalXp}</span>
-          </div>
+          </motion.div>
         </div>
 
         {/* Benefits Carousel */}
@@ -107,7 +125,11 @@ export default function WizardCompletion({ totalXp }: WizardCompletionProps) {
                 initial={{ x: 300, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: -300, opacity: 0 }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                }}
               >
                 <Card className="shadow-lg border-2 border-gray-100 hover:shadow-xl transition-shadow duration-300">
                   <CardHeader className="text-center space-y-3 pt-8">
@@ -143,7 +165,12 @@ export default function WizardCompletion({ totalXp }: WizardCompletionProps) {
         </div>
 
         {/* Call to Action */}
-        <div className="text-center space-y-1 pt-0 pb-4">
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="text-center space-y-1 pt-0 pb-4"
+        >
           <p className="text-md text-gray-700 font-medium">
             Ready to bring your vision to life?
           </p>
@@ -151,7 +178,7 @@ export default function WizardCompletion({ totalXp }: WizardCompletionProps) {
             Click "Finish" below to access the product builder and start
             creating!
           </p>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

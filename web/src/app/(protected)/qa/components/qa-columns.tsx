@@ -10,6 +10,7 @@ import { Question } from "@/lib/firebase/schema";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import { formatTimestamp } from "@/utils/constants";
+import { formatDistance } from "date-fns";
 
 export const columns: ColumnDef<Question>[] = [
   {
@@ -169,25 +170,27 @@ export const columns: ColumnDef<Question>[] = [
   {
     accessorKey: "updatedAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Modified" />
+      <DataTableColumnHeader column={column} title="Updated" />
     ),
     cell: ({ row }) => {
-      const updatedAt = row.getValue("updatedAt");
-      // Handle different types of timestamps
-      let timestamp: number;
+      const question = row.original;
+      // Use the timestamp directly if available, otherwise fallback to current time
+      let timestamp = question.updatedAt || Date.now();
 
-      if (typeof updatedAt === "number") {
-        timestamp = updatedAt;
-      } else if (typeof updatedAt === "string") {
-        timestamp = parseInt(updatedAt);
-      } else {
-        timestamp = 0; // Default for null/undefined
+      // Handle string timestamps by converting to number
+      if (typeof timestamp === "string") {
+        timestamp = parseInt(timestamp, 10);
       }
 
-      const formattedDate = timestamp ? formatTimestamp(timestamp) : "N/A";
+      // Check if timestamp is in seconds (Firebase often stores in seconds)
+      // and convert to milliseconds if needed
+      const timeInMs = timestamp > 1e10 ? timestamp : timestamp * 1000;
+      const date = new Date(timeInMs);
 
       return (
-        <div className="text-sm text-muted-foreground">{formattedDate}</div>
+        <div className="text-sm text-muted-foreground">
+          {formatDistance(date, new Date(), { addSuffix: true })}
+        </div>
       );
     },
     sortingFn: "datetime",

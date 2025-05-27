@@ -11,12 +11,12 @@ import {
   canNavigateAtom,
   WIZARD_STEP_DEFINITIONS,
   TOTAL_WIZARDS,
+  GlobalWizardStep, // Add GlobalWizardStep here
 } from "@/lib/atoms/wizard";
 import {
   selectedProductAtom,
   selectedBusinessStackAtom,
   selectedTechStackAtom,
-  autoSyncProductAtom,
   initializeSelectedProductAtom,
 } from "@/lib/store/product-store";
 import WizardLayout from "./WizardLayout";
@@ -54,7 +54,7 @@ export default function MainWizard() {
   const isLoading = loading || userProfileLoading;
 
   // Global wizard navigation state
-  const [globalStep] = useAtom(globalWizardStepAtom);
+  const [globalStep, setGlobalStep] = useAtom(globalWizardStepAtom);
   const [, navigate] = useAtom(wizardNavigationAtom);
   const wizardInfo = useAtom(currentWizardInfoAtom)[0];
   const navigation = useAtom(canNavigateAtom)[0];
@@ -71,6 +71,62 @@ export default function MainWizard() {
   useEffect(() => {
     setInitialize();
   }, [setInitialize]);
+
+  // Load wizard progress from Firestore when user profile is available
+  useEffect(() => {
+    if (userProfile && !userProfileLoading && userProfile.lastWizardStep) {
+      // Only update globalStep if it's different from what's in Firestore.
+      // This avoids a loop if atomWithStorage already set the same value.
+      if (
+        globalStep[0] !== userProfile.lastWizardStep[0] ||
+        globalStep[1] !== userProfile.lastWizardStep[1]
+      ) {
+        console.log(
+          "[MainWizard] Loading step from Firestore:",
+          userProfile.lastWizardStep
+        );
+        setGlobalStep(userProfile.lastWizardStep);
+      }
+    }
+    // This effect should run when userProfile or its loading state changes, or setGlobalStep reference changes (rare).
+    // It should NOT run when globalStep changes, as its purpose is to SET globalStep from the profile.
+  }, [userProfile, userProfileLoading, setGlobalStep]);
+
+  // Save wizard progress to Firestore when globalStep changes
+  useEffect(() => {
+    // Ensure user and profile are loaded, and globalStep is initialized.
+    if (_user && userProfile && globalStep) {
+      const currentProfileStep = userProfile.lastWizardStep;
+
+      // Condition 1: Don't save if globalStep is the same as what's already in Firestore.
+      if (
+        currentProfileStep &&
+        globalStep[0] === currentProfileStep[0] &&
+        globalStep[1] === currentProfileStep[1]
+      ) {
+        return; // No change to save
+      }
+
+      // Condition 2: Handle initial load carefully.
+      // If userProfile is still loading, and globalStep is the default [0,1],
+      // and there's no step yet in the profile, avoid saving the default [0,1]
+      // prematurely. This allows the loading effect above to set the correct step first.
+      if (userProfileLoading && globalStep[0] === 0 && globalStep[1] === 1 && !currentProfileStep) {
+        console.log("[MainWizard] Deferring save of initial [0,1] while profile loads.");
+        return;
+      }
+      
+      // If we've passed the guards, proceed to save.
+      console.log(
+        "[MainWizard] Saving step to Firestore:",
+        globalStep
+      );
+      firebaseUsers.updateUserProfile({ lastWizardStep: globalStep }).catch((err) => {
+        console.error("[MainWizard] Error saving step to Firestore:", err);
+      });
+    }
+    // This effect should run when globalStep changes, or when user/profile info becomes available.
+  }, [globalStep, _user, userProfile, userProfileLoading]);
 
   // Legacy state for celebration and completion tracking
   const [completedMiniWizards, setCompletedMiniWizards] = useAtom(
@@ -113,10 +169,44 @@ export default function MainWizard() {
       switch (mainStep) {
         case 1: // Product wizard
           const productWizard = (window as any).currentProductWizard;
-          if (productWizard && productWizard.handleFinalSubmit) {
-            productWizard.handleFinalSubmit();
+          if (productWizard && productWizard.submitForm) {
+            console.log("[MainWizard] Attempting to call productWizard.submitForm()");
+            productWizard
+              .submitForm()
+              .then((result: { success: boolean; message?: string }) => {
+                console.log("[MainWizard] productWizard.submitForm() result:", result);
+                if (result && result.success) {
+                  // The mini-wizard's submitForm should handle onComplete itself
+                  // which then calls handleMiniWizardComplete, leading to navigation.
+                  console.log("[MainWizard] Product form submitted successfully via mini-wizard.");
+                } else {
+                  toast({
+                    title: "Validation Error",
+                    description:
+                      result?.message ||
+                      "Please check the form for errors and try again.",
+                    variant: "destructive",
+                  });
+                }
+              })
+              .catch((err: any) => {
+                console.error(
+                  "[MainWizard] Error calling productWizard.submitForm():",
+                  err
+                );
+                toast({
+                  title: "Submission Error",
+                  description:
+                    "An unexpected error occurred while submitting the form.",
+                  variant: "destructive",
+                });
+              });
+            return; // Stop further execution in handleNext as mini-wizard handles it
+          } else {
+            console.warn(
+              "[MainWizard] currentProductWizard or submitForm not found on window object."
+            );
           }
-          break;
         case 2: // Business stack wizard
           const businessWizard = (window as any).currentBusinessStackWizard;
           if (businessWizard && businessWizard.submitForm) {
@@ -239,6 +329,25 @@ export default function MainWizard() {
     }
   };
 
+  const handleSaveAndFinishLater = async () => {
+    console.log("[MainWizard] Save & Finish Later clicked.");
+    // Ensure current step is saved to Firestore.
+    // The existing useEffect for globalStep should handle this, but we can be explicit if needed.
+    if (_user && userProfile && globalStep) {
+      try {
+        await firebaseUsers.updateUserProfile({ lastWizardStep: globalStep });
+        console.log("[MainWizard] Progress saved to Firestore before finishing later.");
+      } catch (err) {
+        console.error(
+          "[MainWizard] Error saving progress to Firestore before finishing later:",
+          err
+        );
+        // Optionally, show a toast error, but still attempt to navigate.
+      }
+    }
+    router.push("/dashboard");
+  };
+
   // Handle mini-wizard completion with XP reward
   const handleMiniWizardComplete = async (
     wizardId: MiniWizardId,
@@ -284,7 +393,6 @@ export default function MainWizard() {
             actionId = "create_product"; // Default fallback
         }
 
-        console.log(`[MainWizard] Awarding XP for action::: ${actionId}`);
         // Award XP in background - non-blocking
         xpMutation.mutate(actionId);
       } catch (error) {
@@ -315,6 +423,29 @@ export default function MainWizard() {
     setShowCelebration(false);
     setCompletedWizardId(null); // Reset completed wizard ID
     navigate("next"); // Use navigate directly to avoid re-triggering form submission
+  };
+
+  const handleReset = () => {
+    console.log("[MainWizard] Resetting wizard...");
+    const initialStep: GlobalWizardStep = [0, 1];
+    setGlobalStep(initialStep);
+
+    // Also reset in Firestore
+    if (_user && userProfile) {
+      firebaseUsers
+        .updateUserProfile({ lastWizardStep: initialStep })
+        .then(() => {
+          console.log("[MainWizard] Wizard step reset in Firestore.");
+        })
+        .catch((err) => {
+          console.error(
+            "[MainWizard] Error resetting wizard step in Firestore:",
+            err
+          );
+        });
+    }
+    // Potentially reset other wizard-related atoms here
+    // e.g., setSelectedProduct(null), setCompletedMiniWizards({}), etc.
   };
 
   // Render the appropriate wizard based on current global step
@@ -515,7 +646,7 @@ export default function MainWizard() {
             ? "Update Collections"
             : "Add Collections";
         case 8:
-          return "Complete Wizard";
+          return "Add Notes";
         default:
           return "Next";
       }
@@ -599,6 +730,8 @@ export default function MainWizard() {
         onBack={navigation.canGoBack ? handleBack : undefined}
         onNext={handleNext}
         onSkip={handleSkip}
+        onReset={handleReset}
+        onSaveAndFinishLater={handleSaveAndFinishLater}
         isBackDisabled={!navigation.canGoBack}
         isNextDisabled={isNextButtonDisabled()}
         showNavigation={!showCelebration}

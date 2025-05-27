@@ -55,31 +55,119 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Use the agent's system prompt or a default one
-    const systemPrompt =
-      agent.systemPrompt ||
-      `You are ${agent.name}, an AI assistant. ${agent.description}`;
+    // Extract the user message from the messages array
+    const userMessage =
+      messages.find((msg) => msg.role === "user")?.content || "";
 
-    // Create the system message
-    const systemMessage: Message = {
-      id: "system",
-      role: "system",
-      content: systemPrompt,
-    };
+    console.log(
+      `[Agent Chat] Processing message: "${userMessage}" for agent: ${agent.name}`
+    );
 
-    // Combine system message with user messages
-    const allMessages = [systemMessage, ...messages];
+    // Check if agent has tools or collections - if so, use sequential tool calling
+    const hasCollections = agent.collections && agent.collections.length > 0;
 
-    // Stream the AI response
-    const result = streamText({
-      model: openai("gpt-4o-mini"),
-      messages: allMessages,
-      temperature: 0.7,
-      maxTokens: 2000,
-    });
+    // Check if agent has enabled tools by actually loading the tool configurations
+    let hasEnabledTools = false;
+    if (agent.tools && agent.tools.length > 0) {
+      try {
+        const { getUserToolConfigurations, createToolsFromConfig } =
+          await import("@/lib/tools");
 
-    // Return the streaming response
-    return result.toDataStreamResponse();
+        console.log(
+          `[Agent Chat] Checking tool configurations for user ${userId}`
+        );
+        const toolConfigs = await getUserToolConfigurations(userId);
+        const filteredConfigs = toolConfigs.filter((config: any) => {
+          return config.isEnabled && agent.tools?.includes(config.toolId);
+        });
+
+        const enabledToolConfigs = filteredConfigs.map((config: any) => ({
+          toolId: config.toolId,
+          isEnabled: config.isEnabled,
+          apiKey: config.apiKey,
+          config: config.config,
+        }));
+
+        const tools = createToolsFromConfig(enabledToolConfigs);
+        hasEnabledTools = Object.keys(tools).length > 0;
+
+        console.log(
+          `[Agent Chat] Found ${Object.keys(tools).length} enabled tools: [${Object.keys(tools).join(", ")}]`
+        );
+      } catch (error) {
+        console.warn(
+          `[Agent Chat] Failed to check tool configurations:`,
+          error
+        );
+        hasEnabledTools = false;
+      }
+    }
+
+    if (hasEnabledTools || hasCollections) {
+      console.log(
+        `[Agent Chat] Agent has enabled tools (${hasEnabledTools}) or collections (${hasCollections}), using sequential tool calling approach`
+      );
+
+      // Use AgentChatService for sequential tool calling
+      const { AgentChatService } = await import("@/lib/agent-chat-service");
+
+      const result = await AgentChatService.generateResponse({
+        agent,
+        message: userMessage,
+        userId: userId,
+        maxTokens: 2000,
+        temperature: 0.7,
+        maxSteps: 5,
+      });
+
+      console.log(
+        `[Agent Chat] Sequential tool calling completed with ${result.toolCalls.length} tool calls`
+      );
+
+      // Return the complete response as JSON since tools need to complete first
+      return new Response(
+        JSON.stringify({
+          type: "text",
+          text: result.text,
+          toolCalls: result.toolCalls,
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } else {
+      console.log(
+        `[Agent Chat] Agent has no enabled tools or collections, using simple streaming response`
+      );
+
+      // No tools or collections, use simple streaming response
+      const baseSystemPrompt =
+        agent.systemPrompt ||
+        `You are ${agent.name}, an AI assistant. ${agent.description}`;
+
+      // Create the system message
+      const systemMessage: Message = {
+        id: "system",
+        role: "system",
+        content: baseSystemPrompt,
+      };
+
+      // Combine system message with user messages
+      const allMessages = [systemMessage, ...messages];
+
+      // Stream the response
+      const result = streamText({
+        model: openai("gpt-4o-mini"),
+        messages: allMessages,
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
+
+      // Return the streaming response
+      return result.toDataStreamResponse();
+    }
   } catch (error) {
     console.error("Error processing chat request:", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {

@@ -3,6 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { TechStack } from "@/lib/firebase/schema";
 import { CardRadio } from "@/app/(protected)/mystacks/create/components/card-radio";
+import { useState } from "react";
 
 interface OptionWithDetails {
   value: string;
@@ -26,6 +27,8 @@ export default function AppTypeStep({
   showOther,
   setShowOther,
 }: AppTypeStepProps) {
+  const [errors, setErrors] = useState({ appType: "" });
+
   const appTypeOptions: OptionWithDetails[] = [
     {
       value: "Full-stack web app",
@@ -53,14 +56,32 @@ export default function AppTypeStep({
     },
   ];
 
+  const validateAppType = (value: string) => {
+    if (showOther.appType && (!value || value.trim() === "")) {
+      setErrors({ appType: "Please specify your app type" });
+    } else {
+      setErrors({ appType: "" });
+    }
+  };
+
   const handleAppTypeChange = (value: string) => {
     if (value === "Other") {
       setShowOther((prev) => ({ ...prev, appType: true }));
       updateField("appType", "");
+      validateAppType("");
     } else {
       setShowOther((prev) => ({ ...prev, appType: false }));
       updateField("appType", value);
+      setErrors({ appType: "" });
     }
+  };
+
+  const handleOtherAppTypeChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
+    const value = e.target.value;
+    updateField("appType", value);
+    validateAppType(value);
   };
 
   return (
@@ -100,9 +121,12 @@ export default function AppTypeStep({
             id="other-app-type"
             placeholder="Enter your app type"
             value={wizardState.appType}
-            onChange={(e) => updateField("appType", e.target.value)}
-            className="mt-1"
+            onChange={handleOtherAppTypeChange}
+            className={`mt-1 ${errors.appType ? "border-red-500" : ""}`}
           />
+          {errors.appType && (
+            <p className="text-sm text-red-500 mt-1">{errors.appType}</p>
+          )}
         </div>
       )}
     </div>

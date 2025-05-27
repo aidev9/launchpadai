@@ -6,6 +6,7 @@ import { TechStack } from "@/lib/firebase/schema";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import { Checkbox } from "@/components/ui/checkbox";
+import { formatDistance } from "date-fns";
 
 export const getStackColumns = (): ColumnDef<TechStack, unknown>[] => [
   {
@@ -117,19 +118,29 @@ export const getStackColumns = (): ColumnDef<TechStack, unknown>[] => [
       return value.some((val: string) => phases.includes(val));
     },
   },
-  // { // Example for a potential 'Last Modified' column if data is available
-  //   accessorKey: "updatedAt", // or "createdAt"
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="Last Modified" />
-  //   ),
-  //   cell: ({ row }) => {
-  //     const updatedAt = row.getValue("updatedAt") as number; // Assuming timestamp
-  //     if (!updatedAt) return <div className="text-xs">N/A</div>;
-  //     const date = new Date(updatedAt);
-  //     return <div className="text-xs">{date.toLocaleDateString()}</div>;
-  //   },
-  //   sortingFn: "datetime",
-  // },
+  {
+    accessorKey: "updatedAt", // or "createdAt" depending on what's available in your schema
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Updated" />
+    ),
+    cell: ({ row }) => {
+      const stack = row.original;
+      // Use the timestamp directly if available, otherwise fallback to current time
+      const timestamp = stack.updatedAt || Date.now();
+
+      // Check if timestamp is in seconds (Firebase often stores in seconds)
+      // and convert to milliseconds if needed
+      const timeInMs = timestamp > 1e10 ? timestamp : timestamp * 1000;
+      const date = new Date(timeInMs);
+
+      return (
+        <div className="text-sm text-muted-foreground">
+          {formatDistance(date, new Date(), { addSuffix: true })}
+        </div>
+      );
+    },
+    sortingFn: "datetime",
+  },
   {
     id: "actions",
     cell: ({ row, table }) => {

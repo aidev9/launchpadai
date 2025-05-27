@@ -5,6 +5,7 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { TagInput } from "@/components/ui/tag-input";
 import { TechStack, Phases } from "@/lib/firebase/schema";
 import { Product } from "@/lib/firebase/schema";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface AppDetailsStepProps {
   wizardState: TechStack;
@@ -17,6 +18,62 @@ export default function AppDetailsStep({
   updateField,
   product,
 }: AppDetailsStepProps) {
+  const [errors, setErrors] = useState({
+    name: "",
+  });
+
+  // Ref to hold the latest wizardState for stable callbacks
+  const wizardStateRef = useRef(wizardState);
+  useEffect(() => {
+    wizardStateRef.current = wizardState;
+  }, [wizardState]);
+
+  // Validate fields on change
+  const validateField = useCallback((field: string, value: any) => {
+    switch (field) {
+      case "name":
+        if (!value || value.trim() === "") {
+          setErrors((prev) => ({ ...prev, name: "Stack Name is required" }));
+          return false;
+        } else if (value.length < 3) {
+          setErrors((prev) => ({
+            ...prev,
+            name: "Stack Name must be at least 3 characters",
+          }));
+          return false;
+        } else {
+          setErrors((prev) => ({ ...prev, name: "" }));
+          return true;
+        }
+      case "description":
+        return true;
+      case "phases":
+        return true;
+      default:
+        return true;
+    }
+  }, []);
+
+  const validateAllFields = useCallback(() => {
+    const currentWizardState = wizardStateRef.current;
+    const nameIsValid = validateField("name", currentWizardState.name);
+    return nameIsValid;
+  }, [validateField]);
+
+  // Expose validation function to parent
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).currentAppDetailsStep = {
+        validateFields: validateAllFields,
+      };
+    }
+  }, [validateAllFields]);
+
+  const handleFieldUpdate = (field: keyof TechStack, value: any) => {
+    updateField(field, value);
+    validateField(field, value);
+  };
+
   // Get options for phases
   const getPhaseOptions = () => {
     return Object.values(Phases).map((phase) => ({
@@ -29,25 +86,27 @@ export default function AppDetailsStep({
     <div className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="app-name">
-          Name <span className="text-red-500">*</span>
+          Stack Name <span className="text-red-500">*</span>
         </Label>
         <Input
           id="app-name"
-          placeholder="Enter your application name"
+          placeholder="Enter your stack name"
           value={wizardState.name}
-          onChange={(e) => updateField("name", e.target.value)}
+          onChange={(e) => handleFieldUpdate("name", e.target.value)}
+          className={errors.name ? "border-red-500" : ""}
         />
+        {errors.name && (
+          <p className="text-sm text-red-500 mt-1">{errors.name}</p>
+        )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="app-description">
-          Description <span className="text-red-500">*</span>
-        </Label>
+        <Label htmlFor="app-description">Description</Label>
         <Textarea
           id="app-description"
-          placeholder="Enter a description for your application"
+          placeholder="Enter a description for your application (optional)"
           value={wizardState.description}
-          onChange={(e) => updateField("description", e.target.value)}
+          onChange={(e) => handleFieldUpdate("description", e.target.value)}
           rows={4}
         />
       </div>
@@ -67,19 +126,17 @@ export default function AppDetailsStep({
       </div>
 
       <div className="space-y-2">
-        <Label>
-          Phase(s) <span className="text-red-500">*</span>
-        </Label>
+        <Label>Phase(s)</Label>
         <MultiSelect
           options={getPhaseOptions()}
           selected={wizardState.phases}
           onChange={(selected) =>
-            updateField(
+            handleFieldUpdate(
               "phases",
               selected.map((phase) => phase as Phases)
             )
           }
-          placeholder="Select phases..."
+          placeholder="Select phases... (optional)"
         />
       </div>
     </div>

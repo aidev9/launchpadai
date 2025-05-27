@@ -546,7 +546,7 @@ export default function CollectionDetail() {
           </TabsContent>
 
           <TabsContent value="chat" className="space-y-4">
-            {selectedCollection.status !== "indexed" ? (
+            {/* {selectedCollection.status !== "indexed" ? (
               <div className="text-center py-10 border rounded-lg">
                 <h3 className="text-lg font-medium mb-2">
                   Collection must be indexed
@@ -563,12 +563,12 @@ export default function CollectionDetail() {
                   {selectedCollection.status}
                 </Badge>
               </div>
-            ) : (
-              <ChatPanel
-                collection={selectedCollection}
-                documents={typedDocuments}
-              />
-            )}
+            ) : ( */}
+            <ChatPanel
+              collection={selectedCollection}
+              documents={typedDocuments}
+            />
+            {/* )} */}
           </TabsContent>
 
           {/* MCP Tab */}

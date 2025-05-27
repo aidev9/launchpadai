@@ -11,7 +11,7 @@ export { firebaseQA } from "./FirebaseQA";
 export { firebaseStacks } from "./FirebaseStacks";
 export { firebasePrompts } from "./FirebasePrompts";
 export { firebaseRules } from "./FirebaseRules";
-export { firebaseMcpEndpoints } from "./FirebaseMcpEndpoints";
+export { firebaseCollectionMcpEndpoints } from "./FirebaseCollectionMcpEndpoints";
 
 // Export wizard-related Firebase classes
 export { FirebaseProgress } from "./FirebaseProgress";

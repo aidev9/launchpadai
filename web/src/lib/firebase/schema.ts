@@ -44,6 +44,7 @@ export interface UserProfile {
   level?: number;
   hasAnsweredTimelineQuestion?: boolean;
   hasCompletedOnboarding?: boolean;
+  lastWizardStep?: [number, number];
   completedQuests?: string[];
   bio?: string;
   urls?: { value: string }[];
@@ -562,7 +563,6 @@ export function getPromptCreditsByPlan(planType: string): {
 } {
   // Null and undefined check
   if (!planType) {
-    // console.error("getPromptCreditsByPlan:::planType:::", planType);
     return { daily: 10, monthly: 0 };
   }
 
@@ -690,9 +690,15 @@ export interface Agent {
   configuration: {
     url: string;
     apiKey: string;
+    authType?: "bearer" | "apikey" | "none"; // Authentication method
+    responseType?: "streaming" | "single"; // Response format preference
     rateLimitPerMinute: number;
     allowedIps: string[];
     isEnabled: boolean;
+    a2aOAuth?: {
+      clientId: string;
+      clientSecret: string;
+    };
   };
   createdAt?: number;
   updatedAt?: number;
@@ -713,9 +719,17 @@ export const agentInputSchema = z.object({
   configuration: z.object({
     url: z.string().optional(),
     apiKey: z.string().optional(),
+    authType: z.enum(["bearer", "apikey", "none"]).optional(),
+    responseType: z.enum(["streaming", "single"]).optional(),
     rateLimitPerMinute: z.number().min(1).max(1000).default(60),
     allowedIps: z.array(z.string()).default([]),
-    isEnabled: z.boolean().default(false),
+    isEnabled: z.boolean().default(true),
+    a2aOAuth: z
+      .object({
+        clientId: z.string(),
+        clientSecret: z.string(),
+      })
+      .optional(),
   }),
 });
 

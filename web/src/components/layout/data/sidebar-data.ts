@@ -29,6 +29,7 @@ import {
   IconStack,
   IconStackPush,
   IconRobot,
+  IconRocket,
 } from "@tabler/icons-react";
 import {
   AudioWaveform,
@@ -62,49 +63,43 @@ export const sidebarData: SidebarData = {
   navGroups: [
     {
       title: "My Launchpad",
+
       items: [
         {
-          title: "Dashboard",
-          url: "/dashboard",
-          icon: IconDashboard,
-          items: [
-            {
-              title: "My Products",
-              url: "/myproducts",
-              icon: IconCube,
-            },
-            {
-              title: "My Prompts",
-              url: "/myprompts",
-              icon: IconPlaylistAdd,
-            },
-            {
-              title: "My Stacks",
-              url: "/mystacks",
-              icon: IconStack,
-            },
-            ...(isDev ? [] : []),
-            {
-              title: "Notes",
-              url: "/notes",
-              icon: IconMessages,
-            },
-            {
-              title: "Questions",
-              url: "/qa",
-              icon: IconHelpCircle,
-            },
-            {
-              title: "My Collections",
-              url: "/mycollections",
-              icon: IconBook,
-            },
-            {
-              title: "My Agents",
-              url: "/myagents",
-              icon: IconRobot,
-            },
-          ],
+          title: "My Products",
+          url: "/myproducts",
+          icon: IconCube,
+        },
+        {
+          title: "My Prompts",
+          url: "/myprompts",
+          icon: IconPlaylistAdd,
+        },
+        {
+          title: "My Stacks",
+          url: "/mystacks",
+          icon: IconStack,
+        },
+        ...(isDev ? [] : []),
+        {
+          title: "Notes",
+          url: "/notes",
+          icon: IconMessages,
+        },
+        {
+          title: "Questions",
+          url: "/qa",
+          icon: IconHelpCircle,
+        },
+        {
+          title: "My Collections",
+          url: "/mycollections",
+          icon: IconBook,
+        },
+        {
+          title: "My Agents",
+          url: "/myagents",
+          icon: IconRobot,
         },
       ],
     },
@@ -244,6 +239,11 @@ export const sidebarData: SidebarData = {
               url: "/settings/prompt-credits",
               icon: LucideCoins,
             },
+            {
+              title: "Tools",
+              url: "/settings/tools",
+              icon: IconTool,
+            },
             // {
             //   title: "Appearance",
             //   url: "/settings/appearance",
@@ -267,9 +267,9 @@ export const sidebarData: SidebarData = {
           icon: IconHelp,
         },
         {
-          title: "Welcome",
-          url: "/welcome",
-          icon: IconHome2,
+          title: "Onboarding",
+          url: "/wizard",
+          icon: IconRocket,
         },
       ],
     },

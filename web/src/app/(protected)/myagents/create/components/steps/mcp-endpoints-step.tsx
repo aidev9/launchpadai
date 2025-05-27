@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useCollectionData } from "react-firebase-hooks/firestore";
-import { firebaseMcpEndpoints } from "@/lib/firebase/client/FirebaseMcpEndpoints";
+import { firebaseCollectionMcpEndpoints } from "@/lib/firebase/client/FirebaseCollectionMcpEndpoints";
 import { McpEndpointConfig } from "@/lib/firebase/schema/mcp-endpoints";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -25,7 +25,7 @@ export function McpEndpointsStep() {
   // Note: In a real implementation, you would need to fetch endpoints for the current user
   // This is a simplified version that assumes endpoints are stored in a collection
   const [endpoints, isLoading, error] = useCollectionData(
-    firebaseMcpEndpoints.getRefCollection(),
+    firebaseCollectionMcpEndpoints.getRefCollection(),
     {
       snapshotListenOptions: { includeMetadataChanges: true },
     }

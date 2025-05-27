@@ -78,7 +78,7 @@ export async function submitToWaitlist(
       });
 
       await resend.emails.send({
-        from: process.env.EMAIL_FROM || "waitlist@launchpadai.com",
+        from: process.env.EMAIL_FROM || "info@launchpadai.io",
         to: validatedData.email,
         subject: subject,
         html: html,

@@ -46,10 +46,6 @@ const ProductSwitcher = React.memo(function ProductSwitcher() {
   // The only useEffect we need
   useEffect(() => {
     if (firebaseProductsData) {
-      console.log(
-        "[ProductSwitcher] Firebase products data:::",
-        firebaseProductsData
-      );
       const typedProducts = firebaseProductsData.map((p) => p as Product);
       setProducts(typedProducts);
     }

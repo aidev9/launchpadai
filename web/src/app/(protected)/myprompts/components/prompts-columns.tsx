@@ -8,6 +8,7 @@ import { getPhaseColor } from "@/components/prompts/phase-filter";
 import { DataTableColumnHeader } from "./data-table-column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import { cn } from "@/lib/utils";
+import { formatDistance } from "date-fns";
 
 interface PromptsColumnsProps {
   onEdit?: (prompt: Prompt) => void;
@@ -194,14 +195,23 @@ export const getColumns = ({
   {
     accessorKey: "updatedAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Modified" />
+      <DataTableColumnHeader column={column} title="Updated" />
     ),
     cell: ({ row }) => {
-      const updatedAt = row.getValue("updatedAt") as number;
-      if (!updatedAt) return <div>Invalid Date</div>;
+      const prompt = row.original;
+      // Use the timestamp directly if available, otherwise fallback to current time
+      const timestamp = prompt.updatedAt || Date.now();
 
-      const date = new Date(updatedAt);
-      return <div>{date.toLocaleDateString()}</div>;
+      // Check if timestamp is in seconds (Firebase often stores in seconds)
+      // and convert to milliseconds if needed
+      const timeInMs = timestamp > 1e10 ? timestamp : timestamp * 1000;
+      const date = new Date(timeInMs);
+
+      return (
+        <div className="text-sm text-muted-foreground">
+          {formatDistance(date, new Date(), { addSuffix: true })}
+        </div>
+      );
     },
     sortingFn: "datetime",
   },
